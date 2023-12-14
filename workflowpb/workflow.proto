@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package workflowpb;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "../workflowpb";
+
+message Record {
+  int64 id = 1;
+  string run_id = 2;
+  string workflow_name = 3;
+  string foreign_id = 4;
+  bool is_start = 5;
+  bool is_end = 6;
+  bytes object = 7;
+  google.protobuf.Timestamp created_at = 8;
+  int32 status = 9;
+}
