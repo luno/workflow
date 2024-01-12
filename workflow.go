@@ -10,6 +10,8 @@ import (
 	"github.com/luno/jettison/j"
 	"github.com/luno/jettison/log"
 	"k8s.io/utils/clock"
+
+	"github.com/andrewwormald/workflow/internal/metrics"
 )
 
 type API[Type any, Status StatusType] interface {
@@ -56,6 +58,7 @@ type Workflow[Type any, Status StatusType] struct {
 	clock                   clock.Clock
 	defaultPollingFrequency time.Duration
 	defaultErrBackOff       time.Duration
+	defaultLagAlert         time.Duration
 
 	calledRun bool
 	once      sync.Once
@@ -109,8 +112,8 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 		}
 
 		for status, timeouts := range w.timeouts {
-			go timeoutPoller(ctx, w, status, timeouts)
-			go timeoutAutoInserterConsumer(ctx, w, status, timeouts)
+			go timeoutPoller(w, status, timeouts)
+			go timeoutAutoInserterConsumer(w, status, timeouts)
 		}
 
 		for _, config := range w.workflowConnectorConfigs {
@@ -140,9 +143,9 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 }
 
 // run is a standardise way of running blocking calls forever with retry such as consumers that need to adhere to role scheduling
-func (w *Workflow[Type, Status]) run(role string, process func(ctx context.Context) error, errBackOff time.Duration) {
-	w.updateState(role, StateIdle)
-	defer w.updateState(role, StateShutdown)
+func (w *Workflow[Type, Status]) run(role, processName string, process func(ctx context.Context) error, errBackOff time.Duration) {
+	w.updateState(processName, StateIdle)
+	defer w.updateState(processName, StateShutdown)
 
 	for {
 		ctx, cancel, err := w.scheduler.Await(w.ctx, role)
@@ -151,19 +154,21 @@ func (w *Workflow[Type, Status]) run(role string, process func(ctx context.Conte
 			return
 		} else if err != nil {
 			log.Error(ctx, errors.Wrap(err, "error awaiting role", j.MKV{
-				"role": role,
+				"role":         role,
+				"process_name": processName,
 			}))
 			time.Sleep(errBackOff)
 			continue
 		}
 
-		w.updateState(role, StateRunning)
+		w.updateState(processName, StateRunning)
 
 		if ctx.Err() != nil {
 			// Gracefully exit when context has been cancelled
 			if w.debugMode {
 				log.Info(ctx, "shutting down", j.MKV{
-					"role": role,
+					"role":         role,
+					"process_name": processName,
 				})
 			}
 			return
@@ -177,6 +182,7 @@ func (w *Workflow[Type, Status]) run(role string, process func(ctx context.Conte
 			log.Error(ctx, errors.Wrap(err, "process error", j.MKV{
 				"role": role,
 			}))
+			metrics.ProcessErrors.WithLabelValues(w.Name, processName).Inc()
 		} else if err == nil {
 			// If process finishes successfully then release the role by cancelling the context can continuing.
 			cancel()

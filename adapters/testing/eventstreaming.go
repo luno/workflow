@@ -87,6 +87,7 @@ func TestStreamer(t *testing.T, constructor workflow.EventStreamer) {
 		cancel()
 	})
 	wf.Run(ctx)
+	t.Cleanup(wf.Stop)
 
 	foreignID := "1"
 	u := User{

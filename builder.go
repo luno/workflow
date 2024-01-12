@@ -14,7 +14,8 @@ func NewBuilder[Type any, Status StatusType](name string) *Builder[Type, Status]
 			Name:                    name,
 			clock:                   clock.RealClock{},
 			defaultPollingFrequency: 500 * time.Millisecond,
-			defaultErrBackOff:       500 * time.Millisecond,
+			defaultErrBackOff:       5 * time.Second,
+			defaultLagAlert:         30 * time.Minute,
 			consumers:               make(map[Status][]consumerConfig[Type, Status]),
 			callback:                make(map[Status][]callback[Type, Status]),
 			timeouts:                make(map[Status]timeouts[Type, Status]),
@@ -54,6 +55,11 @@ func (b *Builder[Type, Status]) AddStep(from Status, c ConsumerFunc[Type, Status
 		p.ErrBackOff = so.errBackOff
 	}
 
+	p.LagAlert = b.workflow.defaultLagAlert
+	if so.lagAlert.Nanoseconds() != 0 {
+		p.LagAlert = so.lagAlert
+	}
+
 	b.workflow.graph[int(from)] = append(b.workflow.graph[int(from)], int(to))
 	b.workflow.graphOrder = append(b.workflow.graphOrder, int(from))
 	b.workflow.validStatuses[from] = true
@@ -65,6 +71,7 @@ type stepOptions struct {
 	parallelCount    int
 	pollingFrequency time.Duration
 	errBackOff       time.Duration
+	lagAlert         time.Duration
 }
 
 type StepOption func(so *stepOptions)
@@ -87,6 +94,12 @@ func WithStepErrBackOff(d time.Duration) StepOption {
 	}
 }
 
+func WithStepLagAlert(d time.Duration) StepOption {
+	return func(so *stepOptions) {
+		so.lagAlert = d
+	}
+}
+
 func (b *Builder[Type, Status]) AddCallback(from Status, fn CallbackFunc[Type, Status], to Status) {
 	c := callback[Type, Status]{
 		DestinationStatus: to,
@@ -103,6 +116,7 @@ func (b *Builder[Type, Status]) AddCallback(from Status, fn CallbackFunc[Type, S
 type timeoutOptions struct {
 	pollingFrequency time.Duration
 	errBackOff       time.Duration
+	lagAlert         time.Duration
 }
 
 type TimeoutOption func(so *timeoutOptions)
@@ -116,6 +130,12 @@ func WithTimeoutPollingFrequency(d time.Duration) TimeoutOption {
 func WithTimeoutErrBackOff(d time.Duration) TimeoutOption {
 	return func(to *timeoutOptions) {
 		to.errBackOff = d
+	}
+}
+
+func WithTimeoutLagAlert(d time.Duration) TimeoutOption {
+	return func(to *timeoutOptions) {
+		to.lagAlert = d
 	}
 }
 
@@ -141,6 +161,11 @@ func (b *Builder[Type, Status]) AddTimeout(from Status, timer TimerFunc[Type, St
 	timeouts.ErrBackOff = b.workflow.defaultErrBackOff
 	if topt.errBackOff.Nanoseconds() != 0 {
 		timeouts.ErrBackOff = topt.errBackOff
+	}
+
+	timeouts.LagAlert = b.workflow.defaultLagAlert
+	if topt.lagAlert.Nanoseconds() != 0 {
+		timeouts.LagAlert = topt.lagAlert
 	}
 
 	timeouts.Transitions = append(timeouts.Transitions, t)

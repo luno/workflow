@@ -5,12 +5,26 @@ import (
 	"sync"
 	"time"
 
+	"k8s.io/utils/clock"
+
 	"github.com/andrewwormald/workflow"
 )
 
-func New() *StreamConstructor {
-	var log []*workflow.Event
+func New(opts ...Option) *StreamConstructor {
+	var (
+		log []*workflow.Event
+		opt options
+	)
+
+	// Set a default clock
+	opt.clock = clock.RealClock{}
+
+	for _, option := range opts {
+		option(&opt)
+	}
+
 	return &StreamConstructor{
+		opts: &opt,
 		stream: &Stream{
 			mu:  &sync.Mutex{},
 			log: &log,
@@ -18,7 +32,20 @@ func New() *StreamConstructor {
 	}
 }
 
+type options struct {
+	clock clock.Clock
+}
+
+type Option func(o *options)
+
+func WithClock(clock clock.Clock) Option {
+	return func(o *options) {
+		o.clock = clock
+	}
+}
+
 type StreamConstructor struct {
+	opts   *options
 	stream *Stream
 }
 
@@ -30,6 +57,7 @@ func (s StreamConstructor) NewProducer(topic string) workflow.Producer {
 		mu:    s.stream.mu,
 		log:   s.stream.log,
 		topic: topic,
+		clock: s.opts.clock,
 	}
 }
 
@@ -42,6 +70,7 @@ func (s StreamConstructor) NewConsumer(topic string, name string, opts ...workfl
 		log:   s.stream.log,
 		topic: topic,
 		name:  name,
+		clock: s.opts.clock,
 	}
 }
 
@@ -53,6 +82,7 @@ type Stream struct {
 	offset int
 	topic  string
 	name   string
+	clock  clock.Clock
 }
 
 func (s *Stream) Send(ctx context.Context, recordID int64, statusType int, headers map[workflow.Header]string) error {
@@ -65,7 +95,7 @@ func (s *Stream) Send(ctx context.Context, recordID int64, statusType int, heade
 		ForeignID: recordID,
 		Type:      statusType,
 		Headers:   headers,
-		CreatedAt: time.Now(),
+		CreatedAt: s.clock.Now(),
 	})
 
 	return nil

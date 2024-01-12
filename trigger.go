@@ -3,7 +3,6 @@ package workflow
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -93,9 +92,10 @@ func (w *Workflow[Type, Status]) ScheduleTrigger(foreignID string, startingStatu
 		return err
 	}
 
-	role := strings.Join([]string{w.Name, fmt.Sprintf("%v", int(startingStatus)), foreignID, "scheduler", spec}, "-")
+	role := makeRole(w.Name, fmt.Sprintf("%v", int(startingStatus)), foreignID, "scheduler", spec)
+	processName := makeRole(startingStatus.String(), foreignID, "scheduler", spec)
 
-	w.run(role, func(ctx context.Context) error {
+	w.run(role, processName, func(ctx context.Context) error {
 		latestEntry, err := w.recordStore.Latest(ctx, w.Name, foreignID)
 		if errors.Is(err, ErrRecordNotFound) {
 			// NoReturnErr: Rather use zero value for lastRunID and use current clock for first run.

@@ -7,6 +7,8 @@ import (
 
 	"github.com/luno/jettison/errors"
 	"github.com/luno/jettison/j"
+
+	"github.com/andrewwormald/workflow/internal/metrics"
 )
 
 // ConnectorFilter should return an empty string as the foreignID if the event should be filtered out / skipped, and
@@ -78,13 +80,17 @@ func connectorConsumer[Type any, Status StatusType](w *Workflow[Type, Status], c
 		fmt.Sprintf("%v", totalShards),
 	)
 
+	// processName can have the same name as the role. It is the same here due to the fact that there are no enums
+	// that can be converted to a meaningful string
+	processName := role
+
 	errBackOff := w.defaultErrBackOff
 	if cc.errBackOff.Nanoseconds() != 0 {
 		errBackOff = cc.errBackOff
 	}
 
 	defer cc.consumerFn.Close()
-	w.run(role, func(ctx context.Context) error {
+	w.run(role, processName, func(ctx context.Context) error {
 		e, ack, err := cc.consumerFn.Recv(ctx)
 		if err != nil {
 			return err
@@ -120,6 +126,21 @@ func workflowConnectorConsumer[Type any, Status StatusType](w *Workflow[Type, St
 		fmt.Sprintf("%v", totalShards),
 	)
 
+	processName := makeRole(
+		cc.workflowName,
+		fmt.Sprintf("%v", cc.status),
+		"connection",
+		w.Name,
+		cc.from.String(),
+		"to",
+		cc.to.String(),
+		"connector",
+		"consumer",
+		fmt.Sprintf("%v", shard),
+		"of",
+		fmt.Sprintf("%v", totalShards),
+	)
+
 	pollFrequency := w.defaultPollingFrequency
 	if cc.pollingFrequency.Nanoseconds() != 0 {
 		pollFrequency = cc.pollingFrequency
@@ -141,12 +162,12 @@ func workflowConnectorConsumer[Type any, Status StatusType](w *Workflow[Type, St
 	)
 	defer stream.Close()
 
-	w.run(role, func(ctx context.Context) error {
-		return consumeExternalWorkflow[Type, Status](ctx, stream, w, cc.workflowName, cc.status, cc.filter, cc.consumer, cc.to)
+	w.run(role, processName, func(ctx context.Context) error {
+		return consumeExternalWorkflow[Type, Status](ctx, stream, w, cc.workflowName, cc.status, cc.filter, cc.consumer, cc.to, processName)
 	}, errBackOff)
 }
 
-func consumeExternalWorkflow[Type any, Status StatusType](ctx context.Context, stream Consumer, w *Workflow[Type, Status], externalWorkflowName string, status int, filter ConnectorFilter, consumerFunc ConnectorConsumerFunc[Type, Status], to Status) error {
+func consumeExternalWorkflow[Type any, Status StatusType](ctx context.Context, stream Consumer, w *Workflow[Type, Status], externalWorkflowName string, status int, filter ConnectorFilter, consumerFunc ConnectorConsumerFunc[Type, Status], to Status, processName string) error {
 	for {
 		if ctx.Err() != nil {
 			return errors.Wrap(ErrWorkflowShutdown, "")
@@ -206,6 +227,7 @@ func consumeExternalWorkflow[Type any, Status StatusType](ctx context.Context, s
 			Object:     &t,
 		}
 
+		t0 := w.clock.Now()
 		ok, err := consumerFunc(ctx, &record, e)
 		if err != nil {
 			return errors.Wrap(err, "failed to consume - connector consumer", j.MKV{
@@ -215,6 +237,7 @@ func consumeExternalWorkflow[Type any, Status StatusType](ctx context.Context, s
 				"destination_status": to,
 			})
 		}
+		metrics.ProcessLatency.WithLabelValues(w.Name, processName).Observe(w.clock.Since(t0).Seconds())
 
 		if ok {
 			b, err := Marshal(&record.Object)
