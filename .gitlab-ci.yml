@@ -1,12 +1,13 @@
 image: golang:latest
 
 stages:
+  - vet
   - test
+
 services:
   - mysql:latest
   - name: blacktop/kafka
     alias: kafka
-
 
 variables:
   KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092,INTERNAL://localhost:9093'
@@ -17,18 +18,15 @@ variables:
   KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
   KAFKA_CREATE_TOPICS: "test:1:1"
 
-lint:
+before_script:
+  cd backend
+
+vet:
+  stage: vet
+  script:
+    - go vet ./...
+
+test:
   stage: test
   script:
-    - make vet
-
-unit_test:
-  parallel:
-    matrix:
-      - GO: ["1.20"]
-  image:
-    name: golang:$GO
-  stage: test
-  script:
-    - make test
-
+    - go test -race -short ./...
