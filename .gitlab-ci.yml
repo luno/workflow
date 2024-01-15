@@ -5,18 +5,8 @@ stages:
   - test
 
 services:
-  - mysql:latest
-  - name: blacktop/kafka
+  - name: martinnowak/kafka:1.0
     alias: kafka
-
-variables:
-  KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092,INTERNAL://localhost:9093'
-  KAFKA_BROKER_ID: '1'
-  KAFKA_INTER_BROKER_LISTENER_NAME: 'INTERNAL'
-  KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,INTERNAL://0.0.0.0:9093'
-  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT'
-  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-  KAFKA_CREATE_TOPICS: "test:1:1"
 
 vet:
   stage: vet
