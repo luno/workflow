@@ -12,7 +12,8 @@ import (
 
 func New(opts ...Option) *Store {
 	s := &Store{
-		clock: clock.RealClock{},
+		clock:              clock.RealClock{},
+		timeoutIdIncrement: 1,
 	}
 
 	for _, opt := range opts {
@@ -74,24 +75,12 @@ func (s *Store) Create(ctx context.Context, workflowName, foreignID, runID strin
 	return nil
 }
 
-func (s *Store) Complete(ctx context.Context, workflowName, foreignID, runID string, status int) error {
+func (s *Store) Complete(ctx context.Context, id int64) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	for i, timeout := range s.timeouts {
-		if timeout.WorkflowName != workflowName {
-			continue
-		}
-
-		if timeout.ForeignID != foreignID {
-			continue
-		}
-
-		if timeout.RunID != runID {
-			continue
-		}
-
-		if timeout.Status != status {
+		if timeout.ID != id {
 			continue
 		}
 
@@ -102,25 +91,13 @@ func (s *Store) Complete(ctx context.Context, workflowName, foreignID, runID str
 	return nil
 }
 
-func (s *Store) Cancel(ctx context.Context, workflowName, foreignID, runID string, status int) error {
+func (s *Store) Cancel(ctx context.Context, id int64) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	var index int
 	for i, timeout := range s.timeouts {
-		if timeout.WorkflowName != workflowName {
-			continue
-		}
-
-		if timeout.ForeignID != foreignID {
-			continue
-		}
-
-		if timeout.RunID != runID {
-			continue
-		}
-
-		if timeout.Status != status {
+		if timeout.ID != id {
 			continue
 		}
 

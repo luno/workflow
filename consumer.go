@@ -7,7 +7,8 @@ import (
 
 	"github.com/luno/jettison/errors"
 	"github.com/luno/jettison/j"
-	"github.com/luno/jettison/log"
+
+	"github.com/andrewwormald/workflow/internal/metrics"
 )
 
 // ConsumerFunc provides a record that is expected to be modified if the data needs to change. If true is returned with
@@ -23,6 +24,7 @@ type consumerConfig[Type any, Status StatusType] struct {
 	DestinationStatus Status
 	Consumer          ConsumerFunc[Type, Status]
 	ParallelCount     int
+	LagAlert          time.Duration
 }
 
 func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentStatus Status, p consumerConfig[Type, Status], shard, totalShards int) {
@@ -37,31 +39,12 @@ func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentSta
 		fmt.Sprintf("%v", totalShards),
 	)
 
-	w.run(role, func(ctx context.Context) error {
-		err := runStepConsumerForever[Type, Status](ctx, w, p, currentStatus, role, shard, totalShards)
-		if errors.IsAny(err, ErrWorkflowShutdown, context.Canceled) {
-			if w.debugMode {
-				log.Info(ctx, "shutting down consumer", j.MKV{
-					"workflow_name":      w.Name,
-					"current_status":     currentStatus,
-					"destination_status": p.DestinationStatus,
-				})
-			}
-		} else if err != nil {
-			log.Error(ctx, errors.Wrap(err, "consumer error"))
-		}
-
-		return nil
-	}, p.ErrBackOff)
-}
-
-func runStepConsumerForever[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], p consumerConfig[Type, Status], status Status, role string, shard, totalShards int) error {
 	pollFrequency := w.defaultPollingFrequency
 	if p.PollingFrequency.Nanoseconds() != 0 {
 		pollFrequency = p.PollingFrequency
 	}
 
-	topic := Topic(w.Name, int(status))
+	topic := Topic(w.Name, int(currentStatus))
 	stream := w.eventStreamerFn.NewConsumer(
 		topic,
 		role,
@@ -73,12 +56,30 @@ func runStepConsumerForever[Type any, Status StatusType](ctx context.Context, w 
 
 	defer stream.Close()
 
+	// processName can change in value if the string value of the status enum is changed. It should not be used for
+	// storing in the record store, event streamer, timeoutstore, or offset store.
+	processName := makeRole(
+		fmt.Sprintf("%v", currentStatus.String()),
+		"to",
+		fmt.Sprintf("%v", p.DestinationStatus.String()),
+		"consumer",
+		fmt.Sprintf("%v", shard),
+		"of",
+		fmt.Sprintf("%v", totalShards),
+	)
+
+	w.run(role, processName, func(ctx context.Context) error {
+		return consumeForever[Type, Status](ctx, w, p, stream, currentStatus, processName)
+	}, p.ErrBackOff)
+}
+
+func consumeForever[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], p consumerConfig[Type, Status], c Consumer, status Status, processName string) error {
 	for {
 		if ctx.Err() != nil {
 			return errors.Wrap(ErrWorkflowShutdown, "")
 		}
 
-		e, ack, err := stream.Recv(ctx)
+		e, ack, err := c.Recv(ctx)
 		if err != nil {
 			return err
 		}
@@ -100,6 +101,10 @@ func runStepConsumerForever[Type any, Status StatusType](ctx context.Context, w 
 
 			continue
 		}
+
+		t0 := w.clock.Now()
+		lag := t0.Sub(e.CreatedAt)
+		metrics.ConsumerLag.WithLabelValues(w.Name, processName).Set(lag.Seconds())
 
 		record, err := w.recordStore.Lookup(ctx, e.ForeignID)
 		if errors.Is(err, ErrRecordNotFound) {
@@ -124,10 +129,24 @@ func runStepConsumerForever[Type any, Status StatusType](ctx context.Context, w 
 			continue
 		}
 
-		err = consume(ctx, record, p.Consumer, ack, p.DestinationStatus, w.endPoints, w.eventStreamerFn, w.recordStore)
+		// If lag alert is set then check if the consumer is lagging and push value of 1 to the lag alert
+		// gauge if it is lagging. If it is not lagging then push 0.
+		if p.LagAlert > 0 {
+			alert := 0.0
+			if lag > p.LagAlert {
+				alert = 1
+			}
+
+			metrics.ConsumerLagAlert.WithLabelValues(w.Name, processName).Set(alert)
+		}
+
+		t2 := w.clock.Now()
+		err = consume(ctx, record, p.Consumer, ack, p.DestinationStatus, w.endPoints, w.eventStreamerFn, w.recordStore, w.Name, processName)
 		if err != nil {
 			return err
 		}
+
+		metrics.ProcessLatency.WithLabelValues(w.Name, processName).Observe(w.clock.Since(t2).Seconds())
 	}
 }
 
@@ -155,7 +174,18 @@ func wait(ctx context.Context, d time.Duration) error {
 	}
 }
 
-func consume[Type any, Status StatusType](ctx context.Context, wr *WireRecord, cf ConsumerFunc[Type, Status], ack Ack, destinationStatus Status, endPoints map[Status]bool, es EventStreamer, rs RecordStore) error {
+func consume[Type any, Status StatusType](
+	ctx context.Context,
+	wr *WireRecord,
+	cf ConsumerFunc[Type, Status],
+	ack Ack,
+	destinationStatus Status,
+	endPoints map[Status]bool,
+	es EventStreamer,
+	rs RecordStore,
+	workflowName string,
+	processName string,
+) error {
 	var t Type
 	err := Unmarshal(wr.Object, &t)
 	if err != nil {
@@ -173,7 +203,8 @@ func consume[Type any, Status StatusType](ctx context.Context, wr *WireRecord, c
 		return errors.Wrap(err, "failed to consume", j.MKV{
 			"workflow_name":      wr.WorkflowName,
 			"foreign_id":         wr.ForeignID,
-			"current_status":     wr.Status,
+			"current_status":     Status(wr.Status).String(),
+			"current_status_int": wr.Status,
 			"destination_status": destinationStatus,
 		})
 	}
@@ -201,6 +232,8 @@ func consume[Type any, Status StatusType](ctx context.Context, wr *WireRecord, c
 		if err != nil {
 			return err
 		}
+	} else {
+		metrics.ProcessSkippedEvents.WithLabelValues(workflowName, processName).Inc()
 	}
 
 	return ack()

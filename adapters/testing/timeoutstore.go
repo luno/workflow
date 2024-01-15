@@ -65,7 +65,7 @@ func testCancelTimeout(t *testing.T, store workflow.TimeoutStore) {
 	require.WithinDuration(t, time.Now().Add(-time.Hour), timeout[2].ExpireAt, time.Second)
 	require.WithinDuration(t, time.Now(), timeout[2].CreatedAt, time.Second)
 
-	err = store.Cancel(ctx, "example", "andrew", "2", int(statusStarted))
+	err = store.Cancel(ctx, 2)
 	jtest.RequireNil(t, err)
 
 	timeout, err = store.ListValid(ctx, "example", int(statusStarted), time.Now())
@@ -131,7 +131,7 @@ func testCompleteTimeout(t *testing.T, store workflow.TimeoutStore) {
 	require.WithinDuration(t, time.Now().Add(-time.Hour), timeout[2].ExpireAt, time.Second)
 	require.WithinDuration(t, time.Now(), timeout[2].CreatedAt, time.Second)
 
-	err = store.Complete(ctx, "example", "andrew", "2", int(statusStarted))
+	err = store.Complete(ctx, 2)
 	jtest.RequireNil(t, err)
 
 	timeout, err = store.ListValid(ctx, "example", int(statusStarted), time.Now())

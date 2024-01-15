@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/luno/jettison/errors"
+
+	"github.com/andrewwormald/workflow/internal/metrics"
 )
 
 type Timeout struct {
@@ -20,7 +22,7 @@ type Timeout struct {
 }
 
 // pollTimeouts attempts to find the very next
-func pollTimeouts[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], status Status, timeouts timeouts[Type, Status]) error {
+func pollTimeouts[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], status Status, timeouts timeouts[Type, Status], processName string) error {
 	for {
 		if ctx.Err() != nil {
 			return errors.Wrap(ErrWorkflowShutdown, "")
@@ -39,59 +41,24 @@ func pollTimeouts[Type any, Status StatusType](ctx context.Context, w *Workflow[
 
 			if r.Status != int(status) {
 				// Object has been updated already. Mark timeout as cancelled as it is no longer valid.
-				err = w.timeoutStore.Cancel(ctx, expiredTimeout.WorkflowName, expiredTimeout.ForeignID, expiredTimeout.RunID, expiredTimeout.Status)
+				err = w.timeoutStore.Cancel(ctx, expiredTimeout.ID)
 				if err != nil {
 					return err
 				}
-			}
 
-			var t Type
-			err = Unmarshal(r.Object, &t)
-			if err != nil {
-				return err
-			}
-
-			record := Record[Type, Status]{
-				WireRecord: *r,
-				Status:     Status(r.Status),
-				Object:     &t,
+				// Continue to next expired timeout
+				continue
 			}
 
 			for _, config := range timeouts.Transitions {
-				ok, err := config.TimeoutFunc(ctx, &record, w.clock.Now())
+				t0 := w.clock.Now()
+				err = processTimeout(ctx, w, config, r, expiredTimeout)
 				if err != nil {
+					metrics.ProcessLatency.WithLabelValues(w.Name, processName).Observe(w.clock.Since(t0).Seconds())
 					return err
 				}
 
-				if ok {
-					object, err := Marshal(&t)
-					if err != nil {
-						return err
-					}
-
-					wr := &WireRecord{
-						ID:           record.ID,
-						WorkflowName: record.WorkflowName,
-						ForeignID:    record.ForeignID,
-						RunID:        record.RunID,
-						Status:       int(config.DestinationStatus),
-						IsStart:      false,
-						IsEnd:        w.endPoints[config.DestinationStatus],
-						Object:       object,
-						CreatedAt:    record.CreatedAt,
-					}
-
-					err = update(ctx, w.eventStreamerFn, w.recordStore, wr)
-					if err != nil {
-						return err
-					}
-
-					// Mark timeout as having been executed (aka completed) only in the case that true is returned.
-					err = w.timeoutStore.Complete(ctx, record.WorkflowName, record.ForeignID, record.RunID, int(record.Status))
-					if err != nil {
-						return err
-					}
-				}
+				metrics.ProcessLatency.WithLabelValues(w.Name, processName).Observe(w.clock.Since(t0).Seconds())
 			}
 		}
 
@@ -102,9 +69,61 @@ func pollTimeouts[Type any, Status StatusType](ctx context.Context, w *Workflow[
 	}
 }
 
+func processTimeout[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], config timeout[Type, Status], r *WireRecord, timeout Timeout) error {
+	var t Type
+	err := Unmarshal(r.Object, &t)
+	if err != nil {
+		return err
+	}
+
+	record := Record[Type, Status]{
+		WireRecord: *r,
+		Status:     Status(r.Status),
+		Object:     &t,
+	}
+
+	ok, err := config.TimeoutFunc(ctx, &record, w.clock.Now())
+	if err != nil {
+		return err
+	}
+
+	if ok {
+		object, err := Marshal(&t)
+		if err != nil {
+			return err
+		}
+
+		wr := &WireRecord{
+			ID:           record.ID,
+			WorkflowName: record.WorkflowName,
+			ForeignID:    record.ForeignID,
+			RunID:        record.RunID,
+			Status:       int(config.DestinationStatus),
+			IsStart:      false,
+			IsEnd:        w.endPoints[config.DestinationStatus],
+			Object:       object,
+			CreatedAt:    record.CreatedAt,
+		}
+
+		err = update(ctx, w.eventStreamerFn, w.recordStore, wr)
+		if err != nil {
+			return err
+		}
+
+		// Mark timeout as having been executed (aka completed) only in the case that true is returned.
+		err = w.timeoutStore.Complete(ctx, timeout.ID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 type timeouts[Type any, Status StatusType] struct {
 	PollingFrequency time.Duration
 	ErrBackOff       time.Duration
+	LagAlert         time.Duration
 	Transitions      []timeout[Type, Status]
 }
 
@@ -114,18 +133,27 @@ type timeout[Type any, Status StatusType] struct {
 	TimeoutFunc       TimeoutFunc[Type, Status]
 }
 
-func timeoutPoller[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], status Status, timeouts timeouts[Type, Status]) {
+func timeoutPoller[Type any, Status StatusType](w *Workflow[Type, Status], status Status, timeouts timeouts[Type, Status]) {
 	role := makeRole(w.Name, fmt.Sprintf("%v", int(status)), "timeout-consumer")
+	// readableRole can change in value if the string value of the status enum is changed. It should not be used for
+	// storing in the record store, event streamer, timeout store, or offset store.
+	processName := makeRole(status.String(), "timeout-consumer")
 
-	w.run(role, func(ctx context.Context) error {
-		return pollTimeouts(ctx, w, status, timeouts)
+	w.run(role, processName, func(ctx context.Context) error {
+		err := pollTimeouts(ctx, w, status, timeouts, processName)
+		if err != nil {
+			return err
+		}
+
+		return nil
 	}, timeouts.ErrBackOff)
 }
 
-func timeoutAutoInserterConsumer[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], status Status, timeouts timeouts[Type, Status]) {
+func timeoutAutoInserterConsumer[Type any, Status StatusType](w *Workflow[Type, Status], status Status, timeouts timeouts[Type, Status]) {
 	role := makeRole(w.Name, fmt.Sprintf("%v", int(status)), "timeout-auto-inserter-consumer")
+	processName := makeRole(status.String(), "timeout-auto-inserter-consumer")
 
-	w.run(role, func(ctx context.Context) error {
+	w.run(role, processName, func(ctx context.Context) error {
 		consumerFunc := func(ctx context.Context, r *Record[Type, Status]) (bool, error) {
 			for _, config := range timeouts.Transitions {
 				expireAt, err := config.TimerFunc(ctx, r, w.clock.Now())
@@ -148,17 +176,27 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](ctx context.Contex
 			return false, nil
 		}
 
-		return runStepConsumerForever(ctx, w, consumerConfig[Type, Status]{
+		topic := Topic(w.Name, int(status))
+		stream := w.eventStreamerFn.NewConsumer(
+			topic,
+			role,
+			WithConsumerPollFrequency(timeouts.PollingFrequency),
+			WithEventFilter(
+				shardFilter(1, 1),
+			),
+		)
+
+		defer stream.Close()
+
+		cc := consumerConfig[Type, Status]{
 			PollingFrequency: timeouts.PollingFrequency,
 			ErrBackOff:       timeouts.ErrBackOff,
 			Consumer:         consumerFunc,
 			ParallelCount:    1,
-		},
-			status,
-			role,
-			1,
-			1,
-		)
+			LagAlert:         timeouts.LagAlert,
+		}
+
+		return consumeForever(ctx, w, cc, stream, status, processName)
 	}, timeouts.ErrBackOff)
 }
 

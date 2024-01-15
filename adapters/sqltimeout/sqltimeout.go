@@ -55,28 +55,22 @@ func (s *Store) Create(ctx context.Context, workflowName, foreignID, runID strin
 	return nil
 }
 
-func (s *Store) Complete(ctx context.Context, workflowName, foreignID, runID string, status int) error {
-	_, err := s.writer.ExecContext(ctx, "update "+s.timeoutTableName+" set completed=true where workflow_name=? and foreign_id=? and run_id=? and status=?", workflowName, foreignID, runID, status)
+func (s *Store) Complete(ctx context.Context, id int64) error {
+	_, err := s.writer.ExecContext(ctx, "update "+s.timeoutTableName+" set completed=true where id=?", id)
 	if err != nil {
 		return errors.Wrap(err, "failed to complete timeout", j.MKV{
-			"workflowName": workflowName,
-			"foreignID":    foreignID,
-			"runID":        runID,
-			"status":       status,
+			"id": id,
 		})
 	}
 
 	return nil
 }
 
-func (s *Store) Cancel(ctx context.Context, workflowName, foreignID, runID string, status int) error {
-	_, err := s.writer.ExecContext(ctx, "delete from "+s.timeoutTableName+" where workflow_name=? and foreign_id=? and run_id=? and status=?", workflowName, foreignID, runID, status)
+func (s *Store) Cancel(ctx context.Context, id int64) error {
+	_, err := s.writer.ExecContext(ctx, "delete from "+s.timeoutTableName+" where id=?", id)
 	if err != nil {
 		return errors.Wrap(err, "failed to cancel / delete timeout", j.MKV{
-			"workflowName": workflowName,
-			"foreignID":    foreignID,
-			"runID":        runID,
-			"status":       status,
+			"id": id,
 		})
 	}
 

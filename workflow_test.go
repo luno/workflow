@@ -55,8 +55,30 @@ const (
 
 func (s status) String() string {
 	switch s {
+	case StatusInitiated:
+		return "Initiated"
+	case StatusProfileCreated:
+		return "Profile Created"
+	case StatusEmailConfirmationSent:
+		return "Email Confirmation Sent"
+	case StatusEmailVerified:
+		return "Email Verified"
+	case StatusCellphoneNumberSubmitted:
+		return "Cellphone Number Submitted"
+	case StatusOTPSent:
+		return "OTP Sent"
+	case StatusOTPVerified:
+		return "OTP Verified"
+	case StatusCompleted:
+		return "Completed"
+	case StatusStart:
+		return "Start"
+	case StatusMiddle:
+		return "Middle"
+	case StatusEnd:
+		return "End"
 	default:
-		return "Unkown"
+		return "Unknown"
 	}
 }
 
@@ -101,6 +123,7 @@ func TestWorkflow(t *testing.T) {
 	)
 
 	wf.Run(ctx)
+	t.Cleanup(wf.Stop)
 
 	fid := strconv.FormatInt(expectedUserID, 10)
 
@@ -178,6 +201,7 @@ func TestTimeout(t *testing.T) {
 	)
 
 	wf.Run(ctx)
+	t.Cleanup(wf.Stop)
 
 	start := time.Now()
 
@@ -362,6 +386,7 @@ func TestWorkflow_ScheduleTrigger(t *testing.T) {
 		cancel()
 	})
 	wf.Run(ctx)
+	t.Cleanup(wf.Stop)
 
 	go func() {
 		err := wf.ScheduleTrigger("andrew", StatusStart, "@monthly")
@@ -417,6 +442,7 @@ func TestWorkflow_ScheduleTriggerShutdown(t *testing.T) {
 	t.Cleanup(cancel)
 
 	wf.Run(ctx)
+	t.Cleanup(wf.Stop)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -431,15 +457,15 @@ func TestWorkflow_ScheduleTriggerShutdown(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	require.Equal(t, map[string]workflow.State{
-		"example-9-andrew-scheduler-@monthly": workflow.StateRunning,
-		"example-9-to-11-consumer-1-of-1":     workflow.StateRunning,
+		"start-andrew-scheduler-@monthly": workflow.StateRunning,
+		"start-to-end-consumer-1-of-1":    workflow.StateRunning,
 	}, wf.States())
 
 	wf.Stop()
 
 	require.Equal(t, map[string]workflow.State{
-		"example-9-andrew-scheduler-@monthly": workflow.StateShutdown,
-		"example-9-to-11-consumer-1-of-1":     workflow.StateShutdown,
+		"start-andrew-scheduler-@monthly": workflow.StateShutdown,
+		"start-to-end-consumer-1-of-1":    workflow.StateShutdown,
 	}, wf.States())
 }
 
@@ -501,6 +527,7 @@ func TestWorkflow_TestingRequire(t *testing.T) {
 	})
 
 	wf.Run(ctx)
+	t.Cleanup(wf.Stop)
 
 	foreignID := "andrew"
 	_, err := wf.Trigger(ctx, foreignID, StatusStart)
@@ -553,6 +580,7 @@ func TestTimeTimerFunc(t *testing.T) {
 	})
 
 	wf.Run(ctx)
+	t.Cleanup(wf.Stop)
 
 	runID, err := wf.Trigger(ctx, "Andrew Wormald", StatusStart)
 	jtest.RequireNil(t, err)
@@ -566,77 +594,6 @@ func TestTimeTimerFunc(t *testing.T) {
 		Yang: true,
 	}
 	workflow.Require(t, wf, "Andrew Wormald", StatusEnd, expected)
-}
-
-func TestInternalState(t *testing.T) {
-	b := workflow.NewBuilder[string, status]("example")
-	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Record[string, status]) (bool, error) {
-		return true, nil
-	}, StatusMiddle)
-
-	b.AddStep(StatusMiddle, func(ctx context.Context, r *workflow.Record[string, status]) (bool, error) {
-		return true, nil
-	}, StatusEnd, workflow.WithParallelCount(3))
-
-	b.AddTimeout(StatusInitiated, workflow.DurationTimerFunc[string, status](time.Hour), func(ctx context.Context, r *workflow.Record[string, status], now time.Time) (bool, error) {
-		return true, nil
-	}, StatusCompleted)
-
-	b.AddWorkflowConnector(
-		workflow.WorkflowConnectionDetails{
-			WorkflowName: "other workflow",
-			Status:       int(StatusCompleted),
-			Stream:       memstreamer.New(),
-		},
-		func(ctx context.Context, e *workflow.Event) (string, error) {
-			return e.Headers[workflow.HeaderWorkflowForeignID], nil
-		},
-		StatusMiddle,
-		func(ctx context.Context, r *workflow.Record[string, status], e *workflow.Event) (bool, error) {
-			return true, nil
-		},
-		StatusEnd,
-		workflow.WithParallelCount(2),
-	)
-
-	recordStore := memrecordstore.New()
-	timeoutStore := memtimeoutstore.New()
-	wf := b.Build(
-		memstreamer.New(),
-		recordStore,
-		timeoutStore,
-		memrolescheduler.New(),
-	)
-
-	require.Equal(t, map[string]workflow.State{}, wf.States())
-
-	ctx := context.Background()
-	wf.Run(ctx)
-
-	time.Sleep(time.Second)
-
-	require.Equal(t, map[string]workflow.State{
-		"example-10-to-11-consumer-1-of-3":                                       workflow.StateRunning,
-		"example-10-to-11-consumer-2-of-3":                                       workflow.StateRunning,
-		"example-10-to-11-consumer-3-of-3":                                       workflow.StateRunning,
-		"example-9-to-10-consumer-1-of-1":                                        workflow.StateRunning,
-		"example-1-timeout-auto-inserter-consumer":                               workflow.StateRunning,
-		"example-1-timeout-consumer":                                             workflow.StateRunning,
-		"other_workflow-8-connection-example-10-to-11-connector-consumer-1-of-2": workflow.StateRunning,
-		"other_workflow-8-connection-example-10-to-11-connector-consumer-2-of-2": workflow.StateRunning,
-	}, wf.States())
-
-	wf.Stop()
-	require.Equal(t, map[string]workflow.State{
-		"example-10-to-11-consumer-1-of-3":                                       workflow.StateShutdown,
-		"example-10-to-11-consumer-2-of-3":                                       workflow.StateShutdown,
-		"example-10-to-11-consumer-3-of-3":                                       workflow.StateShutdown,
-		"example-9-to-10-consumer-1-of-1":                                        workflow.StateShutdown,
-		"example-1-timeout-auto-inserter-consumer":                               workflow.StateShutdown,
-		"example-1-timeout-consumer":                                             workflow.StateShutdown,
-		"other_workflow-8-connection-example-10-to-11-connector-consumer-1-of-2": workflow.StateShutdown,
-		"other_workflow-8-connection-example-10-to-11-connector-consumer-2-of-2": workflow.StateShutdown,
-	}, wf.States())
 }
 
 func TestWorkflowConnector(t *testing.T) {

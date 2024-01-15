@@ -1,0 +1,10 @@
+image: golang:latest
+
+stages:
+  - vet
+
+vet:
+  stage: vet
+  script:
+    - go vet ./...
+
