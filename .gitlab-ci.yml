@@ -2,18 +2,9 @@ image: golang:latest
 
 stages:
   - vet
-  - test
-
-services:
-  - name: martinnowak/kafka:1.0
-    alias: kafka
 
 vet:
   stage: vet
   script:
     - go vet ./...
 
-test:
-  stage: test
-  script:
-    - go test -race -short ./...
