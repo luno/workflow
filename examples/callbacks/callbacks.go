@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/andrewwormald/workflow"
-	"github.com/andrewwormald/workflow/examples"
+	"github.com/luno/workflow"
+	"github.com/luno/workflow/examples"
 )
 
 type Example struct {

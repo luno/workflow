@@ -1,4 +1,4 @@
-module github.com/andrewwormald/workflow
+module github.com/luno/workflow
 
 go 1.20
 

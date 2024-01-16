@@ -6,7 +6,7 @@ import (
 
 	"github.com/luno/jettison/jtest"
 
-	"github.com/andrewwormald/workflow"
+	"github.com/luno/workflow"
 )
 
 func TestVisualiser(t *testing.T) {

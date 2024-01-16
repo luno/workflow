@@ -11,7 +11,7 @@ import (
 	"github.com/luno/jettison/log"
 	"k8s.io/utils/clock"
 
-	"github.com/andrewwormald/workflow/internal/metrics"
+	"github.com/luno/workflow/internal/metrics"
 )
 
 type API[Type any, Status StatusType] interface {

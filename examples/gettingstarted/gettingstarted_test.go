@@ -6,13 +6,13 @@ import (
 
 	"github.com/luno/jettison/jtest"
 
-	"github.com/andrewwormald/workflow"
-	"github.com/andrewwormald/workflow/adapters/memrecordstore"
-	"github.com/andrewwormald/workflow/adapters/memrolescheduler"
-	"github.com/andrewwormald/workflow/adapters/memstreamer"
-	"github.com/andrewwormald/workflow/adapters/memtimeoutstore"
-	"github.com/andrewwormald/workflow/examples"
-	"github.com/andrewwormald/workflow/examples/gettingstarted"
+	"github.com/luno/workflow"
+	"github.com/luno/workflow/adapters/memrecordstore"
+	"github.com/luno/workflow/adapters/memrolescheduler"
+	"github.com/luno/workflow/adapters/memstreamer"
+	"github.com/luno/workflow/adapters/memtimeoutstore"
+	"github.com/luno/workflow/examples"
+	"github.com/luno/workflow/examples/gettingstarted"
 )
 
 func TestWorkflow(t *testing.T) {

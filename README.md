@@ -1,8 +1,6 @@
-[![Go](https://github.com/andrewwormald/workflow/actions/workflows/go.yml/badge.svg)](https://github.com/andrewwormald/workflow/actions/workflows/go.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/andrewwormald/workflow)](https://goreportcard.com/report/github.com/andrewwormald/workflow)
-[![codecov](https://codecov.io/gh/andrewwormald/workflow/graph/badge.svg?token=BSDVHPTK8D)](https://codecov.io/gh/andrewwormald/workflow)
-
-![alt text](./logo/workflow.png)
+<div style="text-align: center;">
+    <img src="./logo/workflow.png" width="500" alt="Workflow Logo">
+</div>
 
 ## Workflow is a Golang workflow framework that encompasses these main features:
 - Defining small units of work called "Steps"

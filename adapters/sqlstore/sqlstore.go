@@ -6,7 +6,7 @@ import (
 
 	"github.com/luno/jettison/errors"
 
-	"github.com/andrewwormald/workflow"
+	"github.com/luno/workflow"
 )
 
 type SQLStore struct {

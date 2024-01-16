@@ -8,7 +8,7 @@ import (
 	"github.com/luno/jettison/errors"
 	"k8s.io/utils/clock"
 
-	"github.com/andrewwormald/workflow"
+	"github.com/luno/workflow"
 )
 
 func New() *Store {

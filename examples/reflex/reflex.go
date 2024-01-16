@@ -6,13 +6,13 @@ import (
 	"github.com/luno/reflex"
 	"github.com/luno/reflex/rsql"
 
-	"github.com/andrewwormald/workflow"
-	"github.com/andrewwormald/workflow/adapters/memrecordstore"
-	"github.com/andrewwormald/workflow/adapters/memrolescheduler"
-	"github.com/andrewwormald/workflow/adapters/memtimeoutstore"
-	"github.com/andrewwormald/workflow/adapters/reflexstreamer"
-	"github.com/andrewwormald/workflow/examples"
-	"github.com/andrewwormald/workflow/examples/gettingstarted"
+	"github.com/luno/workflow"
+	"github.com/luno/workflow/adapters/memrecordstore"
+	"github.com/luno/workflow/adapters/memrolescheduler"
+	"github.com/luno/workflow/adapters/memtimeoutstore"
+	"github.com/luno/workflow/adapters/reflexstreamer"
+	"github.com/luno/workflow/examples"
+	"github.com/luno/workflow/examples/gettingstarted"
 )
 
 func ExampleWorkflow(db *sql.DB, table *rsql.EventsTableInt, cstore reflex.CursorStore) *workflow.Workflow[gettingstarted.GettingStarted, examples.Status] {

@@ -1,6 +1,6 @@
 package workflow
 
-import "github.com/andrewwormald/workflow/internal/metrics"
+import "github.com/luno/workflow/internal/metrics"
 
 type State string
 
