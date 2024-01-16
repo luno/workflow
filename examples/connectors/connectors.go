@@ -3,8 +3,8 @@ package connectors
 import (
 	"context"
 
-	"github.com/andrewwormald/workflow"
-	"github.com/andrewwormald/workflow/examples"
+	"github.com/luno/workflow"
+	"github.com/luno/workflow/examples"
 )
 
 type WorkflowADeps struct {

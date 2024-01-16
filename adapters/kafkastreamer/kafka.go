@@ -9,7 +9,7 @@ import (
 	"github.com/luno/jettison/errors"
 	"github.com/segmentio/kafka-go"
 
-	"github.com/andrewwormald/workflow"
+	"github.com/luno/workflow"
 )
 
 func New(brokers []string) *StreamConstructor {

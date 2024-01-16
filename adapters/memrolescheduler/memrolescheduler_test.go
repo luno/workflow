@@ -8,7 +8,7 @@ import (
 	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 
-	"github.com/andrewwormald/workflow/adapters/memrolescheduler"
+	"github.com/luno/workflow/adapters/memrolescheduler"
 )
 
 func TestAwaitRoleContext(t *testing.T) {

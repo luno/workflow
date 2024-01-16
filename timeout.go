@@ -7,7 +7,7 @@ import (
 
 	"github.com/luno/jettison/errors"
 
-	"github.com/andrewwormald/workflow/internal/metrics"
+	"github.com/luno/workflow/internal/metrics"
 )
 
 type Timeout struct {

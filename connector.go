@@ -8,7 +8,7 @@ import (
 	"github.com/luno/jettison/errors"
 	"github.com/luno/jettison/j"
 
-	"github.com/andrewwormald/workflow/internal/metrics"
+	"github.com/luno/workflow/internal/metrics"
 )
 
 // ConnectorFilter should return an empty string as the foreignID if the event should be filtered out / skipped, and

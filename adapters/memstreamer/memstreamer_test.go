@@ -3,8 +3,8 @@ package memstreamer_test
 import (
 	"testing"
 
-	"github.com/andrewwormald/workflow/adapters/memstreamer"
-	adapter "github.com/andrewwormald/workflow/adapters/testing"
+	"github.com/luno/workflow/adapters/memstreamer"
+	adapter "github.com/luno/workflow/adapters/testing"
 )
 
 func TestStreamer(t *testing.T) {

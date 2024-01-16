@@ -6,8 +6,8 @@ import (
 	"github.com/luno/reflex/rpatterns"
 	"github.com/luno/reflex/rsql"
 
-	"github.com/andrewwormald/workflow/adapters/reflexstreamer"
-	adapter "github.com/andrewwormald/workflow/adapters/testing"
+	"github.com/luno/workflow/adapters/reflexstreamer"
+	adapter "github.com/luno/workflow/adapters/testing"
 )
 
 func TestStreamer(t *testing.T) {

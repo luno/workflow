@@ -10,10 +10,10 @@ import (
 	"github.com/luno/reflex/rpatterns"
 	"github.com/luno/reflex/rsql"
 
-	"github.com/andrewwormald/workflow"
-	"github.com/andrewwormald/workflow/examples"
-	"github.com/andrewwormald/workflow/examples/gettingstarted"
-	"github.com/andrewwormald/workflow/examples/reflex"
+	"github.com/luno/workflow"
+	"github.com/luno/workflow/examples"
+	"github.com/luno/workflow/examples/gettingstarted"
+	"github.com/luno/workflow/examples/reflex"
 )
 
 func TestExampleWorkflow(t *testing.T) {

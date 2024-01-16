@@ -8,7 +8,7 @@ import (
 	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 
-	"github.com/andrewwormald/workflow"
+	"github.com/luno/workflow"
 )
 
 func TestTimeoutStore(t *testing.T, factory func() workflow.TimeoutStore) {

@@ -7,7 +7,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/andrewwormald/workflow/workflowpb"
+	"github.com/luno/workflow/workflowpb"
 )
 
 type Record[Type any, Status StatusType] struct {

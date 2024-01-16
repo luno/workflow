@@ -12,12 +12,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	clock_testing "k8s.io/utils/clock/testing"
 
-	"github.com/andrewwormald/workflow"
-	"github.com/andrewwormald/workflow/adapters/memrecordstore"
-	"github.com/andrewwormald/workflow/adapters/memrolescheduler"
-	"github.com/andrewwormald/workflow/adapters/memstreamer"
-	"github.com/andrewwormald/workflow/adapters/memtimeoutstore"
-	"github.com/andrewwormald/workflow/internal/metrics"
+	"github.com/luno/workflow"
+	"github.com/luno/workflow/adapters/memrecordstore"
+	"github.com/luno/workflow/adapters/memrolescheduler"
+	"github.com/luno/workflow/adapters/memstreamer"
+	"github.com/luno/workflow/adapters/memtimeoutstore"
+	"github.com/luno/workflow/internal/metrics"
 )
 
 func TestMetricProcessLag(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"github.com/luno/jettison/errors"
 	"github.com/luno/jettison/j"
 
-	"github.com/andrewwormald/workflow"
+	"github.com/luno/workflow"
 )
 
 func New(writer, reader *sql.DB, tableName string) *Store {

@@ -3,8 +3,8 @@ package kafkastreamer_test
 import (
 	"testing"
 
-	"github.com/andrewwormald/workflow/adapters/kafkastreamer"
-	adapter "github.com/andrewwormald/workflow/adapters/testing"
+	"github.com/luno/workflow/adapters/kafkastreamer"
+	adapter "github.com/luno/workflow/adapters/testing"
 )
 
 func TestStreamer(t *testing.T) {
