@@ -1,6 +1,8 @@
-[![Go](https://github.com/andrewwormald/workflow/actions/workflows/go.yml/badge.svg)](https://github.com/andrewwormald/workflow/actions/workflows/go.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/andrewwormald/workflow)](https://goreportcard.com/report/github.com/andrewwormald/workflow)
-[![codecov](https://codecov.io/gh/andrewwormald/workflow/graph/badge.svg?token=BSDVHPTK8D)](https://codecov.io/gh/andrewwormald/workflow)
+[//]: # ([![Go]&#40;https://github.com/luno/workflow/actions/workflows/go.yml/badge.svg&#41;]&#40;https://github.com/luno/workflow/actions/workflows/go.yml&#41;)
+
+[//]: # ([![Go Report Card]&#40;https://goreportcard.com/badge/github.com/luno/workflow&#41;]&#40;https://goreportcard.com/report/github.com/luno/workflow&#41;)
+
+[//]: # ([![codecov]&#40;https://codecov.io/gh/luno/workflow/graph/badge.svg?token=BSDVHPTK8D&#41;]&#40;https://codecov.io/gh/luno/workflow&#41;)
 
 ![alt text](./logo/workflow.png)
 
