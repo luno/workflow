@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// RecordStore implementations should all be tested with adaptertest.TestRecordStore
 type RecordStore interface {
 	// Store should create or update a record depending on whether the underlying store is mutable or append only. Store
 	// should implement transactions if it is supported especially if the Store is append-only as a new ID for the
@@ -26,6 +27,7 @@ type TestingRecordStore interface {
 // transactions if it is implemented as an append only datastore to allow rolling back if the event fails to emit.
 type EventEmitter func(id int64) error
 
+// TimeoutStore implementations should all be tested with adaptertest.TestTimeoutStore
 type TimeoutStore interface {
 	Create(ctx context.Context, workflowName, foreignID, runID string, status int, expireAt time.Time) error
 	Complete(ctx context.Context, id int64) error

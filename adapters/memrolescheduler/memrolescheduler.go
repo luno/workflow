@@ -32,10 +32,14 @@ func (r *RoleScheduler) Await(ctx context.Context, role string) (context.Context
 		for {
 			select {
 			case <-ctx2.Done():
+				r.mu.Lock()
 				r.roles[role].Unlock()
+				r.mu.Unlock()
 				return
 			case <-ctx.Done():
+				r.mu.Lock()
 				r.roles[role].Unlock()
+				r.mu.Unlock()
 				return
 			}
 		}

@@ -4,12 +4,12 @@ import (
 	"testing"
 
 	"github.com/luno/workflow"
+	"github.com/luno/workflow/adapters/adaptertest"
 	"github.com/luno/workflow/adapters/memrecordstore"
-	connectortesting "github.com/luno/workflow/adapters/testing"
 )
 
 func TestStore(t *testing.T) {
-	connectortesting.TestRecordStore(t, func() workflow.RecordStore {
+	adaptertest.TestRecordStore(t, func() workflow.RecordStore {
 		return memrecordstore.New()
 	})
 }

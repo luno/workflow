@@ -1,4 +1,4 @@
-package testing
+package adaptertest
 
 type status int
 
