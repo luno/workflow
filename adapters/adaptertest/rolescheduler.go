@@ -13,6 +13,7 @@ import (
 
 func TestRoleScheduler(t *testing.T, factory func() workflow.RoleScheduler) {
 	tests := []func(t *testing.T, rs workflow.RoleScheduler){
+		testReturnedContext,
 		testLocking,
 		testReleasing,
 	}
@@ -21,6 +22,20 @@ func TestRoleScheduler(t *testing.T, factory func() workflow.RoleScheduler) {
 		storeForTesting := factory()
 		test(t, storeForTesting)
 	}
+}
+
+func testReturnedContext(t *testing.T, rs workflow.RoleScheduler) {
+	t.Run("Ensure that the passed in context is a parent of the returned context", func(t *testing.T) {
+		ctx := context.Background()
+		ctxWithValue := context.WithValue(ctx, "parent", "context")
+
+		ctx2, cancel, err := rs.Await(ctxWithValue, "leader")
+		jtest.RequireNil(t, err)
+
+		t.Cleanup(cancel)
+
+		require.Equal(t, "context", ctx2.Value("parent"))
+	})
 }
 
 func testLocking(t *testing.T, rs workflow.RoleScheduler) {
@@ -32,9 +47,6 @@ func testLocking(t *testing.T, rs workflow.RoleScheduler) {
 		jtest.RequireNil(t, err)
 
 		t.Cleanup(cancel)
-
-		// Ensure that the passed in context is a parent of the returned context
-		require.Equal(t, "context", ctx2.Value("parent"))
 
 		roleReleased := make(chan bool, 1)
 		go func(done chan bool) {
