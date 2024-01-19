@@ -74,7 +74,7 @@ func awaitWorkflowStatusByForeignID[Type any, Status StatusType](ctx context.Con
 
 	for {
 		if ctx.Err() != nil {
-			return nil, errors.Wrap(ErrWorkflowShutdown, "")
+			return nil, ctx.Err()
 		}
 
 		e, ack, err := stream.Recv(ctx)

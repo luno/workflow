@@ -170,7 +170,7 @@ func workflowConnectorConsumer[Type any, Status StatusType](w *Workflow[Type, St
 func consumeExternalWorkflow[Type any, Status StatusType](ctx context.Context, stream Consumer, w *Workflow[Type, Status], externalWorkflowName string, status int, filter ConnectorFilter, consumerFunc ConnectorConsumerFunc[Type, Status], to Status, processName string) error {
 	for {
 		if ctx.Err() != nil {
-			return errors.Wrap(ErrWorkflowShutdown, "")
+			return ctx.Err()
 		}
 
 		e, ack, err := stream.Recv(ctx)

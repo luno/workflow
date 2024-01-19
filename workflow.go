@@ -148,6 +148,18 @@ func (w *Workflow[Type, Status]) run(role, processName string, process func(ctx 
 	defer w.updateState(processName, StateShutdown)
 
 	for {
+		if w.ctx.Err() != nil {
+			// Parent context has been cancelled (likely from calling w.Stop) so return and don't attempt to assume a
+			// role.
+			if w.debugMode {
+				log.Info(w.ctx, "shutting down", j.MKV{
+					"role":         role,
+					"process_name": processName,
+				})
+			}
+			return
+		}
+
 		ctx, cancel, err := w.scheduler.Await(w.ctx, role)
 		if errors.IsAny(err, context.Canceled) {
 			// Exit cleanly if error returned is cancellation of context
@@ -163,32 +175,23 @@ func (w *Workflow[Type, Status]) run(role, processName string, process func(ctx 
 
 		w.updateState(processName, StateRunning)
 
-		if ctx.Err() != nil {
-			// Gracefully exit when context has been cancelled
-			if w.debugMode {
-				log.Info(ctx, "shutting down", j.MKV{
-					"role":         role,
-					"process_name": processName,
-				})
-			}
-			return
-		}
-
 		err = process(ctx)
-		if errors.IsAny(err, ErrWorkflowShutdown, context.Canceled) {
-			// Exit the process if ErrWorkflowShutdown or context.Canceled is returned
-			return
+		if errors.IsAny(err, context.Canceled) {
+			// Continue to re-evaluate parent context validity and if valid then attempt to assume the role again
+			continue
 		} else if err != nil {
 			log.Error(ctx, errors.Wrap(err, "process error", j.MKV{
 				"role": role,
 			}))
 			metrics.ProcessErrors.WithLabelValues(w.Name, processName).Inc()
 		} else if err == nil {
-			// If process finishes successfully then release the role by cancelling the context can continuing.
+			// If error is nil then the process finishes successfully, then release the role by cancelling the
+			// context allowing other instances to obtain the role.
 			cancel()
 			continue
 		}
 
+		// Only in a non-nil error case
 		select {
 		case <-ctx.Done():
 			cancel()

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/luno/jettison/errors"
-
 	"github.com/luno/workflow/internal/metrics"
 )
 
@@ -25,7 +23,7 @@ type Timeout struct {
 func pollTimeouts[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], status Status, timeouts timeouts[Type, Status], processName string) error {
 	for {
 		if ctx.Err() != nil {
-			return errors.Wrap(ErrWorkflowShutdown, "")
+			return ctx.Err()
 		}
 
 		expiredTimeouts, err := w.timeoutStore.ListValid(ctx, w.Name, int(status), w.clock.Now())
