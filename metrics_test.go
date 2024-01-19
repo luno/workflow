@@ -258,6 +258,95 @@ workflow_process_states{process_name="start-to-middle-consumer-1-of-1",workflow_
 	metrics.ProcessStates.Reset()
 }
 
+type mockScheduler struct {
+	allow bool
+}
+
+func (m *mockScheduler) Await(ctx context.Context, role string) (context.Context, context.CancelFunc, error) {
+	for !m.allow {
+		time.Sleep(time.Millisecond * 10)
+	}
+
+	ctx2, cancel := context.WithCancel(ctx)
+	return ctx2, cancel, nil
+}
+
+var _ workflow.RoleScheduler = (*mockScheduler)(nil)
+
+func TestMetricProcessIdleState(t *testing.T) {
+	metrics.ProcessStates.Reset()
+
+	b := workflow.NewBuilder[string, status]("example")
+	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Record[string, status]) (bool, error) {
+		return true, nil
+	}, StatusMiddle, workflow.WithStepPollingFrequency(time.Millisecond*100))
+	b.AddStep(StatusMiddle, func(ctx context.Context, r *workflow.Record[string, status]) (bool, error) {
+		return true, nil
+	}, StatusEnd, workflow.WithStepPollingFrequency(time.Millisecond*100))
+
+	nw := time.Now()
+	now := time.Date(nw.Year(), nw.Month(), nw.Day(), nw.Hour(), 0, 0, 0, time.UTC)
+	clock := clock_testing.NewFakeClock(now)
+	streamer := memstreamer.New(memstreamer.WithClock(clock))
+	recordStore := memrecordstore.New()
+	scheduler := &mockScheduler{}
+	wf := b.Build(
+		streamer,
+		recordStore,
+		memtimeoutstore.New(),
+		scheduler,
+		workflow.WithClock(clock),
+	)
+
+	ctx := context.Background()
+
+	wf.Run(ctx)
+	t.Cleanup(wf.Stop)
+
+	time.Sleep(time.Millisecond * 250)
+
+	// Ensure that the metrics are updated to idle before obtaining the role
+	expected := `
+# HELP workflow_process_states The current states of all the processes
+# TYPE workflow_process_states gauge
+workflow_process_states{process_name="start-to-middle-consumer-1-of-1", workflow_name="example"} 2
+workflow_process_states{process_name="middle-to-end-consumer-1-of-1", workflow_name="example"} 2
+`
+
+	err := testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
+	jtest.RequireNil(t, err)
+
+	scheduler.allow = true
+
+	time.Sleep(time.Millisecond * 50)
+
+	// Ensure that the metrics are updated to running obtaining the role
+	expected = `
+# HELP workflow_process_states The current states of all the processes
+# TYPE workflow_process_states gauge
+workflow_process_states{process_name="middle-to-end-consumer-1-of-1",workflow_name="example"} 1
+workflow_process_states{process_name="start-to-middle-consumer-1-of-1",workflow_name="example"} 1
+`
+
+	err = testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
+	jtest.RequireNil(t, err)
+
+	wf.Stop()
+
+	// Ensure that the metrics are updated to shutdown when processes are shutdown
+	expected = `
+# HELP workflow_process_states The current states of all the processes
+# TYPE workflow_process_states gauge
+workflow_process_states{process_name="middle-to-end-consumer-1-of-1",workflow_name="example"} 0
+workflow_process_states{process_name="start-to-middle-consumer-1-of-1",workflow_name="example"} 0
+`
+
+	err = testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
+	jtest.RequireNil(t, err)
+
+	metrics.ProcessStates.Reset()
+}
+
 func TestMetricProcessLatency(t *testing.T) {
 	metrics.ProcessLatency.Reset()
 
