@@ -9,7 +9,7 @@ import (
 )
 
 func TestStore(t *testing.T) {
-	adaptertest.TestTimeoutStore(t, func() workflow.TimeoutStore {
+	adaptertest.RunTimeoutStoreTest(t, func() workflow.TimeoutStore {
 		return memtimeoutstore.New()
 	})
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/luno/workflow"
 )
 
-func TestRoleScheduler(t *testing.T, factory func() workflow.RoleScheduler) {
+func RunRoleSchedulerTest(t *testing.T, factory func() workflow.RoleScheduler) {
 	tests := []func(t *testing.T, rs workflow.RoleScheduler){
 		testReturnedContext,
 		testLocking,

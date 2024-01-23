@@ -11,7 +11,7 @@ import (
 	"github.com/luno/workflow"
 )
 
-func TestTimeoutStore(t *testing.T, factory func() workflow.TimeoutStore) {
+func RunTimeoutStoreTest(t *testing.T, factory func() workflow.TimeoutStore) {
 	tests := []func(t *testing.T, store workflow.TimeoutStore){
 		testCancelTimeout,
 		testCompleteTimeout,

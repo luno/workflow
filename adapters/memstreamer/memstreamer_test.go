@@ -9,5 +9,5 @@ import (
 
 func TestStreamer(t *testing.T) {
 	constructor := memstreamer.New()
-	adaptertest.TestEventStreamer(t, constructor)
+	adaptertest.RunEventStreamerTest(t, constructor)
 }

@@ -9,5 +9,5 @@ import (
 
 func TestStreamer(t *testing.T) {
 	constructor := kafkastreamer.New([]string{"localhost:9092"})
-	adaptertest.TestEventStreamer(t, constructor)
+	adaptertest.RunEventStreamerTest(t, constructor)
 }

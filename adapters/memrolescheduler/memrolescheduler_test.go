@@ -9,7 +9,7 @@ import (
 )
 
 func TestRoleScheduler(t *testing.T) {
-	adaptertest.TestRoleScheduler(t, func() workflow.RoleScheduler {
+	adaptertest.RunRoleSchedulerTest(t, func() workflow.RoleScheduler {
 		return memrolescheduler.New()
 	})
 }

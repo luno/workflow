@@ -12,7 +12,7 @@ import (
 	"github.com/luno/workflow"
 )
 
-func TestRecordStore(t *testing.T, factory func() workflow.RecordStore) {
+func RunRecordStoreTest(t *testing.T, factory func() workflow.RecordStore) {
 	tests := []func(t *testing.T, store workflow.RecordStore){
 		testStore_Latest,
 		testStore_Lookup,
