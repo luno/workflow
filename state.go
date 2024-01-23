@@ -2,27 +2,33 @@ package workflow
 
 import "github.com/luno/workflow/internal/metrics"
 
-type State string
+type State int
 
 const (
-	StateUnknown  State = ""
-	StateShutdown State = "Shutdown"
-	StateRunning  State = "Running"
-	StateIdle     State = "Idle"
+	StateUnknown  State = 0
+	StateShutdown State = 1
+	StateRunning  State = 2
+	StateIdle     State = 3
 )
+
+func (s State) String() string {
+	switch s {
+	case StateShutdown:
+		return "Shutdown"
+	case StateRunning:
+		return "Running"
+	case StateIdle:
+		return "Idle"
+	default:
+		return "Unknown"
+	}
+}
 
 func (w *Workflow[Type, Status]) updateState(processName string, s State) {
 	w.internalStateMu.Lock()
 	defer w.internalStateMu.Unlock()
 
-	switch s {
-	case StateIdle:
-		metrics.ProcessStates.WithLabelValues(w.Name, processName).Set(2)
-	case StateRunning:
-		metrics.ProcessStates.WithLabelValues(w.Name, processName).Set(1)
-	case StateShutdown:
-		metrics.ProcessStates.WithLabelValues(w.Name, processName).Set(0.0)
-	}
+	metrics.ProcessStates.WithLabelValues(w.Name, processName).Set(float64(s))
 
 	w.internalState[processName] = s
 }

@@ -263,6 +263,10 @@ type mockScheduler struct {
 }
 
 func (m *mockScheduler) Await(ctx context.Context, role string) (context.Context, context.CancelFunc, error) {
+	if ctx.Err() != nil {
+		return nil, nil, ctx.Err()
+	}
+
 	for !m.allow {
 		time.Sleep(time.Millisecond * 10)
 	}
