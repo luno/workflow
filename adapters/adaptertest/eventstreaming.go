@@ -1,4 +1,4 @@
-package testing
+package adaptertest
 
 import (
 	"context"
@@ -47,7 +47,7 @@ type User struct {
 	CountryCode string
 }
 
-func TestStreamer(t *testing.T, constructor workflow.EventStreamer) {
+func RunEventStreamerTest(t *testing.T, constructor workflow.EventStreamer) {
 	b := workflow.NewBuilder[User, SyncStatus]("sync user 2")
 	b.AddStep(
 		SyncStatusStarted,

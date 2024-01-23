@@ -7,6 +7,7 @@ import (
 	"github.com/luno/jettison/errors"
 )
 
+// EventStreamer implementations should all be tested with adaptertest.TestEventStreamer
 type EventStreamer interface {
 	NewProducer(topic string) Producer
 	NewConsumer(topic string, name string, opts ...ConsumerOption) Consumer

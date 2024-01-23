@@ -15,7 +15,7 @@ func (r *RoleScheduler) Await(ctx context.Context, role string) (context.Context
 		return nil, nil, ctx.Err()
 	}
 
-	ctx2, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(ctx)
 
 	// Lock the main mutex whilst checking and potentially creating new role mutexes
 	r.mu.Lock()
@@ -30,18 +30,15 @@ func (r *RoleScheduler) Await(ctx context.Context, role string) (context.Context
 
 	go func(role string) {
 		for {
-			select {
-			case <-ctx2.Done():
-				r.roles[role].Unlock()
-				return
-			case <-ctx.Done():
-				r.roles[role].Unlock()
-				return
-			}
+			<-ctx.Done()
+			r.mu.Lock()
+			r.roles[role].Unlock()
+			r.mu.Unlock()
+			return
 		}
 	}(role)
 
-	return ctx2, cancel, nil
+	return ctx, cancel, nil
 }
 
 func New() *RoleScheduler {

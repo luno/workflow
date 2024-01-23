@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// RoleScheduler implementations should all be tested with adaptertest.TestRoleScheduler
 type RoleScheduler interface {
 	// Await must return a child context of the provided (parent) context. Await should block until the role is
 	// assigned to the caller. Only one caller should be able to be assigned the role at any given time. The returned
