@@ -76,7 +76,7 @@ func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentSta
 func consumeForever[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], p consumerConfig[Type, Status], c Consumer, status Status, processName string) error {
 	for {
 		if ctx.Err() != nil {
-			return errors.Wrap(ErrWorkflowShutdown, "")
+			return ctx.Err()
 		}
 
 		e, ack, err := c.Recv(ctx)
@@ -168,7 +168,7 @@ func wait(ctx context.Context, d time.Duration) error {
 	t := time.NewTimer(d)
 	select {
 	case <-ctx.Done():
-		return errors.Wrap(ErrWorkflowShutdown, ctx.Err().Error())
+		return ctx.Err()
 	case <-t.C:
 		return nil
 	}

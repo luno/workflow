@@ -11,6 +11,10 @@ type RoleScheduler struct {
 }
 
 func (r *RoleScheduler) Await(ctx context.Context, role string) (context.Context, context.CancelFunc, error) {
+	if ctx.Err() != nil {
+		return nil, nil, ctx.Err()
+	}
+
 	ctx2, cancel := context.WithCancel(ctx)
 
 	// Lock the main mutex whilst checking and potentially creating new role mutexes

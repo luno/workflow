@@ -148,55 +148,54 @@ func (w *Workflow[Type, Status]) run(role, processName string, process func(ctx 
 	defer w.updateState(processName, StateShutdown)
 
 	for {
-		ctx, cancel, err := w.scheduler.Await(w.ctx, role)
-		if errors.IsAny(err, context.Canceled) {
-			// Exit cleanly if error returned is cancellation of context
-			return
-		} else if err != nil {
-			log.Error(ctx, errors.Wrap(err, "error awaiting role", j.MKV{
-				"role":         role,
-				"process_name": processName,
-			}))
-			time.Sleep(errBackOff)
-			continue
-		}
-
-		w.updateState(processName, StateRunning)
-
-		if ctx.Err() != nil {
-			// Gracefully exit when context has been cancelled
+		err := runOnce(w, role, processName, process, errBackOff)
+		if err != nil {
 			if w.debugMode {
-				log.Info(ctx, "shutting down", j.MKV{
+				log.Info(w.ctx, "shutting down process", j.MKV{
 					"role":         role,
 					"process_name": processName,
 				})
 			}
 			return
 		}
+	}
+}
 
-		err = process(ctx)
-		if errors.IsAny(err, ErrWorkflowShutdown, context.Canceled) {
-			// Exit the process if ErrWorkflowShutdown or context.Canceled is returned
-			return
-		} else if err != nil {
-			log.Error(ctx, errors.Wrap(err, "process error", j.MKV{
-				"role": role,
-			}))
-			metrics.ProcessErrors.WithLabelValues(w.Name, processName).Inc()
-		} else if err == nil {
-			// If process finishes successfully then release the role by cancelling the context can continuing.
-			cancel()
-			continue
-		}
+func runOnce[Type any, Status StatusType](w *Workflow[Type, Status], role, processName string, process func(ctx context.Context) error, errBackOff time.Duration) error {
+	ctx, cancel, err := w.scheduler.Await(w.ctx, role)
+	if errors.IsAny(err, context.Canceled) {
+		// Exit cleanly if error returned is cancellation of context
+		return err
+	} else if err != nil {
+		log.Error(ctx, errors.Wrap(err, "error awaiting role", j.MKV{
+			"role":         role,
+			"process_name": processName,
+		}))
+
+		// Return nil to try again
+		return nil
+	}
+	defer cancel()
+
+	w.updateState(processName, StateRunning)
+
+	err = process(ctx)
+	if err != nil {
+		log.Error(ctx, errors.Wrap(err, "process error", j.MKV{
+			"role": role,
+		}))
+		metrics.ProcessErrors.WithLabelValues(w.Name, processName).Inc()
 
 		select {
 		case <-ctx.Done():
-			cancel()
-			continue
+			return nil
 		case <-time.After(errBackOff):
-			cancel()
+			// Return nil to try again
+			return nil
 		}
 	}
+
+	return nil
 }
 
 // Stop cancels the context provided to all the background processes that the workflow launched and waits for all of
