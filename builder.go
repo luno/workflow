@@ -8,14 +8,20 @@ import (
 	"k8s.io/utils/clock"
 )
 
+const (
+	defaultPollingFrequency = 500 * time.Millisecond
+	defaultErrBackOff       = 5 * time.Second
+	defaultLagAlert         = 30 * time.Minute
+)
+
 func NewBuilder[Type any, Status StatusType](name string) *Builder[Type, Status] {
 	return &Builder[Type, Status]{
 		workflow: &Workflow[Type, Status]{
 			Name:                    name,
 			clock:                   clock.RealClock{},
-			defaultPollingFrequency: 500 * time.Millisecond,
-			defaultErrBackOff:       5 * time.Second,
-			defaultLagAlert:         30 * time.Minute,
+			defaultPollingFrequency: defaultPollingFrequency,
+			defaultErrBackOff:       defaultErrBackOff,
+			defaultLagAlert:         defaultLagAlert,
 			consumers:               make(map[Status][]consumerConfig[Type, Status]),
 			callback:                make(map[Status][]callback[Type, Status]),
 			timeouts:                make(map[Status]timeouts[Type, Status]),
@@ -60,6 +66,14 @@ func (b *Builder[Type, Status]) AddStep(from Status, c ConsumerFunc[Type, Status
 	}
 
 	p.LagAlert = b.workflow.defaultLagAlert
+
+	// If lag is specified then offset the lag alert by the default amount. Custom lag alert values, if set, will
+	// still take priority.
+	if p.Lag.Nanoseconds() != 0 {
+		p.LagAlert = b.workflow.defaultLagAlert + p.Lag
+	}
+
+	// If a customer lag alert is provided then override the current defaults.
 	if so.lagAlert.Nanoseconds() != 0 {
 		p.LagAlert = so.lagAlert
 	}

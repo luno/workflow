@@ -169,23 +169,73 @@ func TestWorkflowConnectorConstruction(t *testing.T) {
 	}
 }
 
-func TestWithConsumerLagAlert(t *testing.T) {
-	specifiedLagAlert := time.Hour * 9
-	b := NewBuilder[string, testStatus]("consumer lag alert")
-	b.AddStep(
-		statusStart,
-		func(ctx context.Context, r *Record[string, testStatus]) (bool, error) {
-			return true, nil
-		},
-		statusEnd,
-		WithStepLagAlert(specifiedLagAlert),
-	)
-	wf := b.Build(nil, nil, nil, nil)
+func TestWithStepLagAlert(t *testing.T) {
+	t.Run("Ensure default lag alert is set by default", func(t *testing.T) {
+		b := NewBuilder[string, testStatus]("consumer lag alert")
+		b.AddStep(
+			statusStart,
+			func(ctx context.Context, r *Record[string, testStatus]) (bool, error) {
+				return true, nil
+			},
+			statusEnd,
+		)
+		wf := b.Build(nil, nil, nil, nil)
 
-	require.Equal(t, specifiedLagAlert, wf.consumers[statusStart][0].LagAlert)
+		require.Equal(t, defaultLagAlert, wf.consumers[statusStart][0].LagAlert)
+	})
+
+	t.Run("Ensure lag alert value is assigned", func(t *testing.T) {
+		specifiedLagAlert := time.Hour * 9
+		b := NewBuilder[string, testStatus]("consumer lag alert")
+		b.AddStep(
+			statusStart,
+			func(ctx context.Context, r *Record[string, testStatus]) (bool, error) {
+				return true, nil
+			},
+			statusEnd,
+			WithStepLagAlert(specifiedLagAlert),
+		)
+		wf := b.Build(nil, nil, nil, nil)
+
+		require.Equal(t, specifiedLagAlert, wf.consumers[statusStart][0].LagAlert)
+	})
+
+	t.Run("Ensure default lag alert is offset if accompanied with a step consumer lag", func(t *testing.T) {
+		specifiedLag := time.Hour
+		b := NewBuilder[string, testStatus]("consumer lag alert")
+		b.AddStep(
+			statusStart,
+			func(ctx context.Context, r *Record[string, testStatus]) (bool, error) {
+				return true, nil
+			},
+			statusEnd,
+			WithStepConsumerLag(specifiedLag),
+		)
+		wf := b.Build(nil, nil, nil, nil)
+
+		require.Equal(t, defaultLagAlert+specifiedLag, wf.consumers[statusStart][0].LagAlert)
+	})
+
+	t.Run("Ensure provided lag alert overrides default lag alert and is not offset when consumer lag is also present", func(t *testing.T) {
+		specifiedLag := time.Hour
+		specifiedLagAlert := time.Hour * 9
+		b := NewBuilder[string, testStatus]("consumer lag alert")
+		b.AddStep(
+			statusStart,
+			func(ctx context.Context, r *Record[string, testStatus]) (bool, error) {
+				return true, nil
+			},
+			statusEnd,
+			WithStepConsumerLag(specifiedLag),
+			WithStepLagAlert(specifiedLagAlert),
+		)
+		wf := b.Build(nil, nil, nil, nil)
+
+		require.Equal(t, specifiedLagAlert, wf.consumers[statusStart][0].LagAlert)
+	})
 }
 
-func TestWithConsumerLag(t *testing.T) {
+func TestWithStepConsumerLag(t *testing.T) {
 	specifiedLag := time.Hour * 9
 	b := NewBuilder[string, testStatus]("consumer lag")
 	b.AddStep(
