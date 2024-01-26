@@ -31,6 +31,7 @@ type Ack func() error
 type ConsumerOptions struct {
 	PollFrequency time.Duration
 	EventFilter   EventFilter
+	Lag           time.Duration
 }
 
 // EventFilter can be passed to the event streaming implementation to allow specific consumers to have an

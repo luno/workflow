@@ -168,3 +168,35 @@ func TestWorkflowConnectorConstruction(t *testing.T) {
 		require.Equal(t, 3, config.parallelCount)
 	}
 }
+
+func TestWithConsumerLagAlert(t *testing.T) {
+	specifiedLagAlert := time.Hour * 9
+	b := NewBuilder[string, testStatus]("consumer lag alert")
+	b.AddStep(
+		statusStart,
+		func(ctx context.Context, r *Record[string, testStatus]) (bool, error) {
+			return true, nil
+		},
+		statusEnd,
+		WithStepLagAlert(specifiedLagAlert),
+	)
+	wf := b.Build(nil, nil, nil, nil)
+
+	require.Equal(t, specifiedLagAlert, wf.consumers[statusStart][0].LagAlert)
+}
+
+func TestWithConsumerLag(t *testing.T) {
+	specifiedLag := time.Hour * 9
+	b := NewBuilder[string, testStatus]("consumer lag")
+	b.AddStep(
+		statusStart,
+		func(ctx context.Context, r *Record[string, testStatus]) (bool, error) {
+			return true, nil
+		},
+		statusEnd,
+		WithStepConsumerLag(specifiedLag),
+	)
+	wf := b.Build(nil, nil, nil, nil)
+
+	require.Equal(t, specifiedLag, wf.consumers[statusStart][0].Lag)
+}

@@ -55,6 +55,10 @@ func (b *Builder[Type, Status]) AddStep(from Status, c ConsumerFunc[Type, Status
 		p.ErrBackOff = so.errBackOff
 	}
 
+	if so.lag.Nanoseconds() != 0 {
+		p.Lag = so.lag
+	}
+
 	p.LagAlert = b.workflow.defaultLagAlert
 	if so.lagAlert.Nanoseconds() != 0 {
 		p.LagAlert = so.lagAlert
@@ -71,6 +75,7 @@ type stepOptions struct {
 	parallelCount    int
 	pollingFrequency time.Duration
 	errBackOff       time.Duration
+	lag              time.Duration
 	lagAlert         time.Duration
 }
 
@@ -97,6 +102,12 @@ func WithStepErrBackOff(d time.Duration) StepOption {
 func WithStepLagAlert(d time.Duration) StepOption {
 	return func(so *stepOptions) {
 		so.lagAlert = d
+	}
+}
+
+func WithStepConsumerLag(d time.Duration) StepOption {
+	return func(so *stepOptions) {
+		so.lag = d
 	}
 }
 

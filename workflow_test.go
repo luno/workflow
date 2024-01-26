@@ -823,3 +823,62 @@ func TestConnector(t *testing.T) {
 		Val: "workflow step set value",
 	})
 }
+
+func TestStepConsumerLag(t *testing.T) {
+	fixedNowTime := time.Date(2023, time.April, 9, 8, 30, 0, 0, time.UTC)
+	clock := clock_testing.NewFakeClock(fixedNowTime)
+	lagAmount := time.Hour
+
+	type TimeWatcher struct {
+		StartTime   time.Time
+		ConsumeTime time.Time
+	}
+
+	b := workflow.NewBuilder[TimeWatcher, status]("step consumer lag")
+	b.AddStep(
+		StatusStart,
+		func(ctx context.Context, t *workflow.Record[TimeWatcher, status]) (bool, error) {
+			t.Object.ConsumeTime = clock.Now()
+
+			return true, nil
+		},
+		StatusEnd,
+		workflow.WithStepConsumerLag(lagAmount),
+	)
+
+	recordStore := memrecordstore.New()
+	wf := b.Build(
+		memstreamer.New(memstreamer.WithClock(clock)),
+		recordStore,
+		memtimeoutstore.New(),
+		memrolescheduler.New(),
+		workflow.WithClock(clock),
+		workflow.WithDebugMode(),
+	)
+
+	ctx := context.Background()
+	wf.Run(ctx)
+	t.Cleanup(wf.Stop)
+
+	foreignID := "1"
+	_, err := wf.Trigger(ctx, foreignID, StatusStart, workflow.WithInitialValue[TimeWatcher, status](&TimeWatcher{
+		StartTime: clock.Now(),
+	}))
+	jtest.RequireNil(t, err)
+
+	time.Sleep(time.Second)
+
+	latest, err := recordStore.Latest(ctx, wf.Name, foreignID)
+	jtest.RequireNil(t, err)
+
+	// Ensure that the record has not been consumer or updated
+	require.Equal(t, int64(1), latest.ID)
+	require.Equal(t, int(StatusStart), latest.Status)
+
+	clock.Step(lagAmount)
+
+	workflow.Require(t, wf, foreignID, StatusEnd, TimeWatcher{
+		StartTime:   fixedNowTime,
+		ConsumeTime: fixedNowTime.Add(lagAmount),
+	})
+}
