@@ -1,6 +1,10 @@
 package workflow
 
-import "github.com/luno/workflow/internal/metrics"
+import (
+	"fmt"
+
+	"github.com/luno/workflow/internal/metrics"
+)
 
 type State int
 
@@ -13,6 +17,8 @@ const (
 
 func (s State) String() string {
 	switch s {
+	case StateUnknown:
+		return "Unknown"
 	case StateShutdown:
 		return "Shutdown"
 	case StateRunning:
@@ -20,7 +26,7 @@ func (s State) String() string {
 	case StateIdle:
 		return "Idle"
 	default:
-		return "Unknown"
+		return fmt.Sprintf("State(%d)", s)
 	}
 }
 

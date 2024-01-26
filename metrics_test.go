@@ -3,6 +3,7 @@ package workflow_test
 import (
 	"context"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -235,8 +236,8 @@ func TestMetricProcessStates(t *testing.T) {
 	expected := `
 # HELP workflow_process_states The current states of all the processes
 # TYPE workflow_process_states gauge
-workflow_process_states{process_name="start-to-middle-consumer-1-of-1", workflow_name="example"} 1
-workflow_process_states{process_name="middle-to-end-consumer-1-of-1", workflow_name="example"} 1
+workflow_process_states{process_name="start-to-middle-consumer-1-of-1", workflow_name="example"} 2
+workflow_process_states{process_name="middle-to-end-consumer-1-of-1", workflow_name="example"} 2
 `
 
 	err = testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
@@ -248,8 +249,8 @@ workflow_process_states{process_name="middle-to-end-consumer-1-of-1", workflow_n
 	expected = `
 # HELP workflow_process_states The current states of all the processes
 # TYPE workflow_process_states gauge
-workflow_process_states{process_name="middle-to-end-consumer-1-of-1",workflow_name="example"} 0
-workflow_process_states{process_name="start-to-middle-consumer-1-of-1",workflow_name="example"} 0
+workflow_process_states{process_name="middle-to-end-consumer-1-of-1",workflow_name="example"} 1
+workflow_process_states{process_name="start-to-middle-consumer-1-of-1",workflow_name="example"} 1
 `
 
 	err = testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
@@ -259,6 +260,7 @@ workflow_process_states{process_name="start-to-middle-consumer-1-of-1",workflow_
 }
 
 type mockScheduler struct {
+	mu    sync.Mutex
 	allow bool
 }
 
@@ -267,12 +269,23 @@ func (m *mockScheduler) Await(ctx context.Context, role string) (context.Context
 		return nil, nil, ctx.Err()
 	}
 
-	for !m.allow {
+	for {
+		m.mu.Lock()
+		if m.allow {
+			m.mu.Unlock()
+			break
+		}
+		m.mu.Unlock()
+
+		if ctx.Err() != nil {
+			return nil, nil, ctx.Err()
+		}
+
 		time.Sleep(time.Millisecond * 10)
 	}
 
-	ctx2, cancel := context.WithCancel(ctx)
-	return ctx2, cancel, nil
+	ctx, cancel := context.WithCancel(ctx)
+	return ctx, cancel, nil
 }
 
 var _ workflow.RoleScheduler = (*mockScheduler)(nil)
@@ -313,14 +326,16 @@ func TestMetricProcessIdleState(t *testing.T) {
 	expected := `
 # HELP workflow_process_states The current states of all the processes
 # TYPE workflow_process_states gauge
-workflow_process_states{process_name="start-to-middle-consumer-1-of-1", workflow_name="example"} 2
-workflow_process_states{process_name="middle-to-end-consumer-1-of-1", workflow_name="example"} 2
+workflow_process_states{process_name="start-to-middle-consumer-1-of-1", workflow_name="example"} 3
+workflow_process_states{process_name="middle-to-end-consumer-1-of-1", workflow_name="example"} 3
 `
 
 	err := testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
 	jtest.RequireNil(t, err)
 
+	scheduler.mu.Lock()
 	scheduler.allow = true
+	scheduler.mu.Unlock()
 
 	time.Sleep(time.Millisecond * 50)
 
@@ -328,8 +343,8 @@ workflow_process_states{process_name="middle-to-end-consumer-1-of-1", workflow_n
 	expected = `
 # HELP workflow_process_states The current states of all the processes
 # TYPE workflow_process_states gauge
-workflow_process_states{process_name="middle-to-end-consumer-1-of-1",workflow_name="example"} 1
-workflow_process_states{process_name="start-to-middle-consumer-1-of-1",workflow_name="example"} 1
+workflow_process_states{process_name="middle-to-end-consumer-1-of-1",workflow_name="example"} 2
+workflow_process_states{process_name="start-to-middle-consumer-1-of-1",workflow_name="example"} 2
 `
 
 	err = testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
@@ -341,8 +356,8 @@ workflow_process_states{process_name="start-to-middle-consumer-1-of-1",workflow_
 	expected = `
 # HELP workflow_process_states The current states of all the processes
 # TYPE workflow_process_states gauge
-workflow_process_states{process_name="middle-to-end-consumer-1-of-1",workflow_name="example"} 0
-workflow_process_states{process_name="start-to-middle-consumer-1-of-1",workflow_name="example"} 0
+workflow_process_states{process_name="middle-to-end-consumer-1-of-1",workflow_name="example"} 1
+workflow_process_states{process_name="start-to-middle-consumer-1-of-1",workflow_name="example"} 1
 `
 
 	err = testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
