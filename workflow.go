@@ -180,7 +180,11 @@ func runOnce[Type any, Status StatusType](w *Workflow[Type, Status], role, proce
 	w.updateState(processName, StateRunning)
 
 	err = process(ctx)
-	if err != nil {
+	if errors.Is(err, context.Canceled) {
+		// Context can be cancelled by the role scheduler and thus return nil to attempt to gain the role again
+		// and if the parent context was cancelled then that will exit safely.
+		return nil
+	} else if err != nil {
 		log.Error(ctx, errors.Wrap(err, "process error", j.MKV{
 			"role": role,
 		}))
