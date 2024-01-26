@@ -109,7 +109,8 @@ func consumeForever[Type any, Status StatusType](ctx context.Context, w *Workflo
 		}
 
 		// Wait until the event's timestamp matches or is older than the specified lag.
-		if delay := lag - w.clock.Since(e.CreatedAt); lag > 0 && delay > 0 {
+		delay := lag - w.clock.Since(e.CreatedAt)
+		if lag > 0 && delay > 0 {
 			t := w.clock.NewTimer(delay)
 			select {
 			case <-ctx.Done():
