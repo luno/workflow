@@ -4,9 +4,11 @@ import (
 	"context"
 	"io"
 	"reflect"
+	"runtime"
 	"testing"
 	"time"
 
+	"github.com/luno/jettison/errors"
 	"github.com/stretchr/testify/require"
 	clock_testing "k8s.io/utils/clock/testing"
 )
@@ -126,48 +128,44 @@ func TestWithTimeoutPollingFrequency(t *testing.T) {
 	require.Equal(t, time.Minute, wf.timeouts[statusStart].PollingFrequency)
 }
 
-func TestWorkflowConnectorConstruction(t *testing.T) {
-	externalStream := (EventStreamer)(nil)
+func TestConnectorConstruction(t *testing.T) {
+	stream := &mockConsumer{}
 
-	b := NewBuilder[string, testStatus]("workflow B")
-	b.AddStep(statusStart, func(ctx context.Context, r *Record[string, testStatus]) (bool, error) {
-		return true, nil
-	}, statusMiddle)
-
-	filter := func(ctx context.Context, e *Event) (string, error) {
-		return e.Headers[HeaderWorkflowForeignID], nil
+	fn := func(ctx context.Context, w *Workflow[string, testStatus], e *Event) error {
+		return nil
 	}
 
-	consumer := func(ctx context.Context, r *Record[string, testStatus], e *Event) (bool, error) {
-		return true, nil
-	}
-	b.AddWorkflowConnector(
-		WorkflowConnectionDetails{
-			WorkflowName: "workflowA",
-			Status:       9,
-			Stream:       externalStream,
-		},
-		filter,
-		statusMiddle,
-		consumer,
-		statusEnd,
-		WithParallelCount(3),
-		WithStepPollingFrequency(time.Second*10),
-		WithStepErrBackOff(time.Minute),
+	buidler := NewBuilder[string, testStatus]("workflow X")
+
+	buidler.AddConnector(
+		"my-test-connector",
+		stream,
+		fn,
+		WithConnectorParallelCount(2),
 	)
-	wf := b.Build(nil, nil, nil, nil)
 
-	for _, config := range wf.workflowConnectorConfigs {
-		require.Equal(t, "workflowA", config.workflowName)
-		require.Equal(t, 9, config.status)
-		require.Equal(t, externalStream, config.stream)
-		require.Equal(t, reflect.ValueOf(consumer).Pointer(), reflect.ValueOf(config.consumer).Pointer())
-		require.Equal(t, statusEnd, config.to)
-		require.Equal(t, time.Second*10, config.pollingFrequency)
-		require.Equal(t, time.Minute, config.errBackOff)
-		require.Equal(t, 3, config.parallelCount)
+	workflowX := buidler.Build(nil, nil, nil, nil)
+
+	for _, config := range workflowX.connectorConfigs {
+		require.Equal(t, "my-test-connector", config.name)
+		require.Equal(t, runtime.FuncForPC(reflect.ValueOf(stream).Pointer()).Name(), runtime.FuncForPC(reflect.ValueOf(config.consumerFn).Pointer()).Name())
+		require.Equal(t, runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name(), runtime.FuncForPC(reflect.ValueOf(config.connectorFn).Pointer()).Name())
+		require.Equal(t, defaultErrBackOff, config.errBackOff)
+		require.Equal(t, 2, config.parallelCount)
 	}
 }
+
+type mockConsumer struct{}
+
+func (m mockConsumer) Recv(ctx context.Context) (*Event, Ack, error) {
+	return nil, nil, errors.New("not implemented")
+}
+
+func (m mockConsumer) Close() error {
+	return errors.New("not implemented")
+}
+
+var _ Consumer = (*mockConsumer)(nil)
 
 func TestWithStepLagAlert(t *testing.T) {
 	testCases := []struct {

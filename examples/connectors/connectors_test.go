@@ -44,19 +44,10 @@ func TestConnectStreamParallelConsumer(t *testing.T) {
 
 	foreignID := "andrewwormald"
 
-	runID, err := workflowB.Trigger(ctx, foreignID, examples.StatusStarted)
+	_, err := workflowA.Trigger(ctx, foreignID, examples.StatusStarted)
 	jtest.RequireNil(t, err)
 
-	_, err = workflowB.Await(ctx, foreignID, runID, examples.StatusFollowedTheExample)
-	jtest.RequireNil(t, err)
-
-	_, err = workflowA.Trigger(ctx, foreignID, examples.StatusStarted)
-	jtest.RequireNil(t, err)
-
-	// Wait until workflowB reaches "Finished waiting" before finishing the test. Note that the value is "Hello World"
-	// from workflow A which is because we copy that value from workflow A to workflow B in the example implementation:
-	// examples/connectors/connectors.go:80
-	workflow.Require(t, workflowB, foreignID, examples.StatusCreatedAFunExample, connectors.TypeB{
-		Value: "Hello World",
+	workflow.Require(t, workflowB, foreignID, examples.StatusFollowedTheExample, connectors.TypeB{
+		Value: "Hello World, I have been made from two workflows",
 	})
 }

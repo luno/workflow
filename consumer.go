@@ -139,7 +139,7 @@ func consumeForever[Type any, Status StatusType](ctx context.Context, w *Workflo
 
 		// Check to see if record is in expected state. If the status isn't in the expected state then skip for
 		// idempotency.
-		if record.Status != e.Type {
+		if record.Status != int(status) {
 			err = ack()
 			if err != nil {
 				return err

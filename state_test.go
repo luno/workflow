@@ -28,21 +28,13 @@ func TestInternalState(t *testing.T) {
 		return true, nil
 	}, StatusCompleted)
 
-	b.AddWorkflowConnector(
-		workflow.WorkflowConnectionDetails{
-			WorkflowName: "other workflow",
-			Status:       int(StatusCompleted),
-			Stream:       memstreamer.New(),
+	b.AddConnector(
+		"consume-other-stream",
+		memstreamer.New().NewConsumer("", ""),
+		func(ctx context.Context, w *workflow.Workflow[string, status], e *workflow.Event) error {
+			return nil
 		},
-		func(ctx context.Context, e *workflow.Event) (string, error) {
-			return e.Headers[workflow.HeaderWorkflowForeignID], nil
-		},
-		StatusMiddle,
-		func(ctx context.Context, r *workflow.Record[string, status], e *workflow.Event) (bool, error) {
-			return true, nil
-		},
-		StatusEnd,
-		workflow.WithParallelCount(2),
+		workflow.WithConnectorParallelCount(2),
 	)
 
 	recordStore := memrecordstore.New()
@@ -63,25 +55,25 @@ func TestInternalState(t *testing.T) {
 	time.Sleep(time.Second)
 
 	require.Equal(t, map[string]workflow.State{
-		"middle-to-end-consumer-1-of-3":                                               workflow.StateRunning,
-		"middle-to-end-consumer-2-of-3":                                               workflow.StateRunning,
-		"middle-to-end-consumer-3-of-3":                                               workflow.StateRunning,
-		"start-to-middle-consumer-1-of-1":                                             workflow.StateRunning,
-		"initiated-timeout-auto-inserter-consumer":                                    workflow.StateRunning,
-		"initiated-timeout-consumer":                                                  workflow.StateRunning,
-		"other_workflow-8-connection-example-middle-to-end-connector-consumer-1-of-2": workflow.StateRunning,
-		"other_workflow-8-connection-example-middle-to-end-connector-consumer-2-of-2": workflow.StateRunning,
+		"middle-to-end-consumer-1-of-3":                             workflow.StateRunning,
+		"middle-to-end-consumer-2-of-3":                             workflow.StateRunning,
+		"middle-to-end-consumer-3-of-3":                             workflow.StateRunning,
+		"start-to-middle-consumer-1-of-1":                           workflow.StateRunning,
+		"initiated-timeout-auto-inserter-consumer":                  workflow.StateRunning,
+		"initiated-timeout-consumer":                                workflow.StateRunning,
+		"consume-other-stream-connector-to-example-consumer-1-of-2": workflow.StateRunning,
+		"consume-other-stream-connector-to-example-consumer-2-of-2": workflow.StateRunning,
 	}, wf.States())
 
 	wf.Stop()
 	require.Equal(t, map[string]workflow.State{
-		"middle-to-end-consumer-1-of-3":                                               workflow.StateShutdown,
-		"middle-to-end-consumer-2-of-3":                                               workflow.StateShutdown,
-		"middle-to-end-consumer-3-of-3":                                               workflow.StateShutdown,
-		"start-to-middle-consumer-1-of-1":                                             workflow.StateShutdown,
-		"initiated-timeout-auto-inserter-consumer":                                    workflow.StateShutdown,
-		"initiated-timeout-consumer":                                                  workflow.StateShutdown,
-		"other_workflow-8-connection-example-middle-to-end-connector-consumer-1-of-2": workflow.StateShutdown,
-		"other_workflow-8-connection-example-middle-to-end-connector-consumer-2-of-2": workflow.StateShutdown,
+		"middle-to-end-consumer-1-of-3":                             workflow.StateShutdown,
+		"middle-to-end-consumer-2-of-3":                             workflow.StateShutdown,
+		"middle-to-end-consumer-3-of-3":                             workflow.StateShutdown,
+		"start-to-middle-consumer-1-of-1":                           workflow.StateShutdown,
+		"initiated-timeout-auto-inserter-consumer":                  workflow.StateShutdown,
+		"initiated-timeout-consumer":                                workflow.StateShutdown,
+		"consume-other-stream-connector-to-example-consumer-1-of-2": workflow.StateShutdown,
+		"consume-other-stream-connector-to-example-consumer-2-of-2": workflow.StateShutdown,
 	}, wf.States())
 }

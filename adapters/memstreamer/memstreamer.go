@@ -33,7 +33,8 @@ func New(opts ...Option) *StreamConstructor {
 }
 
 type options struct {
-	clock clock.Clock
+	clock   clock.Clock
+	ackFunc func() error
 }
 
 type Option func(o *options)
@@ -41,6 +42,12 @@ type Option func(o *options)
 func WithClock(clock clock.Clock) Option {
 	return func(o *options) {
 		o.clock = clock
+	}
+}
+
+func WithAck(ackFunc func() error) Option {
+	return func(o *options) {
+		o.ackFunc = ackFunc
 	}
 }
 
@@ -71,6 +78,7 @@ func (s StreamConstructor) NewConsumer(topic string, name string, opts ...workfl
 		topic: topic,
 		name:  name,
 		clock: s.opts.clock,
+		ack:   s.opts.ackFunc,
 	}
 }
 
@@ -83,6 +91,7 @@ type Stream struct {
 	topic  string
 	name   string
 	clock  clock.Clock
+	ack    func() error
 }
 
 func (s *Stream) Send(ctx context.Context, recordID int64, statusType int, headers map[workflow.Header]string) error {
@@ -119,10 +128,16 @@ func (s *Stream) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, error
 			continue
 		}
 
-		return e, func() error {
+		ackFunc := func() error {
 			s.offset += 1
 			return nil
-		}, nil
+		}
+
+		if s.ack != nil {
+			ackFunc = s.ack
+		}
+
+		return e, ackFunc, nil
 	}
 
 	return nil, nil, ctx.Err()
