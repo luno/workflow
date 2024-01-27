@@ -162,6 +162,8 @@ func (w *Workflow[Type, Status]) run(role, processName string, process func(ctx 
 }
 
 func runOnce[Type any, Status StatusType](w *Workflow[Type, Status], role, processName string, process func(ctx context.Context) error, errBackOff time.Duration) error {
+	w.updateState(processName, StateIdle)
+
 	ctx, cancel, err := w.scheduler.Await(w.ctx, role)
 	if errors.IsAny(err, context.Canceled) {
 		// Exit cleanly if error returned is cancellation of context
