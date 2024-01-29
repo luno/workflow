@@ -168,3 +168,71 @@ func TestWorkflowConnectorConstruction(t *testing.T) {
 		require.Equal(t, 3, config.parallelCount)
 	}
 }
+
+func TestWithStepLagAlert(t *testing.T) {
+	testCases := []struct {
+		name             string
+		opts             []StepOption
+		expectedLagAlert time.Duration
+	}{
+		{
+			name:             "Ensure default lag alert is set by default",
+			expectedLagAlert: defaultLagAlert,
+		},
+		{
+			name: "Ensure lag alert value is assigned",
+			opts: []StepOption{
+				WithStepLagAlert(time.Hour * 9),
+			},
+			expectedLagAlert: time.Hour * 9,
+		},
+		{
+			name: "Ensure default lag alert is offset if accompanied with a step consumer lag",
+			opts: []StepOption{
+				WithStepConsumerLag(time.Hour),
+			},
+			expectedLagAlert: defaultLagAlert + time.Hour,
+		},
+		{
+			name: "Ensure provided lag alert overrides default lag alert and is not offset when consumer lag is also present",
+			opts: []StepOption{
+				WithStepConsumerLag(time.Hour),
+				WithStepLagAlert(time.Hour * 9),
+			},
+			expectedLagAlert: time.Hour * 9,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			b := NewBuilder[string, testStatus]("consumer lag alert")
+			b.AddStep(
+				statusStart,
+				func(ctx context.Context, r *Record[string, testStatus]) (bool, error) {
+					return true, nil
+				},
+				statusEnd,
+				tc.opts...,
+			)
+			wf := b.Build(nil, nil, nil, nil)
+
+			require.Equal(t, tc.expectedLagAlert, wf.consumers[statusStart][0].LagAlert)
+		})
+	}
+}
+
+func TestWithStepConsumerLag(t *testing.T) {
+	specifiedLag := time.Hour * 9
+	b := NewBuilder[string, testStatus]("consumer lag")
+	b.AddStep(
+		statusStart,
+		func(ctx context.Context, r *Record[string, testStatus]) (bool, error) {
+			return true, nil
+		},
+		statusEnd,
+		WithStepConsumerLag(specifiedLag),
+	)
+	wf := b.Build(nil, nil, nil, nil)
+
+	require.Equal(t, specifiedLag, wf.consumers[statusStart][0].Lag)
+}

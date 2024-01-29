@@ -24,6 +24,7 @@ type consumerConfig[Type any, Status StatusType] struct {
 	DestinationStatus Status
 	Consumer          ConsumerFunc[Type, Status]
 	ParallelCount     int
+	Lag               time.Duration
 	LagAlert          time.Duration
 }
 
@@ -102,9 +103,27 @@ func consumeForever[Type any, Status StatusType](ctx context.Context, w *Workflo
 			continue
 		}
 
+		var lag time.Duration
+		if p.Lag.Nanoseconds() != 0 {
+			lag = p.Lag
+		}
+
+		// Wait until the event's timestamp matches or is older than the specified lag.
+		delay := lag - w.clock.Since(e.CreatedAt)
+		if lag > 0 && delay > 0 {
+			t := w.clock.NewTimer(delay)
+			select {
+			case <-ctx.Done():
+				t.Stop()
+				return ctx.Err()
+			case <-t.C():
+				// Resume to consume the event now that it matches or is older than specified lag.
+			}
+		}
+
 		t0 := w.clock.Now()
-		lag := t0.Sub(e.CreatedAt)
-		metrics.ConsumerLag.WithLabelValues(w.Name, processName).Set(lag.Seconds())
+		consumerLag := t0.Sub(e.CreatedAt)
+		metrics.ConsumerLag.WithLabelValues(w.Name, processName).Set(consumerLag.Seconds())
 
 		record, err := w.recordStore.Lookup(ctx, e.ForeignID)
 		if errors.Is(err, ErrRecordNotFound) {
@@ -133,7 +152,7 @@ func consumeForever[Type any, Status StatusType](ctx context.Context, w *Workflo
 		// gauge if it is lagging. If it is not lagging then push 0.
 		if p.LagAlert > 0 {
 			alert := 0.0
-			if lag > p.LagAlert {
+			if consumerLag > p.LagAlert {
 				alert = 1
 			}
 
