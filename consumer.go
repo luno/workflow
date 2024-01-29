@@ -160,7 +160,7 @@ func consumeForever[Type any, Status StatusType](ctx context.Context, w *Workflo
 		}
 
 		t2 := w.clock.Now()
-		err = consume(ctx, record, p.Consumer, ack, p.DestinationStatus, w.endPoints, w.eventStreamerFn, w.recordStore, w.Name, processName)
+		err = consume(ctx, record, p.Consumer, ack, p.DestinationStatus, w.endPoints, w.eventStreamerFn, w.recordStore, w.graph, w.Name, processName)
 		if err != nil {
 			return err
 		}
@@ -195,35 +195,36 @@ func wait(ctx context.Context, d time.Duration) error {
 
 func consume[Type any, Status StatusType](
 	ctx context.Context,
-	wr *WireRecord,
+	current *WireRecord,
 	cf ConsumerFunc[Type, Status],
 	ack Ack,
 	destinationStatus Status,
 	endPoints map[Status]bool,
 	es EventStreamer,
 	rs RecordStore,
+	graph map[int][]int,
 	workflowName string,
 	processName string,
 ) error {
 	var t Type
-	err := Unmarshal(wr.Object, &t)
+	err := Unmarshal(current.Object, &t)
 	if err != nil {
 		return err
 	}
 
 	record := Record[Type, Status]{
-		WireRecord: *wr,
-		Status:     Status(wr.Status),
+		WireRecord: *current,
+		Status:     Status(current.Status),
 		Object:     &t,
 	}
 
 	ok, err := cf(ctx, &record)
 	if err != nil {
 		return errors.Wrap(err, "failed to consume", j.MKV{
-			"workflow_name":      wr.WorkflowName,
-			"foreign_id":         wr.ForeignID,
-			"current_status":     Status(wr.Status).String(),
-			"current_status_int": wr.Status,
+			"workflow_name":      current.WorkflowName,
+			"foreign_id":         current.ForeignID,
+			"current_status":     Status(current.Status).String(),
+			"current_status_int": current.Status,
 			"destination_status": destinationStatus,
 		})
 	}
@@ -247,7 +248,7 @@ func consume[Type any, Status StatusType](
 			CreatedAt:    record.CreatedAt,
 		}
 
-		err = update(ctx, es, rs, wr)
+		err = safeUpdate(ctx, es, rs, graph, current.Status, wr)
 		if err != nil {
 			return err
 		}
