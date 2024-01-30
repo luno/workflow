@@ -232,9 +232,49 @@ func (w *Workflow[Type, Status]) Stop() {
 	}
 }
 
-func update(ctx context.Context, streamer EventStreamer, store RecordStore, wr *WireRecord) error {
+func safeUpdate(ctx context.Context, streamer EventStreamer, store RecordStore, graph map[int][]int, currentStatus int, next *WireRecord) error {
+	latest, err := store.Lookup(ctx, next.ID)
+	if err != nil {
+		return err
+	}
+
+	// Ensure that the record is still has the intended status. If not then another consumer will be processing this
+	// record.
+	if latest.Status != currentStatus {
+		return nil
+	}
+
+	// Lookup all available transitions from the current status
+	nodes, ok := graph[currentStatus]
+	if !ok {
+		return errors.New("current status not predefined", j.MKV{
+			"current_status": currentStatus,
+		})
+	}
+
+	var found bool
+	// Attempt to find the next status amongst the list of valid transitions
+	for _, node := range nodes {
+		if node == next.Status {
+			found = true
+			break
+		}
+	}
+
+	// If no valid transition matches that of the next status then error.
+	if !found {
+		return errors.New("invalid transition attempted", j.MKV{
+			"current_status": currentStatus,
+			"next_status":    next.Status,
+		})
+	}
+
+	return storeAndEmit(ctx, streamer, store, next)
+}
+
+func storeAndEmit(ctx context.Context, streamer EventStreamer, store RecordStore, wr *WireRecord) error {
 	return store.Store(ctx, wr, func(id int64) error {
-		// Update ID in-case the store is an append only store and the ID changes with every update
+		// Update ID in the case that this is the first record.
 		wr.ID = id
 
 		topic := Topic(wr.WorkflowName, wr.Status)

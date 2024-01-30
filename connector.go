@@ -258,7 +258,7 @@ func consumeExternalWorkflow[Type any, Status StatusType](ctx context.Context, s
 				CreatedAt:    record.CreatedAt,
 			}
 
-			err = update(ctx, w.eventStreamerFn, w.recordStore, wr)
+			err = storeAndEmit(ctx, w.eventStreamerFn, w.recordStore, wr)
 			if err != nil {
 				return err
 			}
