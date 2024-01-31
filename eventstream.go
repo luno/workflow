@@ -23,7 +23,7 @@ type Consumer interface {
 	Close() error
 }
 
-// Ack is used for the event streamer to update its cursor of what messages have
+// Ack is used for the event streamer to safeUpdate its cursor of what messages have
 // been consumed. If Ack is not called then the event streamer, depending on implementation,
 // will likely not keep track of which records / events have been consumed.
 type Ack func() error

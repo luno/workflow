@@ -56,38 +56,37 @@ type TypeB struct {
 func WorkflowB(d WorkflowBDeps) *workflow.Workflow[TypeB, examples.Status] {
 	builder := workflow.NewBuilder[TypeB, examples.Status]("workflow B")
 
-	builder.AddStep(examples.StatusStarted, func(ctx context.Context, r *workflow.Record[TypeB, examples.Status]) (bool, error) {
-		return true, nil
-	}, examples.StatusFollowedTheExample)
-
-	builder.AddWorkflowConnector(
-		workflow.WorkflowConnectionDetails{
-			WorkflowName: "workflow A",
-			Status:       int(examples.StatusCreatedAFunExample),
-			Stream:       d.WorkflowAStreamer,
-		},
-		func(ctx context.Context, e *workflow.Event) (foreignID string, err error) {
-			return e.Headers[workflow.HeaderWorkflowForeignID], nil
-		},
-		examples.StatusFollowedTheExample,
-		func(ctx context.Context, r *workflow.Record[TypeB, examples.Status], e *workflow.Event) (bool, error) {
+	builder.AddConnector(
+		"my-example-connector",
+		d.WorkflowAStreamer.NewConsumer(workflow.Topic("workflow A", int(examples.StatusCreatedAFunExample)), "example-stream"),
+		func(ctx context.Context, w *workflow.Workflow[TypeB, examples.Status], e *workflow.Event) error {
 			recordA, err := d.WorkflowARecordStore.Lookup(ctx, e.ForeignID)
 			if err != nil {
-				return false, err
+				return err
 			}
 
 			var objectA TypeB
 			err = workflow.Unmarshal(recordA.Object, &objectA)
 			if err != nil {
-				return false, err
+				return err
 			}
 
-			r.Object.Value = objectA.Value
+			_, err = w.Trigger(ctx, recordA.ForeignID, examples.StatusStarted, workflow.WithInitialValue[TypeB, examples.Status](&TypeB{
+				Value: objectA.Value,
+			}))
+			if err != nil {
+				return err
+			}
 
-			return true, nil
+			return nil
 		},
-		examples.StatusCreatedAFunExample,
 	)
+
+	builder.AddStep(examples.StatusStarted, func(ctx context.Context, r *workflow.Record[TypeB, examples.Status]) (bool, error) {
+		r.Object.Value += ", I have been made from two workflows"
+
+		return true, nil
+	}, examples.StatusFollowedTheExample)
 
 	return builder.Build(
 		d.EventStreamer,

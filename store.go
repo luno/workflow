@@ -7,7 +7,7 @@ import (
 
 // RecordStore implementations should all be tested with adaptertest.TestRecordStore
 type RecordStore interface {
-	// Store should create or update a record depending on whether the underlying store is mutable or append only. Store
+	// Store should create or safeUpdate a record depending on whether the underlying store is mutable or append only. Store
 	// should implement transactions if it is supported especially if the Store is append-only as a new ID for the
 	// record will need to be passed to the event emitter.
 	Store(ctx context.Context, record *WireRecord, eventEmitter EventEmitter) error

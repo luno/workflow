@@ -202,31 +202,14 @@ func (b *Builder[Type, Status]) AddTimeout(from Status, timer TimerFunc[Type, St
 	b.workflow.timeouts[from] = timeouts
 }
 
-func (b *Builder[Type, Status]) AddWorkflowConnector(cd WorkflowConnectionDetails, filter ConnectorFilter, from Status, consumer ConnectorConsumerFunc[Type, Status], to Status, opts ...StepOption) {
-	var stepOptions stepOptions
-	for _, opt := range opts {
-		opt(&stepOptions)
-	}
-
-	b.workflow.validStatuses[to] = true
-	b.workflow.workflowConnectorConfigs = append(b.workflow.workflowConnectorConfigs, workflowConnectorConfig[Type, Status]{
-		workflowName:     cd.WorkflowName,
-		status:           cd.Status,
-		stream:           cd.Stream,
-		filter:           filter,
-		from:             from,
-		consumer:         consumer,
-		to:               to,
-		pollingFrequency: stepOptions.pollingFrequency,
-		errBackOff:       stepOptions.errBackOff,
-		parallelCount:    stepOptions.parallelCount,
-	})
-}
-
 func (b *Builder[Type, Status]) AddConnector(name string, c Consumer, cf ConnectorFunc[Type, Status], opts ...ConnectorOption) {
 	var connectorOptions connectorOptions
 	for _, opt := range opts {
 		opt(&connectorOptions)
+	}
+
+	if connectorOptions.errBackOff.Nanoseconds() == 0 {
+		connectorOptions.errBackOff = defaultErrBackOff
 	}
 
 	for _, config := range b.workflow.connectorConfigs {

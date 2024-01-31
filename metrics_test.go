@@ -87,7 +87,7 @@ workflow_process_lag_seconds{process_name="start-to-middle-consumer-1-of-1",work
 
 func update(ctx context.Context, streamer workflow.EventStreamer, store workflow.RecordStore, wr *workflow.WireRecord) error {
 	return store.Store(ctx, wr, func(id int64) error {
-		// Update ID in-case the store is an append only store and the ID changes with every update
+		// Update ID in-case the store is an append only store and the ID changes with every safeUpdate
 		wr.ID = id
 
 		topic := workflow.Topic(wr.WorkflowName, wr.Status)
