@@ -160,6 +160,12 @@ func (c Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, erro
 				})
 			}
 
+			// Provide new context for flushing of cursor values to underlying store
+			err := c.cursor.Flush(context.Background())
+			if err != nil {
+				return err
+			}
+
 			return nil
 		}, nil
 	}
@@ -169,12 +175,6 @@ func (c Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, erro
 }
 
 func (c Consumer) Close() error {
-	// Provide new context for flushing of cursor values to underlying store
-	err := c.cursor.Flush(context.Background())
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
