@@ -89,7 +89,7 @@ Head on over to `./examples` to get familiar with the syntax 😊
 24. **Run:**
     - A method in the workflow struct that starts background processes necessary for running the workflow, such as consumers, timeouts, and connectors.
 
-25. **ScheduleTrigger:**
+25. **Schedule:**
     - A method in the workflow API that schedules workflow triggers at specified intervals using a cron-like specification.
 
 26. **State:**

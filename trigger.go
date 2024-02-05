@@ -3,12 +3,9 @@ package workflow
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/luno/jettison/errors"
-	"github.com/robfig/cron/v3"
-	"k8s.io/utils/clock"
 )
 
 func (w *Workflow[Type, Status]) Trigger(ctx context.Context, foreignID string, startingStatus Status, opts ...TriggerOption[Type, Status]) (runID string, err error) {
@@ -77,76 +74,8 @@ func (w *Workflow[Type, Status]) Trigger(ctx context.Context, foreignID string, 
 	return runID, nil
 }
 
-func (w *Workflow[Type, Status]) ScheduleTrigger(foreignID string, startingStatus Status, spec string, opts ...TriggerOption[Type, Status]) error {
-	if !w.calledRun {
-		return errors.Wrap(ErrWorkflowNotRunning, "ensure Run() is called before attempting to trigger the workflow")
-	}
-
-	_, ok := w.validStatuses[startingStatus]
-	if !ok {
-		return errors.Wrap(ErrStatusProvidedNotConfigured, fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name))
-	}
-
-	schedule, err := cron.ParseStandard(spec)
-	if err != nil {
-		return err
-	}
-
-	role := makeRole(w.Name, fmt.Sprintf("%v", int(startingStatus)), foreignID, "scheduler", spec)
-	processName := makeRole(startingStatus.String(), foreignID, "scheduler", spec)
-
-	w.run(role, processName, func(ctx context.Context) error {
-		latestEntry, err := w.recordStore.Latest(ctx, w.Name, foreignID)
-		if errors.Is(err, ErrRecordNotFound) {
-			// NoReturnErr: Rather use zero value for lastRunID and use current clock for first run.
-			latestEntry = &WireRecord{}
-		} else if err != nil {
-			return err
-		}
-
-		lastRun := latestEntry.CreatedAt
-
-		// If there is no previous executions of this workflow then schedule the very next from now.
-		if lastRun.IsZero() {
-			lastRun = w.clock.Now()
-		}
-
-		nextRun := schedule.Next(lastRun)
-		err = waitUntil(ctx, w.clock, nextRun)
-		if err != nil {
-			return err
-		}
-
-		_, err = w.Trigger(ctx, foreignID, startingStatus, opts...)
-		if errors.Is(err, ErrWorkflowInProgress) {
-			// NoReturnErr: Fallthrough to schedule next workflow as there is already one in progress. If this
-			// happens it is likely that we scheduled a workflow and were unable to schedule the next.
-			return nil
-		} else if err != nil {
-			return err
-		}
-
-		return nil
-	}, w.defaultErrBackOff)
-
-	return nil
-}
-
-func waitUntil(ctx context.Context, clock clock.Clock, until time.Time) error {
-	timeDiffAsDuration := until.Sub(clock.Now())
-
-	t := clock.NewTimer(timeDiffAsDuration)
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-t.C():
-		return nil
-	}
-}
-
 type triggerOpts[Type any, Status StatusType] struct {
-	initialValue   *Type
-	startingStatus int
+	initialValue *Type
 }
 
 type TriggerOption[Type any, Status StatusType] func(o *triggerOpts[Type, Status])

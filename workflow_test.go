@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"strconv"
-	"sync"
 	"testing"
 	"time"
 
@@ -358,117 +357,6 @@ func TestNot(t *testing.T) {
 	})
 }
 
-func TestWorkflow_ScheduleTrigger(t *testing.T) {
-	b := workflow.NewBuilder[MyType, status]("sync users")
-	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Record[MyType, status]) (bool, error) {
-		return true, nil
-	}, StatusMiddle)
-
-	b.AddStep(StatusMiddle, func(ctx context.Context, t *workflow.Record[MyType, status]) (bool, error) {
-		return true, nil
-	}, StatusEnd)
-
-	now := time.Date(2023, time.April, 9, 8, 30, 0, 0, time.UTC)
-	clock := clock_testing.NewFakeClock(now)
-	recordStore := memrecordstore.New()
-	timeoutStore := memtimeoutstore.New()
-	wf := b.Build(
-		memstreamer.New(),
-		recordStore,
-		timeoutStore,
-		memrolescheduler.New(),
-		workflow.WithClock(clock),
-		workflow.WithDebugMode(),
-	)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(func() {
-		cancel()
-	})
-	wf.Run(ctx)
-	t.Cleanup(wf.Stop)
-
-	go func() {
-		err := wf.ScheduleTrigger("andrew", StatusStart, "@monthly")
-		jtest.RequireNil(t, err)
-	}()
-
-	time.Sleep(20 * time.Millisecond)
-
-	_, err := recordStore.Latest(ctx, "sync users", "andrew")
-	// Expect there to be no entries yet
-	jtest.Require(t, workflow.ErrRecordNotFound, err)
-
-	// Grab the time from the clock for expectation as to the time we expect the entry to have
-	expectedTimestamp := time.Date(2023, time.May, 1, 0, 0, 0, 0, time.UTC)
-	clock.SetTime(expectedTimestamp)
-
-	// Allow scheduling to take place
-	time.Sleep(20 * time.Millisecond)
-
-	firstScheduled, err := recordStore.Latest(ctx, "sync users", "andrew")
-	jtest.RequireNil(t, err)
-
-	_, err = wf.Await(ctx, firstScheduled.ForeignID, firstScheduled.RunID, StatusEnd)
-	jtest.RequireNil(t, err)
-
-	expectedTimestamp = time.Date(2023, time.June, 1, 0, 0, 0, 0, time.UTC)
-	clock.SetTime(expectedTimestamp)
-
-	// Allow scheduling to take place
-	time.Sleep(20 * time.Millisecond)
-
-	secondScheduled, err := recordStore.Latest(ctx, "sync users", "andrew")
-	jtest.RequireNil(t, err)
-
-	require.NotEqual(t, firstScheduled.RunID, secondScheduled.RunID)
-}
-
-func TestWorkflow_ScheduleTriggerShutdown(t *testing.T) {
-	b := workflow.NewBuilder[MyType, status]("example")
-	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Record[MyType, status]) (bool, error) {
-		return true, nil
-	}, StatusEnd)
-
-	wf := b.Build(
-		memstreamer.New(),
-		memrecordstore.New(),
-		memtimeoutstore.New(),
-		memrolescheduler.New(),
-		workflow.WithDebugMode(),
-	)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
-
-	wf.Run(ctx)
-	t.Cleanup(wf.Stop)
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		wg.Done()
-		err := wf.ScheduleTrigger("andrew", StatusStart, "@monthly")
-		jtest.RequireNil(t, err)
-	}()
-
-	wg.Wait()
-
-	time.Sleep(200 * time.Millisecond)
-
-	require.Equal(t, map[string]workflow.State{
-		"start-andrew-scheduler-@monthly": workflow.StateRunning,
-		"start-to-end-consumer-1-of-1":    workflow.StateRunning,
-	}, wf.States())
-
-	wf.Stop()
-
-	require.Equal(t, map[string]workflow.State{
-		"start-andrew-scheduler-@monthly": workflow.StateShutdown,
-		"start-to-end-consumer-1-of-1":    workflow.StateShutdown,
-	}, wf.States())
-}
-
 func TestWorkflow_ErrWorkflowNotRunning(t *testing.T) {
 	b := workflow.NewBuilder[MyType, status]("sync users")
 
@@ -496,7 +384,7 @@ func TestWorkflow_ErrWorkflowNotRunning(t *testing.T) {
 	_, err := wf.Trigger(ctx, "andrew", StatusStart)
 	jtest.Require(t, workflow.ErrWorkflowNotRunning, err)
 
-	err = wf.ScheduleTrigger("andrew", StatusStart, "@monthly")
+	err = wf.Schedule("andrew", StatusStart, "@monthly")
 	jtest.Require(t, workflow.ErrWorkflowNotRunning, err)
 }
 
