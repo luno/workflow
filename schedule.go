@@ -1,0 +1,127 @@
+package workflow
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/luno/jettison/errors"
+	"github.com/robfig/cron/v3"
+	"k8s.io/utils/clock"
+)
+
+func (w *Workflow[Type, Status]) Schedule(foreignID string, startingStatus Status, spec string, opts ...ScheduleOption[Type, Status]) error {
+	if !w.calledRun {
+		return errors.Wrap(ErrWorkflowNotRunning, "ensure Run() is called before attempting to trigger the workflow")
+	}
+
+	_, ok := w.validStatuses[startingStatus]
+	if !ok {
+		return errors.Wrap(ErrStatusProvidedNotConfigured, fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name))
+	}
+
+	var options scheduleOpts[Type, Status]
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	schedule, err := cron.ParseStandard(spec)
+	if err != nil {
+		return err
+	}
+
+	role := makeRole(w.Name, fmt.Sprintf("%v", int(startingStatus)), foreignID, "scheduler", spec)
+	processName := makeRole(startingStatus.String(), foreignID, "scheduler", spec)
+
+	w.run(role, processName, func(ctx context.Context) error {
+		latestEntry, err := w.recordStore.Latest(ctx, w.Name, foreignID)
+		if errors.Is(err, ErrRecordNotFound) {
+			// NoReturnErr: Rather use zero value for lastRunID and use current clock for first run.
+			latestEntry = &WireRecord{}
+		} else if err != nil {
+			return err
+		}
+
+		lastRun := latestEntry.CreatedAt
+
+		// If there is no previous executions of this workflow then schedule the very next from now.
+		if lastRun.IsZero() {
+			lastRun = w.clock.Now()
+		}
+
+		nextRun := schedule.Next(lastRun)
+		err = waitUntil(ctx, w.clock, nextRun)
+		if err != nil {
+			return err
+		}
+
+		// If there is a trigger initial value ensure that it is passed down to the trigger function through it's own
+		// set of optional functions.
+		var tOpts []TriggerOption[Type, Status]
+		if options.initialValue != nil {
+			tOpts = append(tOpts, WithInitialValue[Type, Status](options.initialValue))
+		}
+
+		// If a filter has been provided then allow the ability to skip scheduling when false is returned along with
+		// a nil error.
+		var shouldTrigger bool
+		if options.scheduleFilter != nil {
+			ok, err := options.scheduleFilter(ctx)
+			if err != nil {
+				return err
+			}
+
+			shouldTrigger = ok
+		} else {
+			shouldTrigger = true
+		}
+
+		if !shouldTrigger {
+			return nil
+		}
+
+		_, err = w.Trigger(ctx, foreignID, startingStatus, tOpts...)
+		if errors.Is(err, ErrWorkflowInProgress) {
+			// NoReturnErr: Fallthrough to schedule next workflow as there is already one in progress. If this
+			// happens it is likely that we scheduled a workflow and were unable to schedule the next.
+			return nil
+		} else if err != nil {
+			return err
+		}
+
+		return nil
+	}, w.defaultErrBackOff)
+
+	return nil
+}
+
+func waitUntil(ctx context.Context, clock clock.Clock, until time.Time) error {
+	timeDiffAsDuration := until.Sub(clock.Now())
+
+	t := clock.NewTimer(timeDiffAsDuration)
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-t.C():
+		return nil
+	}
+}
+
+type scheduleOpts[Type any, Status StatusType] struct {
+	initialValue   *Type
+	scheduleFilter func(ctx context.Context) (bool, error)
+}
+
+type ScheduleOption[Type any, Status StatusType] func(o *scheduleOpts[Type, Status])
+
+func WithScheduleInitialValue[Type any, Status StatusType](t *Type) ScheduleOption[Type, Status] {
+	return func(o *scheduleOpts[Type, Status]) {
+		o.initialValue = t
+	}
+}
+
+func WithScheduleFilter[Type any, Status StatusType](fn func(ctx context.Context) (bool, error)) ScheduleOption[Type, Status] {
+	return func(o *scheduleOpts[Type, Status]) {
+		o.scheduleFilter = fn
+	}
+}

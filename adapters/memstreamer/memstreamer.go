@@ -105,10 +105,10 @@ func (s *Stream) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, error
 	for ctx.Err() == nil {
 		s.mu.Lock()
 		log := *s.log
-		s.mu.Unlock()
 
 		if len(log)-1 < s.offset {
 			time.Sleep(time.Millisecond * 10)
+			s.mu.Unlock()
 			continue
 		}
 
@@ -116,9 +116,11 @@ func (s *Stream) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, error
 
 		if s.topic != e.Headers[workflow.HeaderTopic] {
 			s.offset += 1
+			s.mu.Unlock()
 			continue
 		}
 
+		s.mu.Unlock()
 		return e, func() error {
 			s.offset += 1
 			return nil

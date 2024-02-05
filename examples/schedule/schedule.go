@@ -1,4 +1,4 @@
-package scheduletrigger
+package schedule
 
 import (
 	"context"
