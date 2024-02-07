@@ -80,7 +80,7 @@ func TestWorkflow_Schedule(t *testing.T) {
 	secondScheduled, err := recordStore.Latest(ctx, "sync users", "andrew")
 	jtest.RequireNil(t, err)
 
-	require.NotEqual(t, firstScheduled.RunID, secondScheduled.RunID)
+	require.Equal(t, firstScheduled.RunID, secondScheduled.RunID)
 }
 
 func TestWorkflow_ScheduleShutdown(t *testing.T) {
