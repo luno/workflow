@@ -198,3 +198,58 @@ func (c Consumer) Close() error {
 }
 
 var _ workflow.EventStreamer = (*constructor)(nil)
+
+// StreamFunc can take the single event source (rsql.EventsTableInt) for multiple workflows and stream events
+// corresponding to a specific workflow. This is possible due to the way Workflow uses the reflex events table's metadata
+// column.
+func StreamFunc(dbc *sql.DB, table *rsql.EventsTableInt, workflowName string) reflex.StreamFunc {
+	return func(ctx context.Context, after string, opts ...reflex.StreamOption) (reflex.StreamClient, error) {
+		return &streamClient{
+			ctx:          ctx,
+			workflowName: workflowName,
+			cursor:       after,
+			stream:       table.ToStream(dbc),
+			opts:         opts,
+		}, nil
+	}
+}
+
+type streamClient struct {
+	ctx          context.Context
+	workflowName string
+	cursor       string
+	stream       reflex.StreamFunc
+	opts         []reflex.StreamOption
+}
+
+func (s *streamClient) Recv() (*reflex.Event, error) {
+	cl, err := s.stream(s.ctx, s.cursor, s.opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	for s.ctx.Err() == nil {
+		reflexEvent, err := cl.Recv()
+		if err != nil {
+			return nil, err
+		}
+
+		if closer, ok := cl.(io.Closer); ok {
+			defer closer.Close()
+		}
+
+		headers := make(map[workflow.Header]string)
+		err = json.Unmarshal(reflexEvent.MetaData, &headers)
+		if err != nil {
+			return nil, err
+		}
+
+		if headers[workflow.HeaderWorkflowName] != s.workflowName {
+			continue
+		}
+
+		return reflexEvent, nil
+	}
+
+	return nil, s.ctx.Err()
+}

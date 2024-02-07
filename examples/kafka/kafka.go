@@ -11,7 +11,7 @@ import (
 )
 
 func ExampleWorkflow() *workflow.Workflow[gettingstarted.GettingStarted, examples.Status] {
-	return gettingstarted.WorkflowWithEnum(gettingstarted.Deps{
+	return gettingstarted.Workflow(gettingstarted.Deps{
 		EventStreamer: kafkastreamer.New([]string{"localhost:9092"}),
 		RecordStore:   memrecordstore.New(),
 		TimeoutStore:  memtimeoutstore.New(),
