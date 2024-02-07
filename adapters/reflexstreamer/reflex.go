@@ -204,12 +204,15 @@ var _ workflow.EventStreamer = (*constructor)(nil)
 // column.
 func StreamFunc(dbc *sql.DB, table *rsql.EventsTableInt, workflowName string) reflex.StreamFunc {
 	return func(ctx context.Context, after string, opts ...reflex.StreamOption) (reflex.StreamClient, error) {
+		cl, err := table.ToStream(dbc)(ctx, after, opts...)
+		if err != nil {
+			return nil, err
+		}
+
 		return &streamClient{
 			ctx:          ctx,
 			workflowName: workflowName,
-			cursor:       after,
-			stream:       table.ToStream(dbc),
-			opts:         opts,
+			client:       cl,
 		}, nil
 	}
 }
@@ -217,24 +220,17 @@ func StreamFunc(dbc *sql.DB, table *rsql.EventsTableInt, workflowName string) re
 type streamClient struct {
 	ctx          context.Context
 	workflowName string
-	cursor       string
-	stream       reflex.StreamFunc
-	opts         []reflex.StreamOption
+	client       reflex.StreamClient
 }
 
 func (s *streamClient) Recv() (*reflex.Event, error) {
-	cl, err := s.stream(s.ctx, s.cursor, s.opts...)
-	if err != nil {
-		return nil, err
-	}
-
 	for s.ctx.Err() == nil {
-		reflexEvent, err := cl.Recv()
+		reflexEvent, err := s.client.Recv()
 		if err != nil {
 			return nil, err
 		}
 
-		if closer, ok := cl.(io.Closer); ok {
+		if closer, ok := s.client.(io.Closer); ok {
 			defer closer.Close()
 		}
 
