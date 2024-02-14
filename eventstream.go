@@ -57,7 +57,7 @@ func WithEventFilters(ef ...EventFilter) ConsumerOption {
 func shardFilter(shard, totalShards int) EventFilter {
 	return func(e *Event) bool {
 		if totalShards > 1 {
-			return e.ID%int64(totalShards) == int64(shard)
+			return e.ID%int64(totalShards) != int64(shard)
 		}
 
 		return false
