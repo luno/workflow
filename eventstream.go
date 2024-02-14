@@ -2,7 +2,6 @@ package workflow
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/luno/jettison/errors"
@@ -44,7 +43,6 @@ type ConsumerOption func(*ConsumerOptions)
 func WithEventFilters(ef ...EventFilter) ConsumerOption {
 	return func(opt *ConsumerOptions) {
 		opt.EventFilter = func(e *Event) bool {
-			fmt.Println("running filter for ", e.ID)
 			for _, filter := range ef {
 				if mustFilterOut := filter(e); mustFilterOut {
 					return true
@@ -96,7 +94,6 @@ func filterByRunID(runID string) EventFilter {
 
 func filterByStatus(status int) EventFilter {
 	return func(e *Event) bool {
-		fmt.Println("By Status", e.ID, e.Type != status)
 		return e.Type != status
 	}
 }

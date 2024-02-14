@@ -65,12 +65,18 @@ func (s StreamConstructor) NewConsumer(topic string, name string, opts ...workfl
 	s.stream.mu.Lock()
 	defer s.stream.mu.Unlock()
 
+	var options workflow.ConsumerOptions
+	for _, opt := range opts {
+		opt(&options)
+	}
+
 	return &Stream{
-		mu:    s.stream.mu,
-		log:   s.stream.log,
-		topic: topic,
-		name:  name,
-		clock: s.opts.clock,
+		mu:      s.stream.mu,
+		log:     s.stream.log,
+		topic:   topic,
+		name:    name,
+		clock:   s.opts.clock,
+		options: options,
 	}, nil
 }
 
