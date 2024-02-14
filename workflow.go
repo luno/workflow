@@ -259,20 +259,24 @@ func safeUpdate(ctx context.Context, streamer EventStreamer, store RecordStore, 
 }
 
 func storeAndEmit(ctx context.Context, streamer EventStreamer, store RecordStore, wr *WireRecord) error {
+	topic := Topic(wr.WorkflowName, wr.Status)
+
+	producer, err := streamer.NewProducer(topic)
+	if err != nil {
+		return err
+	}
+
+	headers := make(map[Header]string)
+	headers[HeaderWorkflowForeignID] = wr.ForeignID
+	headers[HeaderWorkflowName] = wr.WorkflowName
+	headers[HeaderTopic] = topic
+	headers[HeaderRunID] = wr.RunID
+
 	return store.Store(ctx, wr, func(id int64) error {
 		// Update ID in the case that this is the first record.
 		wr.ID = id
 
-		topic := Topic(wr.WorkflowName, wr.Status)
-
-		headers := make(map[Header]string)
-		headers[HeaderWorkflowForeignID] = wr.ForeignID
-		headers[HeaderWorkflowName] = wr.WorkflowName
-		headers[HeaderTopic] = topic
-		headers[HeaderRunID] = wr.RunID
-
-		producer := streamer.NewProducer(topic)
-		err := producer.Send(ctx, wr.ID, wr.Status, headers)
+		err = producer.Send(ctx, wr.ID, wr.Status, headers)
 		if err != nil {
 			return err
 		}

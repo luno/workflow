@@ -175,16 +175,18 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](w *Workflow[Type, 
 		}
 
 		topic := Topic(w.Name, int(status))
-		stream := w.eventStreamerFn.NewConsumer(
+		consumerStream, err := w.eventStreamerFn.NewConsumer(
 			topic,
 			role,
 			WithConsumerPollFrequency(timeouts.PollingFrequency),
-			WithEventFilter(
+			WithEventFilters(
 				shardFilter(1, 1),
 			),
 		)
-
-		defer stream.Close()
+		if err != nil {
+			return err
+		}
+		defer consumerStream.Close()
 
 		cc := consumerConfig[Type, Status]{
 			PollingFrequency: timeouts.PollingFrequency,
@@ -194,7 +196,7 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](w *Workflow[Type, 
 			LagAlert:         timeouts.LagAlert,
 		}
 
-		return consumeForever(ctx, w, cc, stream, status, processName)
+		return consumeForever(ctx, w, cc, consumerStream, status, processName)
 	}, timeouts.ErrBackOff)
 }
 

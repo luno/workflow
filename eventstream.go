@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/luno/jettison/errors"
@@ -9,8 +10,8 @@ import (
 
 // EventStreamer implementations should all be tested with adaptertest.TestEventStreamer
 type EventStreamer interface {
-	NewProducer(topic string) Producer
-	NewConsumer(topic string, name string, opts ...ConsumerOption) Consumer
+	NewProducer(topic string) (Producer, error)
+	NewConsumer(topic string, name string, opts ...ConsumerOption) (Consumer, error)
 }
 
 type Producer interface {
@@ -40,9 +41,63 @@ type EventFilter func(e *Event) bool
 
 type ConsumerOption func(*ConsumerOptions)
 
-func WithEventFilter(ef EventFilter) ConsumerOption {
+func WithEventFilters(ef ...EventFilter) ConsumerOption {
 	return func(opt *ConsumerOptions) {
-		opt.EventFilter = ef
+		opt.EventFilter = func(e *Event) bool {
+			fmt.Println("running filter for ", e.ID)
+			for _, filter := range ef {
+				if mustFilterOut := filter(e); mustFilterOut {
+					return true
+				}
+			}
+
+			return false
+		}
+	}
+}
+
+func shardFilter(shard, totalShards int) EventFilter {
+	return func(e *Event) bool {
+		if totalShards > 1 {
+			return e.ID%int64(totalShards) == int64(shard)
+		}
+
+		return false
+	}
+}
+
+func filterByWorkflowName(workflowName string) EventFilter {
+	return func(e *Event) bool {
+		return e.Headers[HeaderWorkflowName] != workflowName
+	}
+}
+
+func filterByForeignID(foreignID string) EventFilter {
+	return func(e *Event) bool {
+		fid, ok := e.Headers[HeaderWorkflowForeignID]
+		if !ok {
+			return false
+		}
+
+		return fid != foreignID
+	}
+}
+
+func filterByRunID(runID string) EventFilter {
+	return func(e *Event) bool {
+		rID, ok := e.Headers[HeaderRunID]
+		if !ok {
+			return false
+		}
+
+		return rID != runID
+	}
+}
+
+func filterByStatus(status int) EventFilter {
+	return func(e *Event) bool {
+		fmt.Println("By Status", e.ID, e.Type != status)
+		return e.Type != status
 	}
 }
 
@@ -54,24 +109,18 @@ func WithConsumerPollFrequency(d time.Duration) ConsumerOption {
 
 func awaitWorkflowStatusByForeignID[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], status Status, foreignID, runID string, role string, pollFrequency time.Duration) (*Record[Type, Status], error) {
 	topic := Topic(w.Name, int(status))
-	stream := w.eventStreamerFn.NewConsumer(
+	stream, err := w.eventStreamerFn.NewConsumer(
 		topic,
 		role,
 		WithConsumerPollFrequency(pollFrequency),
-		WithEventFilter(func(e *Event) bool {
-			fid, ok := e.Headers[HeaderWorkflowForeignID]
-			if !ok {
-				return false
-			}
-
-			rID, ok := e.Headers[HeaderRunID]
-			if !ok {
-				return false
-			}
-
-			return fid != foreignID || rID != runID
-		}),
+		WithEventFilters(
+			filterByForeignID(foreignID),
+			filterByRunID(runID),
+		),
 	)
+	if err != nil {
+		return nil, err
+	}
 	defer stream.Close()
 
 	for {

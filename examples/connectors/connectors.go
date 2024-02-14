@@ -45,8 +45,8 @@ type WorkflowBDeps struct {
 	TimeoutStore  workflow.TimeoutStore
 	RoleScheduler workflow.RoleScheduler
 
-	WorkflowAStreamer    workflow.EventStreamer
-	WorkflowARecordStore workflow.RecordStore
+	WorkflowARecordStore    workflow.RecordStore
+	WorkflowAConsumerStream workflow.Consumer
 }
 
 type TypeB struct {
@@ -58,7 +58,7 @@ func WorkflowB(d WorkflowBDeps) *workflow.Workflow[TypeB, examples.Status] {
 
 	builder.AddConnector(
 		"my-example-connector",
-		d.WorkflowAStreamer.NewConsumer(workflow.Topic("workflow A", int(examples.StatusCreatedAFunExample)), "example-stream"),
+		d.WorkflowAConsumerStream,
 		func(ctx context.Context, w *workflow.Workflow[TypeB, examples.Status], e *workflow.Event) error {
 			recordA, err := d.WorkflowARecordStore.Lookup(ctx, e.ForeignID)
 			if err != nil {

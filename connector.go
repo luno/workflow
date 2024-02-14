@@ -152,18 +152,22 @@ func workflowConnectorConsumer[Type any, Status StatusType](w *Workflow[Type, St
 	}
 
 	topic := Topic(cc.workflowName, cc.status)
-	stream := cc.stream.NewConsumer(
-		topic,
-		role,
-		WithConsumerPollFrequency(pollFrequency),
-		WithEventFilter(
-			shardFilter(shard, totalShards),
-		),
-	)
-	defer stream.Close()
 
 	w.run(role, processName, func(ctx context.Context) error {
-		return consumeExternalWorkflow[Type, Status](ctx, stream, w, cc.workflowName, cc.status, cc.filter, cc.consumer, cc.to, processName)
+		consumerStream, err := cc.stream.NewConsumer(
+			topic,
+			role,
+			WithConsumerPollFrequency(pollFrequency),
+			WithEventFilters(
+				shardFilter(shard, totalShards),
+			),
+		)
+		if err != nil {
+			return err
+		}
+		defer consumerStream.Close()
+
+		return consumeExternalWorkflow[Type, Status](ctx, consumerStream, w, cc.workflowName, cc.status, cc.filter, cc.consumer, cc.to, processName)
 	}, errBackOff)
 }
 

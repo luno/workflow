@@ -495,9 +495,12 @@ func TestConnector(t *testing.T) {
 	}
 	buidler := workflow.NewBuilder[typeX, status]("workflow X")
 
+	streamConnector, err := streamerA.NewConsumer(streamATopic, "stream-a-connector")
+	jtest.RequireNil(t, err)
+
 	buidler.AddConnector(
 		"my-test-connector",
-		streamerA.NewConsumer(streamATopic, "stream-a-connector"),
+		streamConnector,
 		func(ctx context.Context, w *workflow.Workflow[typeX, status], e *workflow.Event) error {
 			_, err := w.Trigger(ctx, fmt.Sprintf("%v", e.ForeignID), StatusStart, workflow.WithInitialValue[typeX, status](&typeX{
 				Val: "trigger set value",
@@ -524,8 +527,10 @@ func TestConnector(t *testing.T) {
 
 	workflowX.Run(ctx)
 
-	p := streamerA.NewProducer(streamATopic)
-	err := p.Send(ctx, 9, 1, map[workflow.Header]string{
+	p, err := streamerA.NewProducer(streamATopic)
+	jtest.RequireNil(t, err)
+
+	err = p.Send(ctx, 9, 1, map[workflow.Header]string{
 		workflow.HeaderTopic: streamATopic,
 	})
 	jtest.RequireNil(t, err)

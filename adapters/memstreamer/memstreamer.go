@@ -49,7 +49,7 @@ type StreamConstructor struct {
 	stream *Stream
 }
 
-func (s StreamConstructor) NewProducer(topic string) workflow.Producer {
+func (s StreamConstructor) NewProducer(topic string) (workflow.Producer, error) {
 	s.stream.mu.Lock()
 	defer s.stream.mu.Unlock()
 
@@ -58,10 +58,10 @@ func (s StreamConstructor) NewProducer(topic string) workflow.Producer {
 		log:   s.stream.log,
 		topic: topic,
 		clock: s.opts.clock,
-	}
+	}, nil
 }
 
-func (s StreamConstructor) NewConsumer(topic string, name string, opts ...workflow.ConsumerOption) workflow.Consumer {
+func (s StreamConstructor) NewConsumer(topic string, name string, opts ...workflow.ConsumerOption) (workflow.Consumer, error) {
 	s.stream.mu.Lock()
 	defer s.stream.mu.Unlock()
 
@@ -71,18 +71,19 @@ func (s StreamConstructor) NewConsumer(topic string, name string, opts ...workfl
 		topic: topic,
 		name:  name,
 		clock: s.opts.clock,
-	}
+	}, nil
 }
 
 var _ workflow.EventStreamer = (*StreamConstructor)(nil)
 
 type Stream struct {
-	mu     *sync.Mutex
-	log    *[]*workflow.Event
-	offset int
-	topic  string
-	name   string
-	clock  clock.Clock
+	mu      *sync.Mutex
+	log     *[]*workflow.Event
+	offset  int
+	topic   string
+	name    string
+	clock   clock.Clock
+	options workflow.ConsumerOptions
 }
 
 func (s *Stream) Send(ctx context.Context, recordID int64, statusType int, headers map[workflow.Header]string) error {
@@ -114,7 +115,8 @@ func (s *Stream) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, error
 
 		e := log[s.offset]
 
-		if s.topic != e.Headers[workflow.HeaderTopic] {
+		// Filter out unwanted events
+		if skip := s.options.EventFilter(e); skip {
 			s.offset += 1
 			s.mu.Unlock()
 			continue
