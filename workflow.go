@@ -261,7 +261,7 @@ func safeUpdate(ctx context.Context, streamer EventStreamer, store RecordStore, 
 func storeAndEmit(ctx context.Context, streamer EventStreamer, store RecordStore, wr *WireRecord) error {
 	topic := Topic(wr.WorkflowName, wr.Status)
 
-	producer, err := streamer.NewProducer(topic)
+	producer, err := streamer.NewProducer(ctx, topic)
 	if err != nil {
 		return err
 	}

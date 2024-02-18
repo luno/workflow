@@ -176,6 +176,7 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](w *Workflow[Type, 
 
 		topic := Topic(w.Name, int(status))
 		consumerStream, err := w.eventStreamerFn.NewConsumer(
+			ctx,
 			topic,
 			role,
 			WithConsumerPollFrequency(timeouts.PollingFrequency),

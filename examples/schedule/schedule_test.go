@@ -42,7 +42,7 @@ func TestExampleWorkflow(t *testing.T) {
 	}()
 
 	// Give time for go routine to spin up
-	time.Sleep(20 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	_, err := recordStore.Latest(ctx, wf.Name, foreignID)
 	// Expect there to be no entries yet
@@ -51,7 +51,7 @@ func TestExampleWorkflow(t *testing.T) {
 	clock.Step(time.Hour)
 
 	// Allow scheduling to take place
-	time.Sleep(20 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	firstScheduled, err := recordStore.Latest(ctx, wf.Name, foreignID)
 	jtest.RequireNil(t, err)
@@ -62,7 +62,7 @@ func TestExampleWorkflow(t *testing.T) {
 	clock.Step(time.Hour)
 
 	// Allow scheduling to take place
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	secondScheduled, err := recordStore.Latest(ctx, wf.Name, foreignID)
 	jtest.RequireNil(t, err)

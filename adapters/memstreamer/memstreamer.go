@@ -29,6 +29,7 @@ func New(opts ...Option) *StreamConstructor {
 			mu:  &sync.Mutex{},
 			log: &log,
 		},
+		cursorStore: newCursorStore(),
 	}
 }
 
@@ -45,11 +46,12 @@ func WithClock(clock clock.Clock) Option {
 }
 
 type StreamConstructor struct {
-	opts   *options
-	stream *Stream
+	opts        *options
+	stream      *Stream
+	cursorStore *cursorStore
 }
 
-func (s StreamConstructor) NewProducer(topic string) (workflow.Producer, error) {
+func (s StreamConstructor) NewProducer(ctx context.Context, topic string) (workflow.Producer, error) {
 	s.stream.mu.Lock()
 	defer s.stream.mu.Unlock()
 
@@ -61,7 +63,7 @@ func (s StreamConstructor) NewProducer(topic string) (workflow.Producer, error) 
 	}, nil
 }
 
-func (s StreamConstructor) NewConsumer(topic string, name string, opts ...workflow.ConsumerOption) (workflow.Consumer, error) {
+func (s StreamConstructor) NewConsumer(ctx context.Context, topic string, name string, opts ...workflow.ConsumerOption) (workflow.Consumer, error) {
 	s.stream.mu.Lock()
 	defer s.stream.mu.Unlock()
 
@@ -71,25 +73,26 @@ func (s StreamConstructor) NewConsumer(topic string, name string, opts ...workfl
 	}
 
 	return &Stream{
-		mu:      s.stream.mu,
-		log:     s.stream.log,
-		topic:   topic,
-		name:    name,
-		clock:   s.opts.clock,
-		options: options,
+		mu:          s.stream.mu,
+		log:         s.stream.log,
+		cursorStore: s.cursorStore,
+		topic:       topic,
+		name:        name,
+		clock:       s.opts.clock,
+		options:     options,
 	}, nil
 }
 
 var _ workflow.EventStreamer = (*StreamConstructor)(nil)
 
 type Stream struct {
-	mu      *sync.Mutex
-	log     *[]*workflow.Event
-	offset  int
-	topic   string
-	name    string
-	clock   clock.Clock
-	options workflow.ConsumerOptions
+	mu          *sync.Mutex
+	log         *[]*workflow.Event
+	cursorStore *cursorStore
+	topic       string
+	name        string
+	clock       clock.Clock
+	options     workflow.ConsumerOptions
 }
 
 func (s *Stream) Send(ctx context.Context, recordID int64, statusType int, headers map[workflow.Header]string) error {
@@ -113,24 +116,35 @@ func (s *Stream) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, error
 		s.mu.Lock()
 		log := *s.log
 
-		if len(log)-1 < s.offset {
+		cursorOffset := s.cursorStore.Get(s.name)
+		if len(log)-1 < cursorOffset {
 			time.Sleep(time.Millisecond * 10)
 			s.mu.Unlock()
 			continue
 		}
 
-		e := log[s.offset]
+		e := log[cursorOffset]
 
-		// Filter out unwanted events
-		if skip := s.options.EventFilter(e); skip {
-			s.offset += 1
+		// Skip events that are not related to this topic
+		if s.topic != e.Headers[workflow.HeaderTopic] {
+			s.cursorStore.Set(s.name, cursorOffset+1)
 			s.mu.Unlock()
 			continue
 		}
 
+		// Filter out unwanted events
+		filter := s.options.EventFilter
+		if filter != nil {
+			if skip := filter(e); skip {
+				s.cursorStore.Set(s.name, cursorOffset+1)
+				s.mu.Unlock()
+				continue
+			}
+		}
+
 		s.mu.Unlock()
 		return e, func() error {
-			s.offset += 1
+			s.cursorStore.Set(s.name, cursorOffset+1)
 			return nil
 		}, nil
 	}
@@ -139,11 +153,6 @@ func (s *Stream) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, error
 }
 
 func (s *Stream) Close() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.log = nil
-	s.offset = 0
 	return nil
 }
 
@@ -151,3 +160,28 @@ var (
 	_ workflow.Producer = (*Stream)(nil)
 	_ workflow.Consumer = (*Stream)(nil)
 )
+
+func newCursorStore() *cursorStore {
+	return &cursorStore{
+		cursors: make(map[string]int),
+	}
+}
+
+type cursorStore struct {
+	mu      sync.Mutex
+	cursors map[string]int
+}
+
+func (cs *cursorStore) Get(name string) int {
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+
+	return cs.cursors[name]
+}
+
+func (cs *cursorStore) Set(name string, value int) {
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+
+	cs.cursors[name] = value
+}

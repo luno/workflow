@@ -33,7 +33,7 @@ type constructor struct {
 	cursorStore reflex.CursorStore
 }
 
-func (c constructor) NewProducer(topic string) (workflow.Producer, error) {
+func (c constructor) NewProducer(ctx context.Context, topic string) (workflow.Producer, error) {
 	return &Producer{
 		topic:       topic,
 		writer:      c.writer,
@@ -78,7 +78,7 @@ func (p Producer) Close() error {
 	return nil
 }
 
-func (c constructor) NewConsumer(topic string, name string, opts ...workflow.ConsumerOption) (workflow.Consumer, error) {
+func (c constructor) NewConsumer(ctx context.Context, topic string, name string, opts ...workflow.ConsumerOption) (workflow.Consumer, error) {
 	var copts workflow.ConsumerOptions
 	for _, opt := range opts {
 		opt(&copts)
@@ -91,12 +91,12 @@ func (c constructor) NewConsumer(topic string, name string, opts ...workflow.Con
 
 	table := c.eventsTable.Clone(rsql.WithEventsBackoff(pollFrequency))
 
-	cursor, err := c.cursorStore.GetCursor(context.Background(), name)
+	cursor, err := c.cursorStore.GetCursor(ctx, name)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to collect cursor")
 	}
 
-	streamClient, err := table.ToStream(c.reader)(context.Background(), cursor)
+	streamClient, err := table.ToStream(c.reader)(ctx, cursor)
 	if err != nil {
 		return nil, err
 	}
@@ -127,10 +127,6 @@ func (c Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, erro
 			return nil, nil, err
 		}
 
-		if closer, ok := c.streamClient.(io.Closer); ok {
-			defer closer.Close()
-		}
-
 		headers := make(map[workflow.Header]string)
 		err = json.Unmarshal(reflexEvent.MetaData, &headers)
 		if err != nil {
@@ -145,9 +141,26 @@ func (c Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, erro
 			CreatedAt: reflexEvent.Timestamp,
 		}
 
-		// Filter out unwanted events
-		if skip := c.options.EventFilter(event); skip {
+		eventID := strconv.FormatInt(event.ID, 10)
+
+		// Skip events that are not related to this topic
+		if c.topic != headers[workflow.HeaderTopic] {
+			if err := c.cursor.SetCursor(ctx, c.name, eventID); err != nil {
+				return nil, nil, errors.Wrap(err, "failed to set cursor", j.MKV{
+					"consumer":  c.name,
+					"event_id":  reflexEvent.ID,
+					"event_fid": reflexEvent.ForeignID,
+				})
+			}
 			continue
+		}
+
+		// Filter out unwanted events
+		filter := c.options.EventFilter
+		if filter != nil {
+			if skip := filter(event); skip {
+				continue
+			}
 		}
 
 		return event, func() error {
@@ -174,6 +187,13 @@ func (c Consumer) Close() error {
 	err := c.cursor.Flush(context.Background())
 	if err != nil {
 		return err
+	}
+
+	if closer, ok := c.streamClient.(io.Closer); ok {
+		err := closer.Close()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

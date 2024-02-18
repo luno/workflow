@@ -61,13 +61,12 @@ func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentSta
 
 	w.run(role, processName, func(ctx context.Context) error {
 		consumerStream, err := w.eventStreamerFn.NewConsumer(
+			ctx,
 			topic,
 			role,
 			WithConsumerPollFrequency(pollFrequency),
 			WithEventFilters(
 				shardFilter(shard, totalShards),
-				filterByWorkflowName(w.Name),
-				filterByStatus(int(currentStatus)),
 			),
 		)
 		if err != nil {

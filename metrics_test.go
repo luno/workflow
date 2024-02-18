@@ -501,7 +501,7 @@ func TestMetricProcessSkippedEvents(t *testing.T) {}
 func update(ctx context.Context, streamer workflow.EventStreamer, store workflow.RecordStore, wr *workflow.WireRecord) error {
 	topic := workflow.Topic(wr.WorkflowName, wr.Status)
 
-	producer, err := streamer.NewProducer(topic)
+	producer, err := streamer.NewProducer(ctx, topic)
 	if err != nil {
 		return err
 	}

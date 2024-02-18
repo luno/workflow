@@ -31,8 +31,15 @@ func TestConnectStreamParallelConsumer(t *testing.T) {
 	t.Cleanup(workflowA.Stop)
 
 	topic := workflow.Topic("workflow A", int(examples.StatusCreatedAFunExample))
-	consumerStream, err := eventStreamerA.NewConsumer(topic, workflowA.Name)
+	consumerStream, err := eventStreamerA.NewConsumer(
+		ctx,
+		topic,
+		workflowA.Name,
+	)
 	jtest.RequireNil(t, err)
+	t.Cleanup(func() {
+		_ = consumerStream.Close()
+	})
 
 	workflowB := connectors.WorkflowB(connectors.WorkflowBDeps{
 		EventStreamer:           memstreamer.New(),

@@ -7,8 +7,6 @@ import (
 
 	"github.com/luno/jettison/errors"
 	"github.com/luno/jettison/j"
-
-	"github.com/luno/workflow/internal/metrics"
 )
 
 // ConnectorFilter should return an empty string as the foreignID if the event should be filtered out / skipped, and
@@ -90,6 +88,7 @@ func connectorConsumer[Type any, Status StatusType](w *Workflow[Type, Status], c
 	}
 
 	defer cc.consumerFn.Close()
+
 	w.run(role, processName, func(ctx context.Context) error {
 		e, ack, err := cc.consumerFn.Recv(ctx)
 		if err != nil {
@@ -108,166 +107,4 @@ func connectorConsumer[Type any, Status StatusType](w *Workflow[Type, Status], c
 
 		return ack()
 	}, errBackOff)
-}
-
-func workflowConnectorConsumer[Type any, Status StatusType](w *Workflow[Type, Status], cc *workflowConnectorConfig[Type, Status], shard, totalShards int) {
-	role := makeRole(
-		cc.workflowName,
-		fmt.Sprintf("%v", cc.status),
-		"connection",
-		w.Name,
-		fmt.Sprintf("%v", int(cc.from)),
-		"to",
-		fmt.Sprintf("%v", int(cc.to)),
-		"connector",
-		"consumer",
-		fmt.Sprintf("%v", shard),
-		"of",
-		fmt.Sprintf("%v", totalShards),
-	)
-
-	processName := makeRole(
-		cc.workflowName,
-		fmt.Sprintf("%v", cc.status),
-		"connection",
-		w.Name,
-		cc.from.String(),
-		"to",
-		cc.to.String(),
-		"connector",
-		"consumer",
-		fmt.Sprintf("%v", shard),
-		"of",
-		fmt.Sprintf("%v", totalShards),
-	)
-
-	pollFrequency := w.defaultPollingFrequency
-	if cc.pollingFrequency.Nanoseconds() != 0 {
-		pollFrequency = cc.pollingFrequency
-	}
-
-	errBackOff := w.defaultErrBackOff
-	if cc.errBackOff.Nanoseconds() != 0 {
-		errBackOff = cc.errBackOff
-	}
-
-	topic := Topic(cc.workflowName, cc.status)
-
-	w.run(role, processName, func(ctx context.Context) error {
-		consumerStream, err := cc.stream.NewConsumer(
-			topic,
-			role,
-			WithConsumerPollFrequency(pollFrequency),
-			WithEventFilters(
-				shardFilter(shard, totalShards),
-			),
-		)
-		if err != nil {
-			return err
-		}
-		defer consumerStream.Close()
-
-		return consumeExternalWorkflow[Type, Status](ctx, consumerStream, w, cc.workflowName, cc.status, cc.filter, cc.consumer, cc.to, processName)
-	}, errBackOff)
-}
-
-func consumeExternalWorkflow[Type any, Status StatusType](ctx context.Context, stream Consumer, w *Workflow[Type, Status], externalWorkflowName string, status int, filter ConnectorFilter, consumerFunc ConnectorConsumerFunc[Type, Status], to Status, processName string) error {
-	for {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-
-		e, ack, err := stream.Recv(ctx)
-		if err != nil {
-			return err
-		}
-
-		if e.Headers[HeaderWorkflowName] != externalWorkflowName {
-			err = ack()
-			if err != nil {
-				return err
-			}
-
-			continue
-		}
-
-		if e.Type != status {
-			err = ack()
-			if err != nil {
-				return err
-			}
-
-			continue
-		}
-
-		foreignID, err := filter(ctx, e)
-		if err != nil {
-			return err
-		}
-
-		if foreignID == "" {
-			err = ack()
-			if err != nil {
-				return err
-			}
-
-			continue
-		}
-
-		latest, err := w.recordStore.Latest(ctx, w.Name, foreignID)
-		if err != nil {
-			return err
-		}
-
-		var t Type
-		err = Unmarshal(latest.Object, &t)
-		if err != nil {
-			return err
-		}
-
-		record := Record[Type, Status]{
-			WireRecord: *latest,
-			Status:     Status(latest.Status),
-			Object:     &t,
-		}
-
-		t0 := w.clock.Now()
-		ok, err := consumerFunc(ctx, &record, e)
-		if err != nil {
-			return errors.Wrap(err, "failed to consume - connector consumer", j.MKV{
-				"workflow_name":      latest.WorkflowName,
-				"foreign_id":         latest.ForeignID,
-				"current_status":     latest.Status,
-				"destination_status": to,
-			})
-		}
-		metrics.ProcessLatency.WithLabelValues(w.Name, processName).Observe(w.clock.Since(t0).Seconds())
-
-		if ok {
-			b, err := Marshal(&record.Object)
-			if err != nil {
-				return err
-			}
-
-			isEnd := w.endPoints[to]
-			wr := &WireRecord{
-				ID:           record.ID,
-				RunID:        record.RunID,
-				WorkflowName: record.WorkflowName,
-				ForeignID:    record.ForeignID,
-				Status:       int(to),
-				IsStart:      false,
-				IsEnd:        isEnd,
-				Object:       b,
-				CreatedAt:    record.CreatedAt,
-			}
-
-			err = storeAndEmit(ctx, w.eventStreamerFn, w.recordStore, wr)
-			if err != nil {
-				return err
-			}
-		}
-
-		return ack()
-	}
 }

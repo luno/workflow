@@ -24,7 +24,7 @@ type StreamConstructor struct {
 	brokers []string
 }
 
-func (s StreamConstructor) NewProducer(topic string) (workflow.Producer, error) {
+func (s StreamConstructor) NewProducer(ctx context.Context, topic string) (workflow.Producer, error) {
 	return &Producer{
 		Topic: topic,
 		Writer: &kafka.Writer{
@@ -83,7 +83,7 @@ func (p *Producer) Close() error {
 	return p.Writer.Close()
 }
 
-func (s StreamConstructor) NewConsumer(topic string, name string, opts ...workflow.ConsumerOption) (workflow.Consumer, error) {
+func (s StreamConstructor) NewConsumer(ctx context.Context, topic string, name string, opts ...workflow.ConsumerOption) (workflow.Consumer, error) {
 	var copts workflow.ConsumerOptions
 	for _, opt := range opts {
 		opt(&copts)
@@ -154,8 +154,11 @@ func (c *Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, err
 		}
 
 		// Filter out unwanted events
-		if skip := c.options.EventFilter(event); skip {
-			continue
+		filter := c.options.EventFilter
+		if filter != nil {
+			if skip := filter(event); skip {
+				continue
+			}
 		}
 
 		return event,

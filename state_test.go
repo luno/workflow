@@ -29,7 +29,8 @@ func TestInternalState(t *testing.T) {
 		return true, nil
 	}, StatusCompleted)
 
-	streamConsumer, err := memstreamer.New().NewConsumer("", "")
+	ctx := context.Background()
+	streamConsumer, err := memstreamer.New().NewConsumer(ctx, "", "")
 	jtest.RequireNil(t, err)
 
 	b.AddConnector(
@@ -52,7 +53,6 @@ func TestInternalState(t *testing.T) {
 
 	require.Equal(t, map[string]workflow.State{}, wf.States())
 
-	ctx := context.Background()
 	wf.Run(ctx)
 	t.Cleanup(wf.Stop)
 
