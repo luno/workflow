@@ -134,12 +134,10 @@ func (s *Stream) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, error
 
 		// Filter out unwanted events
 		filter := s.options.EventFilter
-		if filter != nil {
-			if skip := filter(e); skip {
-				s.cursorStore.Set(s.name, cursorOffset+1)
-				s.mu.Unlock()
-				continue
-			}
+		if filter != nil && filter(e) {
+			s.cursorStore.Set(s.name, cursorOffset+1)
+			s.mu.Unlock()
+			continue
 		}
 
 		s.mu.Unlock()

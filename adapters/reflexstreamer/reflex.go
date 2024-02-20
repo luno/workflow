@@ -157,10 +157,8 @@ func (c Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, erro
 
 		// Filter out unwanted events
 		filter := c.options.EventFilter
-		if filter != nil {
-			if skip := filter(event); skip {
-				continue
-			}
+		if filter != nil && filter(event) {
+			continue
 		}
 
 		return event, func() error {
