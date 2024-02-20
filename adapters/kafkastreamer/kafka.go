@@ -24,7 +24,7 @@ type StreamConstructor struct {
 	brokers []string
 }
 
-func (s StreamConstructor) NewProducer(topic string) workflow.Producer {
+func (s StreamConstructor) NewProducer(ctx context.Context, topic string) (workflow.Producer, error) {
 	return &Producer{
 		Topic: topic,
 		Writer: &kafka.Writer{
@@ -34,7 +34,7 @@ func (s StreamConstructor) NewProducer(topic string) workflow.Producer {
 			RequiredAcks:           kafka.RequireOne,
 		},
 		WriterTimeout: time.Second * 10,
-	}
+	}, nil
 }
 
 type Producer struct {
@@ -83,7 +83,7 @@ func (p *Producer) Close() error {
 	return p.Writer.Close()
 }
 
-func (s StreamConstructor) NewConsumer(topic string, name string, opts ...workflow.ConsumerOption) workflow.Consumer {
+func (s StreamConstructor) NewConsumer(ctx context.Context, topic string, name string, opts ...workflow.ConsumerOption) (workflow.Consumer, error) {
 	var copts workflow.ConsumerOptions
 	for _, opt := range opts {
 		opt(&copts)
@@ -109,7 +109,7 @@ func (s StreamConstructor) NewConsumer(topic string, name string, opts ...workfl
 		name:    name,
 		reader:  kafkaReader,
 		options: copts,
-	}
+	}, nil
 }
 
 type Consumer struct {
@@ -153,8 +153,12 @@ func (c *Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, err
 			CreatedAt: m.Time,
 		}
 
-		if skip := c.options.EventFilter(event); skip {
-			continue
+		// Filter out unwanted events
+		filter := c.options.EventFilter
+		if filter != nil {
+			if skip := filter(event); skip {
+				continue
+			}
 		}
 
 		return event,

@@ -85,29 +85,6 @@ workflow_process_lag_seconds{process_name="start-to-middle-consumer-1-of-1",work
 	metrics.ConsumerLag.Reset()
 }
 
-func update(ctx context.Context, streamer workflow.EventStreamer, store workflow.RecordStore, wr *workflow.WireRecord) error {
-	return store.Store(ctx, wr, func(id int64) error {
-		// Update ID in-case the store is an append only store and the ID changes with every safeUpdate
-		wr.ID = id
-
-		topic := workflow.Topic(wr.WorkflowName, wr.Status)
-
-		headers := make(map[workflow.Header]string)
-		headers[workflow.HeaderWorkflowForeignID] = wr.ForeignID
-		headers[workflow.HeaderWorkflowName] = wr.WorkflowName
-		headers[workflow.HeaderTopic] = topic
-		headers[workflow.HeaderRunID] = wr.RunID
-
-		producer := streamer.NewProducer(topic)
-		err := producer.Send(ctx, wr.ID, wr.Status, headers)
-		if err != nil {
-			return err
-		}
-
-		return producer.Close()
-	})
-}
-
 func TestMetricProcessLagAlert(t *testing.T) {
 	metrics.ConsumerLagAlert.Reset()
 
@@ -520,3 +497,30 @@ workflow_process_error_count{process_name="start-to-middle-consumer-1-of-1",work
 }
 
 func TestMetricProcessSkippedEvents(t *testing.T) {}
+
+func update(ctx context.Context, streamer workflow.EventStreamer, store workflow.RecordStore, wr *workflow.WireRecord) error {
+	topic := workflow.Topic(wr.WorkflowName, wr.Status)
+
+	producer, err := streamer.NewProducer(ctx, topic)
+	if err != nil {
+		return err
+	}
+
+	headers := make(map[workflow.Header]string)
+	headers[workflow.HeaderWorkflowForeignID] = wr.ForeignID
+	headers[workflow.HeaderWorkflowName] = wr.WorkflowName
+	headers[workflow.HeaderTopic] = topic
+	headers[workflow.HeaderRunID] = wr.RunID
+
+	return store.Store(ctx, wr, func(id int64) error {
+		// Update ID in the case that this is the first record.
+		wr.ID = id
+
+		err = producer.Send(ctx, wr.ID, wr.Status, headers)
+		if err != nil {
+			return err
+		}
+
+		return producer.Close()
+	})
+}

@@ -33,12 +33,12 @@ type constructor struct {
 	cursorStore reflex.CursorStore
 }
 
-func (c constructor) NewProducer(topic string) workflow.Producer {
+func (c constructor) NewProducer(ctx context.Context, topic string) (workflow.Producer, error) {
 	return &Producer{
 		topic:       topic,
 		writer:      c.writer,
 		eventsTable: c.eventsTable,
-	}
+	}, nil
 }
 
 type Producer struct {
@@ -78,7 +78,7 @@ func (p Producer) Close() error {
 	return nil
 }
 
-func (c constructor) NewConsumer(topic string, name string, opts ...workflow.ConsumerOption) workflow.Consumer {
+func (c constructor) NewConsumer(ctx context.Context, topic string, name string, opts ...workflow.ConsumerOption) (workflow.Consumer, error) {
 	var copts workflow.ConsumerOptions
 	for _, opt := range opts {
 		opt(&copts)
@@ -90,44 +90,41 @@ func (c constructor) NewConsumer(topic string, name string, opts ...workflow.Con
 	}
 
 	table := c.eventsTable.Clone(rsql.WithEventsBackoff(pollFrequency))
-	return &Consumer{
-		topic:   topic,
-		name:    name,
-		cursor:  c.cursorStore,
-		reader:  c.reader,
-		stream:  table.ToStream(c.reader),
-		options: copts,
+
+	cursor, err := c.cursorStore.GetCursor(ctx, name)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to collect cursor")
 	}
+
+	streamClient, err := table.ToStream(c.reader)(ctx, cursor)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Consumer{
+		topic:        topic,
+		name:         name,
+		cursor:       c.cursorStore,
+		reader:       c.reader,
+		streamClient: streamClient,
+		options:      copts,
+	}, nil
 }
 
 type Consumer struct {
-	topic   string
-	name    string
-	cursor  reflex.CursorStore
-	reader  *sql.DB
-	stream  reflex.StreamFunc
-	options workflow.ConsumerOptions
+	topic        string
+	name         string
+	cursor       reflex.CursorStore
+	reader       *sql.DB
+	streamClient reflex.StreamClient
+	options      workflow.ConsumerOptions
 }
 
 func (c Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, error) {
-	cursor, err := c.cursor.GetCursor(ctx, c.name)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to collect cursor")
-	}
-
-	cl, err := c.stream(ctx, cursor)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	for ctx.Err() == nil {
-		reflexEvent, err := cl.Recv()
+		reflexEvent, err := c.streamClient.Recv()
 		if err != nil {
 			return nil, nil, err
-		}
-
-		if closer, ok := cl.(io.Closer); ok {
-			defer closer.Close()
 		}
 
 		headers := make(map[workflow.Header]string)
@@ -144,8 +141,23 @@ func (c Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, erro
 			CreatedAt: reflexEvent.Timestamp,
 		}
 
+		eventID := strconv.FormatInt(event.ID, 10)
+
+		// Skip events that are not related to this topic
+		if c.topic != headers[workflow.HeaderTopic] {
+			if err := c.cursor.SetCursor(ctx, c.name, eventID); err != nil {
+				return nil, nil, errors.Wrap(err, "failed to set cursor", j.MKV{
+					"consumer":  c.name,
+					"event_id":  reflexEvent.ID,
+					"event_fid": reflexEvent.ForeignID,
+				})
+			}
+			continue
+		}
+
 		// Filter out unwanted events
-		if skip := c.options.EventFilter(event); skip {
+		filter := c.options.EventFilter
+		if filter != nil && filter(event) {
 			continue
 		}
 
@@ -160,12 +172,6 @@ func (c Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, erro
 				})
 			}
 
-			// Provide new context for flushing of cursor values to underlying store
-			err := c.cursor.Flush(context.Background())
-			if err != nil {
-				return err
-			}
-
 			return nil
 		}, nil
 	}
@@ -175,6 +181,19 @@ func (c Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, erro
 }
 
 func (c Consumer) Close() error {
+	// Provide new context for flushing of cursor values to underlying store
+	err := c.cursor.Flush(context.Background())
+	if err != nil {
+		return err
+	}
+
+	if closer, ok := c.streamClient.(io.Closer); ok {
+		err := closer.Close()
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

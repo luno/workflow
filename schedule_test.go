@@ -52,7 +52,8 @@ func TestWorkflow_Schedule(t *testing.T) {
 		jtest.RequireNil(t, err)
 	}()
 
-	time.Sleep(20 * time.Millisecond)
+	// Allow scheduling to take place
+	time.Sleep(200 * time.Millisecond)
 
 	_, err := recordStore.Latest(ctx, "sync users", "andrew")
 	// Expect there to be no entries yet
@@ -63,7 +64,7 @@ func TestWorkflow_Schedule(t *testing.T) {
 	clock.SetTime(expectedTimestamp)
 
 	// Allow scheduling to take place
-	time.Sleep(20 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	firstScheduled, err := recordStore.Latest(ctx, "sync users", "andrew")
 	jtest.RequireNil(t, err)
@@ -75,7 +76,7 @@ func TestWorkflow_Schedule(t *testing.T) {
 	clock.SetTime(expectedTimestamp)
 
 	// Allow scheduling to take place
-	time.Sleep(20 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	secondScheduled, err := recordStore.Latest(ctx, "sync users", "andrew")
 	jtest.RequireNil(t, err)
@@ -171,7 +172,7 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	}()
 
 	// Allow scheduling to take place
-	time.Sleep(20 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	_, err := recordStore.Latest(ctx, "sync users", "andrew")
 	// Expect there to be no entries yet
@@ -182,7 +183,7 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	clock.SetTime(expectedTimestamp)
 
 	// Allow scheduling to take place
-	time.Sleep(20 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	_, err = recordStore.Latest(ctx, "sync users", "andrew")
 	// Expect there to be no entries yet
@@ -195,7 +196,7 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	clock.SetTime(expectedTimestamp)
 
 	// Allow scheduling to take place
-	time.Sleep(20 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	latest, err := recordStore.Latest(ctx, "sync users", "andrew")
 	jtest.RequireNil(t, err)

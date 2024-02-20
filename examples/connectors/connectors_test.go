@@ -30,13 +30,24 @@ func TestConnectStreamParallelConsumer(t *testing.T) {
 	workflowA.Run(ctx)
 	t.Cleanup(workflowA.Stop)
 
+	topic := workflow.Topic("workflow A", int(examples.StatusCreatedAFunExample))
+	consumerStream, err := eventStreamerA.NewConsumer(
+		ctx,
+		topic,
+		workflowA.Name,
+	)
+	jtest.RequireNil(t, err)
+	t.Cleanup(func() {
+		_ = consumerStream.Close()
+	})
+
 	workflowB := connectors.WorkflowB(connectors.WorkflowBDeps{
-		EventStreamer:        memstreamer.New(),
-		RecordStore:          memrecordstore.New(),
-		TimeoutStore:         memtimeoutstore.New(),
-		RoleScheduler:        memrolescheduler.New(),
-		WorkflowAStreamer:    eventStreamerA,
-		WorkflowARecordStore: recordStoreA,
+		EventStreamer:           memstreamer.New(),
+		RecordStore:             memrecordstore.New(),
+		TimeoutStore:            memtimeoutstore.New(),
+		RoleScheduler:           memrolescheduler.New(),
+		WorkflowARecordStore:    recordStoreA,
+		WorkflowAConsumerStream: consumerStream,
 	})
 
 	workflowB.Run(ctx)
@@ -44,7 +55,7 @@ func TestConnectStreamParallelConsumer(t *testing.T) {
 
 	foreignID := "andrewwormald"
 
-	_, err := workflowA.Trigger(ctx, foreignID, examples.StatusStarted)
+	_, err = workflowA.Trigger(ctx, foreignID, examples.StatusStarted)
 	jtest.RequireNil(t, err)
 
 	workflow.Require(t, workflowB, foreignID, examples.StatusFollowedTheExample, connectors.TypeB{

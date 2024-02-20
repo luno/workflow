@@ -102,10 +102,10 @@ func TestWorkflow(t *testing.T) {
 
 	b := workflow.NewBuilder[MyType, status]("user sign up")
 	b.AddStep(StatusInitiated, createProfile, StatusProfileCreated)
-	b.AddStep(StatusProfileCreated, sendEmailConfirmation, StatusEmailConfirmationSent, workflow.WithParallelCount(5))
+	b.AddStep(StatusProfileCreated, sendEmailConfirmation, StatusEmailConfirmationSent, workflow.WithParallelCount(1))
 	b.AddCallback(StatusEmailConfirmationSent, emailVerifiedCallback, StatusEmailVerified)
 	b.AddCallback(StatusEmailVerified, cellphoneNumberCallback, StatusCellphoneNumberSubmitted)
-	b.AddStep(StatusCellphoneNumberSubmitted, sendOTP, StatusOTPSent, workflow.WithParallelCount(5))
+	b.AddStep(StatusCellphoneNumberSubmitted, sendOTP, StatusOTPSent, workflow.WithParallelCount(1))
 	b.AddCallback(StatusOTPSent, otpCallback, StatusOTPVerified)
 	b.AddTimeout(StatusOTPVerified, workflow.DurationTimerFunc[MyType, status](time.Hour), waitForAccountCoolDown, StatusCompleted)
 
@@ -488,16 +488,18 @@ func TestConnector(t *testing.T) {
 	ctx := context.Background()
 	streamerA := memstreamer.New()
 	streamATopic := "my-topic-a"
-	streamerA.NewProducer(streamATopic)
 
 	type typeX struct {
 		Val string
 	}
 	buidler := workflow.NewBuilder[typeX, status]("workflow X")
 
+	streamConnector, err := streamerA.NewConsumer(ctx, streamATopic, "stream-a-connector")
+	jtest.RequireNil(t, err)
+
 	buidler.AddConnector(
 		"my-test-connector",
-		streamerA.NewConsumer(streamATopic, "stream-a-connector"),
+		streamConnector,
 		func(ctx context.Context, w *workflow.Workflow[typeX, status], e *workflow.Event) error {
 			_, err := w.Trigger(ctx, fmt.Sprintf("%v", e.ForeignID), StatusStart, workflow.WithInitialValue[typeX, status](&typeX{
 				Val: "trigger set value",
@@ -523,9 +525,12 @@ func TestConnector(t *testing.T) {
 	)
 
 	workflowX.Run(ctx)
+	t.Cleanup(workflowX.Stop)
 
-	p := streamerA.NewProducer(streamATopic)
-	err := p.Send(ctx, 9, 1, map[workflow.Header]string{
+	p, err := streamerA.NewProducer(ctx, streamATopic)
+	jtest.RequireNil(t, err)
+
+	err = p.Send(ctx, 9, 1, map[workflow.Header]string{
 		workflow.HeaderTopic: streamATopic,
 	})
 	jtest.RequireNil(t, err)

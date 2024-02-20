@@ -45,18 +45,6 @@ func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentSta
 		pollFrequency = p.PollingFrequency
 	}
 
-	topic := Topic(w.Name, int(currentStatus))
-	stream := w.eventStreamerFn.NewConsumer(
-		topic,
-		role,
-		WithConsumerPollFrequency(pollFrequency),
-		WithEventFilter(
-			shardFilter(shard, totalShards),
-		),
-	)
-
-	defer stream.Close()
-
 	// processName can change in value if the string value of the status enum is changed. It should not be used for
 	// storing in the record store, event streamer, timeoutstore, or offset store.
 	processName := makeRole(
@@ -69,8 +57,24 @@ func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentSta
 		fmt.Sprintf("%v", totalShards),
 	)
 
+	topic := Topic(w.Name, int(currentStatus))
+
 	w.run(role, processName, func(ctx context.Context) error {
-		return consumeForever[Type, Status](ctx, w, p, stream, currentStatus, processName)
+		consumerStream, err := w.eventStreamerFn.NewConsumer(
+			ctx,
+			topic,
+			role,
+			WithConsumerPollFrequency(pollFrequency),
+			WithEventFilters(
+				shardFilter(shard, totalShards),
+			),
+		)
+		if err != nil {
+			return err
+		}
+		defer consumerStream.Close()
+
+		return consumeForever[Type, Status](ctx, w, p, consumerStream, currentStatus, processName)
 	}, p.ErrBackOff)
 }
 
@@ -83,24 +87,6 @@ func consumeForever[Type any, Status StatusType](ctx context.Context, w *Workflo
 		e, ack, err := c.Recv(ctx)
 		if err != nil {
 			return err
-		}
-
-		if e.Headers[HeaderWorkflowName] != w.Name {
-			err = ack()
-			if err != nil {
-				return err
-			}
-
-			continue
-		}
-
-		if e.Type != int(status) {
-			err = ack()
-			if err != nil {
-				return err
-			}
-
-			continue
 		}
 
 		var lag time.Duration
@@ -166,16 +152,6 @@ func consumeForever[Type any, Status StatusType](ctx context.Context, w *Workflo
 		}
 
 		metrics.ProcessLatency.WithLabelValues(w.Name, processName).Observe(w.clock.Since(t2).Seconds())
-	}
-}
-
-func shardFilter(shard, totalShards int) EventFilter {
-	return func(e *Event) bool {
-		if totalShards > 1 {
-			return e.ID%int64(totalShards) == int64(shard)
-		}
-
-		return false
 	}
 }
 

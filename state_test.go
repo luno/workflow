@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 
 	"github.com/luno/workflow"
@@ -28,9 +29,13 @@ func TestInternalState(t *testing.T) {
 		return true, nil
 	}, StatusCompleted)
 
+	ctx := context.Background()
+	streamConsumer, err := memstreamer.New().NewConsumer(ctx, "", "")
+	jtest.RequireNil(t, err)
+
 	b.AddConnector(
 		"consume-other-stream",
-		memstreamer.New().NewConsumer("", ""),
+		streamConsumer,
 		func(ctx context.Context, w *workflow.Workflow[string, status], e *workflow.Event) error {
 			return nil
 		},
@@ -48,7 +53,6 @@ func TestInternalState(t *testing.T) {
 
 	require.Equal(t, map[string]workflow.State{}, wf.States())
 
-	ctx := context.Background()
 	wf.Run(ctx)
 	t.Cleanup(wf.Stop)
 

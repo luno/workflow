@@ -19,6 +19,15 @@ var tables = []string{
   	  primary key (id)
 	);
 `,
+	`
+create table cursors (
+    id varchar(255) not null,
+    last_event_id bigint not null,
+    updated_at datetime(3) not null,
+
+    primary key (id)
+);
+`,
 }
 
 // ConnectForTesting returns a database connection for a temp database with latest schema.
