@@ -9,11 +9,11 @@ create table workflow_records (
     is_start               bool not null,
     is_end                 bool not null,
     created_at             datetime(3) not null,
+    updated_at             datetime(3) not null,
 
     primary key(id),
 
     index by_workflow_name_status (workflow_name, status),
-    index by_workflow_name_foreign_id_run_id (workflow_name, foreign_id, run_id),
     index by_workflow_name_foreign_id_run_id_status (workflow_name, foreign_id, run_id, status)
 );
 

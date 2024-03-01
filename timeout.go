@@ -101,6 +101,7 @@ func processTimeout[Type any, Status StatusType](ctx context.Context, w *Workflo
 			IsEnd:        w.endPoints[config.DestinationStatus],
 			Object:       object,
 			CreatedAt:    record.CreatedAt,
+			UpdatedAt:    w.clock.Now(),
 		}
 
 		err = safeUpdate(ctx, w.eventStreamerFn, w.recordStore, w.graph, timeout.Status, wr)

@@ -25,7 +25,7 @@ func New(writer *sql.DB, reader *sql.DB, tableName string) *SQLStore {
 		recordTableName: tableName,
 	}
 
-	e.recordCols = " `id`, `workflow_name`, `foreign_id`, `run_id`, `status`, `object`, `is_start`, `is_end`, `created_at` "
+	e.recordCols = " `id`, `workflow_name`, `foreign_id`, `run_id`, `status`, `object`, `is_start`, `is_end`, `created_at`, `updated_at` "
 	e.recordSelectPrefix = " select " + e.recordCols + " from " + e.recordTableName + " where "
 
 	return e

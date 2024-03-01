@@ -51,6 +51,7 @@ func testStore_Latest(t *testing.T, store workflow.RecordStore) {
 			IsEnd:        false,
 			Object:       b,
 			CreatedAt:    createdAt,
+			UpdatedAt:    createdAt,
 		}
 
 		var counter int
@@ -73,6 +74,7 @@ func testStore_Latest(t *testing.T, store workflow.RecordStore) {
 			IsEnd:        false,
 			Object:       b,
 			CreatedAt:    createdAt,
+			UpdatedAt:    createdAt,
 		}
 
 		latest, err := store.Latest(ctx, workflowName, foreignID)
@@ -99,6 +101,7 @@ func testStore_Latest(t *testing.T, store workflow.RecordStore) {
 			IsStart:      false,
 			IsEnd:        true,
 			CreatedAt:    createdAt,
+			UpdatedAt:    createdAt,
 		}
 
 		latest, err = store.Latest(ctx, workflowName, foreignID)
@@ -133,6 +136,7 @@ func testStore_Lookup(t *testing.T, store workflow.RecordStore) {
 			IsEnd:        false,
 			Object:       b,
 			CreatedAt:    createdAt,
+			UpdatedAt:    createdAt,
 		}
 
 		eventEmitter := func(id int64) error {
@@ -152,6 +156,7 @@ func testStore_Lookup(t *testing.T, store workflow.RecordStore) {
 			IsEnd:        false,
 			Object:       b,
 			CreatedAt:    createdAt,
+			UpdatedAt:    createdAt,
 		}
 
 		latest, err := store.Lookup(ctx, 1)
@@ -187,6 +192,7 @@ func testStore_Store(t *testing.T, store workflow.RecordStore) {
 			IsEnd:        false,
 			Object:       b,
 			CreatedAt:    createdAt,
+			UpdatedAt:    createdAt,
 		}
 
 		eventEmitter := func(id int64) error {
@@ -214,6 +220,7 @@ func testStore_Store(t *testing.T, store workflow.RecordStore) {
 			IsEnd:        false,
 			Object:       b,
 			CreatedAt:    createdAt,
+			UpdatedAt:    createdAt,
 		}
 
 		recordIsEqual(t, expected, *latest)
@@ -236,6 +243,7 @@ func testStore_Store(t *testing.T, store workflow.RecordStore) {
 			IsEnd:        false,
 			Object:       b,
 			CreatedAt:    createdAt,
+			UpdatedAt:    createdAt,
 		}
 
 		recordIsEqual(t, expected, *latest)
@@ -252,4 +260,5 @@ func recordIsEqual(t *testing.T, a, b workflow.WireRecord) {
 	require.Equal(t, a.IsStart, b.IsStart)
 	require.Equal(t, a.IsEnd, b.IsEnd)
 	require.WithinDuration(t, a.CreatedAt, b.CreatedAt, time.Second*10)
+	require.WithinDuration(t, a.UpdatedAt, b.UpdatedAt, time.Second*10)
 }

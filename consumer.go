@@ -146,7 +146,7 @@ func consumeForever[Type any, Status StatusType](ctx context.Context, w *Workflo
 		}
 
 		t2 := w.clock.Now()
-		err = consume(ctx, record, p.Consumer, ack, p.DestinationStatus, w.endPoints, w.eventStreamerFn, w.recordStore, w.graph, w.Name, processName)
+		err = consume(ctx, w, record, p.Consumer, ack, p.DestinationStatus, processName)
 		if err != nil {
 			return err
 		}
@@ -171,15 +171,11 @@ func wait(ctx context.Context, d time.Duration) error {
 
 func consume[Type any, Status StatusType](
 	ctx context.Context,
+	w *Workflow[Type, Status],
 	current *WireRecord,
 	cf ConsumerFunc[Type, Status],
 	ack Ack,
 	destinationStatus Status,
-	endPoints map[Status]bool,
-	es EventStreamer,
-	rs RecordStore,
-	graph map[int][]int,
-	workflowName string,
 	processName string,
 ) error {
 	var t Type
@@ -211,7 +207,7 @@ func consume[Type any, Status StatusType](
 			return err
 		}
 
-		isEnd := endPoints[destinationStatus]
+		isEnd := w.endPoints[destinationStatus]
 		wr := &WireRecord{
 			ID:           record.ID,
 			RunID:        record.RunID,
@@ -222,14 +218,15 @@ func consume[Type any, Status StatusType](
 			IsEnd:        isEnd,
 			Object:       b,
 			CreatedAt:    record.CreatedAt,
+			UpdatedAt:    w.clock.Now(),
 		}
 
-		err = safeUpdate(ctx, es, rs, graph, current.Status, wr)
+		err = safeUpdate(ctx, w.eventStreamerFn, w.recordStore, w.graph, current.Status, wr)
 		if err != nil {
 			return err
 		}
 	} else {
-		metrics.ProcessSkippedEvents.WithLabelValues(workflowName, processName).Inc()
+		metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName).Inc()
 	}
 
 	return ack()
