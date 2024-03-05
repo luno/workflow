@@ -12,7 +12,7 @@ import (
 
 func (s *SQLStore) create(ctx context.Context, tx *sql.Tx, workflowName, foreignID, runID string, status int, object []byte, isStart, isEnd bool) (int64, error) {
 	resp, err := tx.ExecContext(ctx, "insert into "+s.recordTableName+" set "+
-		" workflow_name=?, foreign_id=?, run_id=?, status=?, object=?, is_start=?, is_end=?, created_at=now() ",
+		" workflow_name=?, foreign_id=?, run_id=?, status=?, object=?, is_start=?, is_end=?, created_at=now(), updated_at=now() ",
 		workflowName,
 		foreignID,
 		runID,
@@ -36,7 +36,7 @@ func (s *SQLStore) create(ctx context.Context, tx *sql.Tx, workflowName, foreign
 
 func (s *SQLStore) update(ctx context.Context, tx *sql.Tx, workflowName, foreignID, runID string, status int, object []byte, isStart, isEnd bool, id int64) error {
 	_, err := tx.ExecContext(ctx, "update "+s.recordTableName+" set "+
-		" workflow_name=?, foreign_id=?, run_id=?, status=?, object=?, is_start=?, is_end=? where id=?",
+		" workflow_name=?, foreign_id=?, run_id=?, status=?, object=?, is_start=?, is_end=?, updated_at=now() where id=?",
 		workflowName,
 		foreignID,
 		runID,
@@ -100,6 +100,7 @@ func recordScan(row row) (*workflow.WireRecord, error) {
 		&r.IsStart,
 		&r.IsEnd,
 		&r.CreatedAt,
+		&r.UpdatedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, errors.Wrap(workflow.ErrRecordNotFound, "")

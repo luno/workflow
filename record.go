@@ -26,6 +26,7 @@ type WireRecord struct {
 	IsEnd        bool
 	Object       []byte
 	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 func (r *WireRecord) ProtoMarshal() ([]byte, error) {
@@ -47,6 +48,7 @@ func ToProto(r *WireRecord) *workflowpb.Record {
 		IsEnd:        r.IsEnd,
 		Object:       r.Object,
 		CreatedAt:    timestamppb.New(r.CreatedAt),
+		UpdatedAt:    timestamppb.New(r.UpdatedAt),
 	}
 }
 
@@ -66,5 +68,6 @@ func UnmarshalRecord(b []byte) (*WireRecord, error) {
 		IsEnd:        wpb.IsEnd,
 		Object:       wpb.Object,
 		CreatedAt:    wpb.CreatedAt.AsTime(),
+		UpdatedAt:    wpb.UpdatedAt.AsTime(),
 	}, nil
 }
