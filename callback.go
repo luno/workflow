@@ -84,5 +84,5 @@ func processCallback[Type any, Status StatusType](ctx context.Context, w *Workfl
 		UpdatedAt:    w.clock.Now(),
 	}
 
-	return safeUpdate(ctx, w.eventStreamerFn, w.recordStore, w.graph, int(currentStatus), wr)
+	return safeUpdate(ctx, w.recordStore, w.graph, int(currentStatus), wr)
 }

@@ -12,7 +12,7 @@ var (
 	// based on the last consumed event
 	ConsumerLag = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "workflow_process_lag_seconds",
-		Help: "Lag between now and the current event timestamp in seconds",
+		Help: "lag between now and the current event timestamp in seconds",
 	}, []string{workflowName, processName})
 
 	// ConsumerLagAlert is whether the consumer is too far behind or not

@@ -17,18 +17,12 @@ create table workflow_records (
     index by_workflow_name_foreign_id_run_id_status (workflow_name, foreign_id, run_id, status)
 );
 
-create table workflow_timeouts (
-    id                     bigint not null auto_increment,
-    workflow_name           varchar(255) not null,
-    foreign_id             varchar(255) not null,
-    run_id                 varchar(255) not null,
-    status                 varchar(255) not null,
-    completed              bool not null default false,
-    expire_at              datetime(3) not null,
-    created_at             datetime(3) not null,
+create table workflow_outbox (
+    id                 bigint not null auto_increment,
+    workflow_name       varchar(255) not null,
+    data               blob,
+    created_at         datetime(3) not null,
 
-    primary key(id),
 
-    index by_completed_expire_at (completed, expire_at),
-    index by_workflow_name_status (workflow_name, status)
+    primary key (id)
 );

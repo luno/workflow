@@ -11,4 +11,5 @@ var (
 	ErrWorkflowInProgress          = errors.New("current workflow still in progress - retry once complete", j.C("ERR_cd79765555450db7"))
 	ErrWorkflowNotRunning          = errors.New("trigger failed - workflow is not running", j.C("ERR_6b414d1eb843a681"))
 	ErrStatusProvidedNotConfigured = errors.New("status provided is not configured for workflow", j.C("ERR_169c7465995cf7aa"))
+	ErrOutboxRecordNotFound        = errors.New("outbox record not found", j.C("ERR_1ef1afdf9f7ae684"))
 )

@@ -59,6 +59,21 @@ func (s *SQLStore) update(ctx context.Context, tx *sql.Tx, workflowName, foreign
 	return nil
 }
 
+func (s *SQLStore) insertOutboxEvent(ctx context.Context, tx *sql.Tx, workflowName string, data []byte) (int64, error) {
+	resp, err := tx.ExecContext(ctx, "insert into "+s.outboxTableName+" set "+
+		" workflow_name=?, data=?, created_at=now() ",
+		workflowName,
+		data,
+	)
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to create outbox event", j.MKV{
+			"workflowName": workflowName,
+		})
+	}
+
+	return resp.LastInsertId()
+}
+
 func (s *SQLStore) lookupWhere(ctx context.Context, dbc *sql.DB, where string, args ...any) (*workflow.WireRecord, error) {
 	return recordScan(dbc.QueryRowContext(ctx, s.recordSelectPrefix+where, args...))
 }
@@ -68,7 +83,7 @@ func (s *SQLStore) lookupWhere(ctx context.Context, dbc *sql.DB, where string, a
 func (s *SQLStore) listWhere(ctx context.Context, dbc *sql.DB, where string, args ...any) ([]*workflow.WireRecord, error) {
 	rows, err := dbc.QueryContext(ctx, s.recordSelectPrefix+where, args...)
 	if err != nil {
-		return nil, errors.Wrap(err, "list")
+		return nil, errors.Wrap(err, "listWhere")
 	}
 	defer rows.Close()
 
@@ -79,6 +94,30 @@ func (s *SQLStore) listWhere(ctx context.Context, dbc *sql.DB, where string, arg
 			return nil, err
 		}
 		res = append(res, r)
+	}
+
+	if rows.Err() != nil {
+		return nil, errors.Wrap(rows.Err(), "rows")
+	}
+
+	return res, nil
+}
+
+func (s *SQLStore) listOutboxWhere(ctx context.Context, dbc *sql.DB, where string, args ...any) ([]workflow.OutboxEvent, error) {
+	rows, err := dbc.QueryContext(ctx, s.outboxSelectPrefix+where, args...)
+	if err != nil {
+		return nil, errors.Wrap(err, "listOutboxWhere")
+	}
+	defer rows.Close()
+
+	var res []workflow.OutboxEvent
+	for rows.Next() {
+		r, err := outboxScan(rows)
+		if err != nil {
+			return nil, err
+		}
+
+		res = append(res, *r)
 	}
 
 	if rows.Err() != nil {
@@ -109,6 +148,23 @@ func recordScan(row row) (*workflow.WireRecord, error) {
 	}
 
 	return &r, nil
+}
+
+func outboxScan(row row) (*workflow.OutboxEvent, error) {
+	var e workflow.OutboxEvent
+	err := row.Scan(
+		&e.ID,
+		&e.WorkflowName,
+		&e.Data,
+		&e.CreatedAt,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, errors.Wrap(workflow.ErrOutboxRecordNotFound, "")
+	} else if err != nil {
+		return nil, errors.Wrap(err, "outboxScan")
+	}
+
+	return &e, nil
 }
 
 // row is a common interface for *sql.Rows and *sql.Row.

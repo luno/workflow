@@ -11,15 +11,38 @@ import (
 	"github.com/luno/workflow"
 )
 
-func New() *Store {
+func New(opts ...Option) *Store {
+	// Set option defaults
+	opt := options{
+		clock: clock.RealClock{},
+	}
+
+	// Set option overrides
+	for _, o := range opts {
+		o(&opt)
+	}
+
 	s := &Store{
 		keyIndex:         make(map[string]*workflow.WireRecord),
 		store:            make(map[int64]*workflow.WireRecord),
 		snapshots:        make(map[string][]*workflow.WireRecord),
 		snapshotsOffsets: make(map[string]int),
+		clock:            opt.clock,
 	}
 
 	return s
+}
+
+type options struct {
+	clock clock.Clock
+}
+
+type Option func(o *options)
+
+func WithClock(clock clock.Clock) Option {
+	return func(o *options) {
+		o.clock = clock
+	}
 }
 
 var _ workflow.RecordStore = (*Store)(nil)
@@ -30,8 +53,12 @@ type Store struct {
 
 	clock clock.Clock
 
-	keyIndex         map[string]*workflow.WireRecord
-	store            map[int64]*workflow.WireRecord
+	keyIndex map[string]*workflow.WireRecord
+	store    map[int64]*workflow.WireRecord
+
+	outbox            []workflow.OutboxEvent
+	outboxIDIncrement int64
+
 	snapshots        map[string][]*workflow.WireRecord
 	snapshotsOffsets map[string]int
 }
@@ -48,7 +75,7 @@ func (s *Store) Lookup(ctx context.Context, id int64) (*workflow.WireRecord, err
 	return r, nil
 }
 
-func (s *Store) Store(ctx context.Context, record *workflow.WireRecord, emitter workflow.EventEmitter) error {
+func (s *Store) Store(ctx context.Context, record *workflow.WireRecord, maker workflow.OutboxEventDataMaker) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -57,14 +84,24 @@ func (s *Store) Store(ctx context.Context, record *workflow.WireRecord, emitter 
 		record.ID = s.idIncrement
 	}
 
-	err := emitter(record.ID)
+	// Add record to store
+	uk := uniqueKey(record.WorkflowName, record.ForeignID)
+	s.keyIndex[uk] = record
+	s.store[record.ID] = record
+
+	// Add event to outbox
+	eventData, err := maker(record.ID)
 	if err != nil {
 		return err
 	}
 
-	uk := uniqueKey(record.WorkflowName, record.ForeignID)
-	s.keyIndex[uk] = record
-	s.store[record.ID] = record
+	s.outboxIDIncrement++
+	s.outbox = append(s.outbox, workflow.OutboxEvent{
+		ID:           s.outboxIDIncrement,
+		WorkflowName: eventData.WorkflowName,
+		Data:         eventData.Data,
+		CreatedAt:    s.clock.Now(),
+	})
 
 	snapshotKey := fmt.Sprintf("%v-%v-%v", record.WorkflowName, record.ForeignID, record.RunID)
 	s.snapshots[snapshotKey] = append(s.snapshots[snapshotKey], record)
@@ -83,6 +120,39 @@ func (s *Store) Latest(ctx context.Context, workflowName, foreignID string) (*wo
 	}
 
 	return record, nil
+}
+
+func (s *Store) ListOutboxEvents(ctx context.Context, workflowName string, limit int64) ([]workflow.OutboxEvent, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var filtered []workflow.OutboxEvent
+	for _, outboxEvent := range s.outbox {
+		if outboxEvent.WorkflowName != workflowName {
+			continue
+		}
+
+		filtered = append(filtered, outboxEvent)
+	}
+
+	return filtered, nil
+}
+
+func (s *Store) DeleteOutboxEvent(ctx context.Context, id int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var filtered []workflow.OutboxEvent
+	for _, outboxEvent := range s.outbox {
+		if outboxEvent.ID == id {
+			continue
+		}
+
+		filtered = append(filtered, outboxEvent)
+	}
+
+	s.outbox = filtered
+	return nil
 }
 
 func (s *Store) Snapshots(workflowName, foreignID, runID string) []*workflow.WireRecord {

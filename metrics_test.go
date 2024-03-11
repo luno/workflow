@@ -33,7 +33,7 @@ func TestMetricProcessLag(t *testing.T) {
 	now := time.Date(nw.Year(), nw.Month(), nw.Day(), nw.Hour(), 0, 0, 0, time.UTC)
 	clock := clock_testing.NewFakeClock(now)
 	streamer := memstreamer.New(memstreamer.WithClock(clock))
-	recordStore := memrecordstore.New()
+	recordStore := memrecordstore.New(memrecordstore.WithClock(clock))
 	wf := b.Build(
 		streamer,
 		recordStore,
@@ -53,7 +53,7 @@ func TestMetricProcessLag(t *testing.T) {
 	payload, err := workflow.Marshal(&s)
 	jtest.RequireNil(t, err)
 
-	err = update(ctx, streamer, recordStore, &workflow.WireRecord{
+	err = update(ctx, recordStore, &workflow.WireRecord{
 		WorkflowName: "example",
 		ForeignID:    "29384723984732",
 		RunID:        runID,
@@ -74,9 +74,10 @@ func TestMetricProcessLag(t *testing.T) {
 	time.Sleep(time.Millisecond * 500)
 
 	expected := `
-# HELP workflow_process_lag_seconds Lag between now and the current event timestamp in seconds
+# HELP workflow_process_lag_seconds lag between now and the current event timestamp in seconds
 # TYPE workflow_process_lag_seconds gauge
-workflow_process_lag_seconds{process_name="start-to-middle-consumer-1-of-1",workflow_name="example"} 3600
+workflow_process_lag_seconds{process_name="outbox-consumer-1-of-1",workflow_name="example"} 3600
+workflow_process_lag_seconds{process_name="start-to-middle-consumer-1-of-1",workflow_name="example"} 0
 `
 
 	err = testutil.CollectAndCompare(metrics.ConsumerLag, strings.NewReader(expected))
@@ -90,17 +91,15 @@ func TestMetricProcessLagAlert(t *testing.T) {
 
 	b := workflow.NewBuilder[string, status]("example")
 	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Record[string, status]) (bool, error) {
-		return true, nil
+		return false, nil
 	}, StatusMiddle, workflow.WithStepPollingFrequency(time.Millisecond*100))
-	b.AddStep(StatusMiddle, func(ctx context.Context, r *workflow.Record[string, status]) (bool, error) {
-		return true, nil
-	}, StatusEnd, workflow.WithStepPollingFrequency(time.Millisecond*100))
 
 	nw := time.Now()
 	now := time.Date(nw.Year(), nw.Month(), nw.Day(), nw.Hour(), 0, 0, 0, time.UTC)
 	clock := clock_testing.NewFakeClock(now)
 	streamer := memstreamer.New(memstreamer.WithClock(clock))
-	recordStore := memrecordstore.New()
+	recordStore := memrecordstore.New(memrecordstore.WithClock(clock))
+
 	wf := b.Build(
 		streamer,
 		recordStore,
@@ -120,7 +119,7 @@ func TestMetricProcessLagAlert(t *testing.T) {
 	payload, err := workflow.Marshal(&s)
 	jtest.RequireNil(t, err)
 
-	err = update(ctx, streamer, recordStore, &workflow.WireRecord{
+	err = update(ctx, recordStore, &workflow.WireRecord{
 		WorkflowName: "example",
 		ForeignID:    "29384723984732",
 		RunID:        runID,
@@ -138,15 +137,15 @@ func TestMetricProcessLagAlert(t *testing.T) {
 	wf.Run(ctx)
 	t.Cleanup(wf.Stop)
 
-	time.Sleep(time.Millisecond * 500)
+	time.Sleep(time.Millisecond * 750)
 
 	// We expect the "middle-to-end-consumer" to not be lagging as the event for that gets inserted only once we
 	// consume the "start" event in the "start-to-middle-consumer".
 	expected := `
 # HELP workflow_process_lag_alert Whether or not the consumer lag crosses its alert threshold
 # TYPE workflow_process_lag_alert gauge
-workflow_process_lag_alert{process_name="start-to-middle-consumer-1-of-1",workflow_name="example"} 1
-workflow_process_lag_alert{process_name="middle-to-end-consumer-1-of-1",workflow_name="example"} 0
+workflow_process_lag_alert{process_name="start-to-middle-consumer-1-of-1",workflow_name="example"} 0
+workflow_process_lag_alert{process_name="outbox-consumer-1-of-1",workflow_name="example"} 1
 `
 
 	err = testutil.CollectAndCompare(metrics.ConsumerLagAlert, strings.NewReader(expected))
@@ -170,7 +169,7 @@ func TestMetricProcessStates(t *testing.T) {
 	now := time.Date(nw.Year(), nw.Month(), nw.Day(), nw.Hour(), 0, 0, 0, time.UTC)
 	clock := clock_testing.NewFakeClock(now)
 	streamer := memstreamer.New(memstreamer.WithClock(clock))
-	recordStore := memrecordstore.New()
+	recordStore := memrecordstore.New(memrecordstore.WithClock(clock))
 	wf := b.Build(
 		streamer,
 		recordStore,
@@ -190,7 +189,7 @@ func TestMetricProcessStates(t *testing.T) {
 	payload, err := workflow.Marshal(&s)
 	jtest.RequireNil(t, err)
 
-	err = update(ctx, streamer, recordStore, &workflow.WireRecord{
+	err = update(ctx, recordStore, &workflow.WireRecord{
 		WorkflowName: "example",
 		ForeignID:    "29384723984732",
 		RunID:        runID,
@@ -215,6 +214,7 @@ func TestMetricProcessStates(t *testing.T) {
 # TYPE workflow_process_states gauge
 workflow_process_states{process_name="start-to-middle-consumer-1-of-1", workflow_name="example"} 2
 workflow_process_states{process_name="middle-to-end-consumer-1-of-1", workflow_name="example"} 2
+workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="example"} 2
 `
 
 	err = testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
@@ -228,6 +228,7 @@ workflow_process_states{process_name="middle-to-end-consumer-1-of-1", workflow_n
 # TYPE workflow_process_states gauge
 workflow_process_states{process_name="middle-to-end-consumer-1-of-1",workflow_name="example"} 1
 workflow_process_states{process_name="start-to-middle-consumer-1-of-1",workflow_name="example"} 1
+workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="example"} 1
 `
 
 	err = testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
@@ -305,6 +306,7 @@ func TestMetricProcessIdleState(t *testing.T) {
 # TYPE workflow_process_states gauge
 workflow_process_states{process_name="start-to-middle-consumer-1-of-1", workflow_name="example"} 3
 workflow_process_states{process_name="middle-to-end-consumer-1-of-1", workflow_name="example"} 3
+workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="example"} 3
 `
 
 	err := testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
@@ -322,6 +324,7 @@ workflow_process_states{process_name="middle-to-end-consumer-1-of-1", workflow_n
 # TYPE workflow_process_states gauge
 workflow_process_states{process_name="middle-to-end-consumer-1-of-1",workflow_name="example"} 2
 workflow_process_states{process_name="start-to-middle-consumer-1-of-1",workflow_name="example"} 2
+workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="example"} 2
 `
 
 	err = testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
@@ -335,6 +338,7 @@ workflow_process_states{process_name="start-to-middle-consumer-1-of-1",workflow_
 # TYPE workflow_process_states gauge
 workflow_process_states{process_name="middle-to-end-consumer-1-of-1",workflow_name="example"} 1
 workflow_process_states{process_name="start-to-middle-consumer-1-of-1",workflow_name="example"} 1
+workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="example"} 1
 `
 
 	err = testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
@@ -358,7 +362,7 @@ func TestMetricProcessLatency(t *testing.T) {
 	now := time.Date(nw.Year(), nw.Month(), nw.Day(), nw.Hour(), 0, 0, 0, time.UTC)
 	clock := clock_testing.NewFakeClock(now)
 	streamer := memstreamer.New(memstreamer.WithClock(clock))
-	recordStore := memrecordstore.New()
+	recordStore := memrecordstore.New(memrecordstore.WithClock(clock))
 	wf := b.Build(
 		streamer,
 		recordStore,
@@ -378,7 +382,7 @@ func TestMetricProcessLatency(t *testing.T) {
 	payload, err := workflow.Marshal(&s)
 	jtest.RequireNil(t, err)
 
-	err = update(ctx, streamer, recordStore, &workflow.WireRecord{
+	err = update(ctx, recordStore, &workflow.WireRecord{
 		WorkflowName: "example",
 		ForeignID:    "29384723984732",
 		RunID:        runID,
@@ -422,6 +426,16 @@ workflow_process_latency_seconds_bucket{process_name="middle-to-end-consumer-1-o
 workflow_process_latency_seconds_bucket{process_name="middle-to-end-consumer-1-of-1",workflow_name="example",le="+Inf"} 1
 workflow_process_latency_seconds_sum{process_name="middle-to-end-consumer-1-of-1",workflow_name="example"} 0
 workflow_process_latency_seconds_count{process_name="middle-to-end-consumer-1-of-1",workflow_name="example"} 1
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="0.01"} 2
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="0.1"} 2
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="1"} 2
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="5"} 2
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="10"} 2
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="60"} 2
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="300"} 2
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="+Inf"} 2
+workflow_process_latency_seconds_sum{process_name="outbox-consumer-1-of-1",workflow_name="example"} 0
+workflow_process_latency_seconds_count{process_name="outbox-consumer-1-of-1",workflow_name="example"} 2
 `
 
 	err = testutil.CollectAndCompare(metrics.ProcessLatency, strings.NewReader(expected))
@@ -465,7 +479,7 @@ func TestMetricProcessErrors(t *testing.T) {
 	payload, err := workflow.Marshal(&s)
 	jtest.RequireNil(t, err)
 
-	err = update(ctx, streamer, recordStore, &workflow.WireRecord{
+	err = update(ctx, recordStore, &workflow.WireRecord{
 		WorkflowName: "example",
 		ForeignID:    "29384723984732",
 		RunID:        runID,
@@ -498,29 +512,10 @@ workflow_process_error_count{process_name="start-to-middle-consumer-1-of-1",work
 
 func TestMetricProcessSkippedEvents(t *testing.T) {}
 
-func update(ctx context.Context, streamer workflow.EventStreamer, store workflow.RecordStore, wr *workflow.WireRecord) error {
-	topic := workflow.Topic(wr.WorkflowName, wr.Status)
-
-	producer, err := streamer.NewProducer(ctx, topic)
-	if err != nil {
-		return err
-	}
-
-	headers := make(map[workflow.Header]string)
-	headers[workflow.HeaderWorkflowForeignID] = wr.ForeignID
-	headers[workflow.HeaderWorkflowName] = wr.WorkflowName
-	headers[workflow.HeaderTopic] = topic
-	headers[workflow.HeaderRunID] = wr.RunID
-
-	return store.Store(ctx, wr, func(id int64) error {
-		// Update ID in the case that this is the first record.
-		wr.ID = id
-
-		err = producer.Send(ctx, wr.ID, wr.Status, headers)
-		if err != nil {
-			return err
-		}
-
-		return producer.Close()
+func update(ctx context.Context, store workflow.RecordStore, wr *workflow.WireRecord) error {
+	return store.Store(ctx, wr, func(recordID int64) (workflow.OutboxEventData, error) {
+		// Record ID would not have been set if it is a new record. Assign the recordID that the Store provides
+		wr.ID = recordID
+		return workflow.WireRecordToOutboxEventData(*wr)
 	})
 }

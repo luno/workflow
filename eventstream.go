@@ -106,7 +106,7 @@ func WithConsumerPollFrequency(d time.Duration) ConsumerOption {
 
 func awaitWorkflowStatusByForeignID[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], status Status, foreignID, runID string, role string, pollFrequency time.Duration) (*Record[Type, Status], error) {
 	topic := Topic(w.Name, int(status))
-	stream, err := w.eventStreamerFn.NewConsumer(
+	stream, err := w.eventStreamer.NewConsumer(
 		ctx,
 		topic,
 		role,

@@ -19,13 +19,13 @@ import (
 type ConsumerFunc[Type any, Status StatusType] func(ctx context.Context, r *Record[Type, Status]) (bool, error)
 
 type consumerConfig[Type any, Status StatusType] struct {
-	PollingFrequency  time.Duration
-	ErrBackOff        time.Duration
-	DestinationStatus Status
-	Consumer          ConsumerFunc[Type, Status]
-	ParallelCount     int
-	Lag               time.Duration
-	LagAlert          time.Duration
+	pollingFrequency  time.Duration
+	errBackOff        time.Duration
+	destinationStatus Status
+	consumer          ConsumerFunc[Type, Status]
+	parallelCount     int
+	lag               time.Duration
+	lagAlert          time.Duration
 }
 
 func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentStatus Status, p consumerConfig[Type, Status], shard, totalShards int) {
@@ -33,7 +33,7 @@ func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentSta
 		w.Name,
 		fmt.Sprintf("%v", int(currentStatus)),
 		"to",
-		fmt.Sprintf("%v", int(p.DestinationStatus)),
+		fmt.Sprintf("%v", int(p.destinationStatus)),
 		"consumer",
 		fmt.Sprintf("%v", shard),
 		"of",
@@ -41,8 +41,8 @@ func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentSta
 	)
 
 	pollFrequency := w.defaultPollingFrequency
-	if p.PollingFrequency.Nanoseconds() != 0 {
-		pollFrequency = p.PollingFrequency
+	if p.pollingFrequency.Nanoseconds() != 0 {
+		pollFrequency = p.pollingFrequency
 	}
 
 	// processName can change in value if the string value of the status enum is changed. It should not be used for
@@ -50,7 +50,7 @@ func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentSta
 	processName := makeRole(
 		fmt.Sprintf("%v", currentStatus.String()),
 		"to",
-		fmt.Sprintf("%v", p.DestinationStatus.String()),
+		fmt.Sprintf("%v", p.destinationStatus.String()),
 		"consumer",
 		fmt.Sprintf("%v", shard),
 		"of",
@@ -60,7 +60,7 @@ func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentSta
 	topic := Topic(w.Name, int(currentStatus))
 
 	w.run(role, processName, func(ctx context.Context) error {
-		consumerStream, err := w.eventStreamerFn.NewConsumer(
+		consumerStream, err := w.eventStreamer.NewConsumer(
 			ctx,
 			topic,
 			role,
@@ -75,7 +75,7 @@ func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentSta
 		defer consumerStream.Close()
 
 		return consumeForever[Type, Status](ctx, w, p, consumerStream, currentStatus, processName)
-	}, p.ErrBackOff)
+	}, p.errBackOff)
 }
 
 func consumeForever[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], p consumerConfig[Type, Status], c Consumer, status Status, processName string) error {
@@ -90,8 +90,8 @@ func consumeForever[Type any, Status StatusType](ctx context.Context, w *Workflo
 		}
 
 		var lag time.Duration
-		if p.Lag.Nanoseconds() != 0 {
-			lag = p.Lag
+		if p.lag.Nanoseconds() != 0 {
+			lag = p.lag
 		}
 
 		// Wait until the event's timestamp matches or is older than the specified lag.
@@ -107,9 +107,8 @@ func consumeForever[Type any, Status StatusType](ctx context.Context, w *Workflo
 			}
 		}
 
-		t0 := w.clock.Now()
-		consumerLag := t0.Sub(e.CreatedAt)
-		metrics.ConsumerLag.WithLabelValues(w.Name, processName).Set(consumerLag.Seconds())
+		// Push metrics and alerting around the age of the event being processed.
+		pushLagMetricAndAlerting(w.Name, processName, e.CreatedAt, p.lagAlert, w.clock)
 
 		record, err := w.recordStore.Lookup(ctx, e.ForeignID)
 		if errors.Is(err, ErrRecordNotFound) {
@@ -134,19 +133,8 @@ func consumeForever[Type any, Status StatusType](ctx context.Context, w *Workflo
 			continue
 		}
 
-		// If lag alert is set then check if the consumer is lagging and push value of 1 to the lag alert
-		// gauge if it is lagging. If it is not lagging then push 0.
-		if p.LagAlert > 0 {
-			alert := 0.0
-			if consumerLag > p.LagAlert {
-				alert = 1
-			}
-
-			metrics.ConsumerLagAlert.WithLabelValues(w.Name, processName).Set(alert)
-		}
-
 		t2 := w.clock.Now()
-		err = consume(ctx, w, record, p.Consumer, ack, p.DestinationStatus, processName)
+		err = consume(ctx, w, record, p.consumer, ack, p.destinationStatus, processName)
 		if err != nil {
 			return err
 		}
@@ -221,7 +209,7 @@ func consume[Type any, Status StatusType](
 			UpdatedAt:    w.clock.Now(),
 		}
 
-		err = safeUpdate(ctx, w.eventStreamerFn, w.recordStore, w.graph, current.Status, wr)
+		err = safeUpdate(ctx, w.recordStore, w.graph, current.Status, wr)
 		if err != nil {
 			return err
 		}

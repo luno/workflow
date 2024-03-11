@@ -16,24 +16,32 @@ type SQLStore struct {
 	recordTableName    string
 	recordCols         string
 	recordSelectPrefix string
+
+	outboxTableName    string
+	outboxCols         string
+	outboxSelectPrefix string
 }
 
-func New(writer *sql.DB, reader *sql.DB, tableName string) *SQLStore {
+func New(writer *sql.DB, reader *sql.DB, recordTableName string, outboxTableName string) *SQLStore {
 	e := &SQLStore{
 		writer:          writer,
 		reader:          reader,
-		recordTableName: tableName,
+		recordTableName: recordTableName,
+		outboxTableName: outboxTableName,
 	}
 
 	e.recordCols = " `id`, `workflow_name`, `foreign_id`, `run_id`, `status`, `object`, `is_start`, `is_end`, `created_at`, `updated_at` "
 	e.recordSelectPrefix = " select " + e.recordCols + " from " + e.recordTableName + " where "
+
+	e.outboxCols = " `id`, `workflow_name`, `data`, `created_at` "
+	e.outboxSelectPrefix = " select " + e.outboxCols + " from " + e.outboxTableName + " where "
 
 	return e
 }
 
 var _ workflow.RecordStore = (*SQLStore)(nil)
 
-func (s *SQLStore) Store(ctx context.Context, r *workflow.WireRecord, eventEmitter workflow.EventEmitter) error {
+func (s *SQLStore) Store(ctx context.Context, r *workflow.WireRecord, maker workflow.OutboxEventDataMaker) error {
 	tx, err := s.writer.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -52,9 +60,9 @@ func (s *SQLStore) Store(ctx context.Context, r *workflow.WireRecord, eventEmitt
 		mustCreate = true
 	}
 
-	var id int64
+	var recordID int64
 	if mustCreate {
-		id, err = s.create(ctx, tx, r.WorkflowName, r.ForeignID, r.RunID, r.Status, r.Object, r.IsStart, r.IsEnd)
+		recordID, err = s.create(ctx, tx, r.WorkflowName, r.ForeignID, r.RunID, r.Status, r.Object, r.IsStart, r.IsEnd)
 		if err != nil {
 			return err
 		}
@@ -64,11 +72,16 @@ func (s *SQLStore) Store(ctx context.Context, r *workflow.WireRecord, eventEmitt
 			return err
 		}
 
-		// For updates
-		id = r.ID
+		// Set so that outbox event maker below receives the recordID in a consistent manner.
+		recordID = r.ID
 	}
 
-	err = eventEmitter(id)
+	eventData, err := maker(recordID)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.insertOutboxEvent(ctx, tx, eventData.WorkflowName, eventData.Data)
 	if err != nil {
 		return err
 	}
@@ -91,4 +104,17 @@ func (s *SQLStore) Latest(ctx context.Context, workflowName, foreignID string) (
 	}
 
 	return ls[0], nil
+}
+
+func (s *SQLStore) ListOutboxEvents(ctx context.Context, workflowName string, limit int64) ([]workflow.OutboxEvent, error) {
+	return s.listOutboxWhere(ctx, s.reader, "workflow_name=? limit ?", workflowName, limit)
+}
+
+func (s *SQLStore) DeleteOutboxEvent(ctx context.Context, id int64) error {
+	_, err := s.writer.ExecContext(ctx, "delete from "+s.outboxTableName+" where id=?;", id)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -63,15 +63,16 @@ type Workflow[Type any, Status StatusType] struct {
 	calledRun bool
 	once      sync.Once
 
-	eventStreamerFn EventStreamer
-	recordStore     RecordStore
-	timeoutStore    TimeoutStore
-	scheduler       RoleScheduler
+	eventStreamer EventStreamer
+	recordStore   RecordStore
+	timeoutStore  TimeoutStore
+	scheduler     RoleScheduler
 
 	consumers        map[Status][]consumerConfig[Type, Status]
 	callback         map[Status][]callback[Type, Status]
 	timeouts         map[Status]timeouts[Type, Status]
 	connectorConfigs []connectorConfig[Type, Status]
+	outboxConfig     outboxConfig
 
 	internalStateMu sync.Mutex
 	// internalState holds the State of all expected consumers and timeout  go routines using their role names
@@ -95,25 +96,39 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 		w.cancel = cancel
 		w.calledRun = true
 
+		// Start the outbox consumers
+		if w.outboxConfig.parallelCount < 2 {
+			// Launch all consumers in runners
+			go outboxConsumer(w, w.outboxConfig, 1, 1)
+		} else {
+			// Run as sharded parallel consumers
+			for i := 1; i <= w.outboxConfig.parallelCount; i++ {
+				go outboxConsumer(w, w.outboxConfig, i, w.outboxConfig.parallelCount)
+			}
+		}
+
+		// Start the state transition consumers
 		for currentStatus, consumers := range w.consumers {
 			for _, p := range consumers {
-				if p.ParallelCount < 2 {
+				if p.parallelCount < 2 {
 					// Launch all consumers in runners
 					go consumer(w, currentStatus, p, 1, 1)
 				} else {
 					// Run as sharded parallel consumers
-					for i := 1; i <= p.ParallelCount; i++ {
-						go consumer(w, currentStatus, p, i, p.ParallelCount)
+					for i := 1; i <= p.parallelCount; i++ {
+						go consumer(w, currentStatus, p, i, p.parallelCount)
 					}
 				}
 			}
 		}
 
+		// Start the timeout poller and inserter consumer
 		for status, timeouts := range w.timeouts {
 			go timeoutPoller(w, status, timeouts)
 			go timeoutAutoInserterConsumer(w, status, timeouts)
 		}
 
+		// Start the connected stream consumers
 		for _, config := range w.connectorConfigs {
 			if config.parallelCount < 2 {
 				// Launch all consumers in runners
@@ -218,7 +233,7 @@ func (w *Workflow[Type, Status]) Stop() {
 	}
 }
 
-func safeUpdate(ctx context.Context, streamer EventStreamer, store RecordStore, graph map[int][]int, currentStatus int, next *WireRecord) error {
+func safeUpdate(ctx context.Context, store RecordStore, graph map[int][]int, currentStatus int, next *WireRecord) error {
 	latest, err := store.Lookup(ctx, next.ID)
 	if err != nil {
 		return err
@@ -255,32 +270,13 @@ func safeUpdate(ctx context.Context, streamer EventStreamer, store RecordStore, 
 		})
 	}
 
-	return storeAndEmit(ctx, streamer, store, next)
+	return storeAndEmit(ctx, store, next)
 }
 
-func storeAndEmit(ctx context.Context, streamer EventStreamer, store RecordStore, wr *WireRecord) error {
-	topic := Topic(wr.WorkflowName, wr.Status)
-
-	producer, err := streamer.NewProducer(ctx, topic)
-	if err != nil {
-		return err
-	}
-
-	headers := make(map[Header]string)
-	headers[HeaderWorkflowForeignID] = wr.ForeignID
-	headers[HeaderWorkflowName] = wr.WorkflowName
-	headers[HeaderTopic] = topic
-	headers[HeaderRunID] = wr.RunID
-
-	return store.Store(ctx, wr, func(id int64) error {
-		// Update ID in the case that this is the first record.
-		wr.ID = id
-
-		err = producer.Send(ctx, wr.ID, wr.Status, headers)
-		if err != nil {
-			return err
-		}
-
-		return producer.Close()
+func storeAndEmit(ctx context.Context, store RecordStore, wr *WireRecord) error {
+	return store.Store(ctx, wr, func(recordID int64) (OutboxEventData, error) {
+		// Record ID would not have been set if it is a new record. Assign the recordID that the Store provides
+		wr.ID = recordID
+		return WireRecordToOutboxEventData(*wr)
 	})
 }
