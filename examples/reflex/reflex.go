@@ -27,6 +27,8 @@ func ExampleWorkflow(db *sql.DB, table *rsql.EventsTableInt, cstore reflex.Curso
 	})
 }
 
+// ExampleReflexStreamFunc is a simplistic example of using it for a reflex consumer. To see full example
+// go to examples/reflex/reflex_test.go.
 func ExampleReflexStreamFunc(db *sql.DB, table *rsql.EventsTableInt, workflowName string) {
 	consumerFunc := reflex.NewConsumer("my-consumer-name", func(ctx context.Context, fate fate.Fate, event *reflex.Event) error {
 		return nil
