@@ -16,7 +16,7 @@ import (
 )
 
 func TestWorkflow(t *testing.T) {
-	wf := gettingstarted.WorkflowWithEnum(gettingstarted.Deps{
+	wf := gettingstarted.Workflow(gettingstarted.Deps{
 		EventStreamer: memstreamer.New(),
 		RecordStore:   memrecordstore.New(),
 		TimeoutStore:  memtimeoutstore.New(),

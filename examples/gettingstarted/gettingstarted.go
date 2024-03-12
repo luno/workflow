@@ -20,7 +20,7 @@ type Deps struct {
 	RoleScheduler workflow.RoleScheduler
 }
 
-func WorkflowWithEnum(d Deps) *workflow.Workflow[GettingStarted, examples.Status] {
+func Workflow(d Deps) *workflow.Workflow[GettingStarted, examples.Status] {
 	b := workflow.NewBuilder[GettingStarted, examples.Status]("getting started")
 
 	b.AddStep(examples.StatusStarted, func(ctx context.Context, r *workflow.Record[GettingStarted, examples.Status]) (bool, error) {
