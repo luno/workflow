@@ -11,6 +11,6 @@ import (
 func TestStore(t *testing.T) {
 	adaptertest.RunRecordStoreTest(t, func() workflow.RecordStore {
 		dbc := ConnectForTesting(t)
-		return sqlstore.New(dbc, dbc, "workflow_records")
+		return sqlstore.New(dbc, dbc, "workflow_records", "workflow_outbox")
 	})
 }

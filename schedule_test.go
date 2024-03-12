@@ -119,6 +119,7 @@ func TestWorkflow_ScheduleShutdown(t *testing.T) {
 	require.Equal(t, map[string]workflow.State{
 		"start-andrew-scheduler-@monthly": workflow.StateRunning,
 		"start-to-end-consumer-1-of-1":    workflow.StateRunning,
+		"outbox-consumer-1-of-1":          workflow.StateRunning,
 	}, wf.States())
 
 	wf.Stop()
@@ -126,6 +127,7 @@ func TestWorkflow_ScheduleShutdown(t *testing.T) {
 	require.Equal(t, map[string]workflow.State{
 		"start-andrew-scheduler-@monthly": workflow.StateShutdown,
 		"start-to-end-consumer-1-of-1":    workflow.StateShutdown,
+		"outbox-consumer-1-of-1":          workflow.StateShutdown,
 	}, wf.States())
 }
 

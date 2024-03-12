@@ -67,7 +67,7 @@ func (w *Workflow[Type, Status]) Trigger(ctx context.Context, foreignID string, 
 		UpdatedAt: w.clock.Now(),
 	}
 
-	err = storeAndEmit(ctx, w.eventStreamerFn, w.recordStore, wr)
+	err = storeAndEmit(ctx, w.recordStore, wr)
 	if err != nil {
 		return "", err
 	}

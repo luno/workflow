@@ -53,7 +53,7 @@ func TestWithStepErrBackOff(t *testing.T) {
 	b.AddStep(statusStart, nil, statusMiddle, WithStepErrBackOff(time.Minute))
 	wf := b.Build(nil, nil, nil, nil)
 
-	require.Equal(t, time.Minute, wf.consumers[statusStart][0].ErrBackOff)
+	require.Equal(t, time.Minute, wf.consumers[statusStart][0].errBackOff)
 }
 
 func TestStepDestinationStatus(t *testing.T) {
@@ -61,7 +61,7 @@ func TestStepDestinationStatus(t *testing.T) {
 	b.AddStep(statusStart, nil, statusMiddle)
 	wf := b.Build(nil, nil, nil, nil)
 
-	require.Equal(t, statusMiddle, wf.consumers[statusStart][0].DestinationStatus)
+	require.Equal(t, statusMiddle, wf.consumers[statusStart][0].destinationStatus)
 }
 
 func TestWithParallelCount(t *testing.T) {
@@ -69,7 +69,7 @@ func TestWithParallelCount(t *testing.T) {
 	b.AddStep(statusStart, nil, statusMiddle, WithParallelCount(100))
 	wf := b.Build(nil, nil, nil, nil)
 
-	require.Equal(t, int(100), wf.consumers[statusStart][0].ParallelCount)
+	require.Equal(t, int(100), wf.consumers[statusStart][0].parallelCount)
 }
 
 func TestWithClock(t *testing.T) {
@@ -214,7 +214,7 @@ func TestWithStepLagAlert(t *testing.T) {
 			)
 			wf := b.Build(nil, nil, nil, nil)
 
-			require.Equal(t, tc.expectedLagAlert, wf.consumers[statusStart][0].LagAlert)
+			require.Equal(t, tc.expectedLagAlert, wf.consumers[statusStart][0].lagAlert)
 		})
 	}
 }
@@ -232,5 +232,5 @@ func TestWithStepConsumerLag(t *testing.T) {
 	)
 	wf := b.Build(nil, nil, nil, nil)
 
-	require.Equal(t, specifiedLag, wf.consumers[statusStart][0].Lag)
+	require.Equal(t, specifiedLag, wf.consumers[statusStart][0].lag)
 }

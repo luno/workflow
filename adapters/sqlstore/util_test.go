@@ -27,6 +27,17 @@ var migrations = []string{
 		index by_workflow_name_status (workflow_name, status),
     	index by_workflow_name_foreign_id_run_id_status (workflow_name, foreign_id, run_id, status)
 	)`,
+	`
+	create table workflow_outbox (
+		id                 bigint not null auto_increment,
+		workflow_name       varchar(255) not null,
+		data               blob,
+		created_at         datetime(3) not null,
+	
+	
+		primary key (id)
+	);
+	`,
 }
 
 func ConnectForTesting(t *testing.T) *sql.DB {

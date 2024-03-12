@@ -10,8 +10,12 @@ import (
 
 const (
 	defaultPollingFrequency = 500 * time.Millisecond
-	defaultErrBackOff       = 5 * time.Second
+	defaultErrBackOff       = 1 * time.Second
 	defaultLagAlert         = 30 * time.Minute
+
+	defaultOutboxLagAlert         = time.Minute
+	defaultOutboxPollingFrequency = 250 * time.Millisecond
+	defaultOutboxErrBackOff       = 500 * time.Millisecond
 )
 
 func NewBuilder[Type any, Status StatusType](name string) *Builder[Type, Status] {
@@ -38,8 +42,8 @@ type Builder[Type any, Status StatusType] struct {
 
 func (b *Builder[Type, Status]) AddStep(from Status, c ConsumerFunc[Type, Status], to Status, opts ...StepOption) {
 	p := consumerConfig[Type, Status]{
-		DestinationStatus: to,
-		Consumer:          c,
+		destinationStatus: to,
+		consumer:          c,
 	}
 
 	var so stepOptions
@@ -48,34 +52,34 @@ func (b *Builder[Type, Status]) AddStep(from Status, c ConsumerFunc[Type, Status
 	}
 
 	if so.parallelCount > 0 {
-		p.ParallelCount = so.parallelCount
+		p.parallelCount = so.parallelCount
 	}
 
-	p.PollingFrequency = b.workflow.defaultPollingFrequency
+	p.pollingFrequency = b.workflow.defaultPollingFrequency
 	if so.pollingFrequency.Nanoseconds() != 0 {
-		p.PollingFrequency = so.pollingFrequency
+		p.pollingFrequency = so.pollingFrequency
 	}
 
-	p.ErrBackOff = b.workflow.defaultErrBackOff
+	p.errBackOff = b.workflow.defaultErrBackOff
 	if so.errBackOff.Nanoseconds() != 0 {
-		p.ErrBackOff = so.errBackOff
+		p.errBackOff = so.errBackOff
 	}
 
 	if so.lag.Nanoseconds() != 0 {
-		p.Lag = so.lag
+		p.lag = so.lag
 	}
 
-	p.LagAlert = b.workflow.defaultLagAlert
+	p.lagAlert = b.workflow.defaultLagAlert
 
 	// If lag is specified then offset the lag alert by the default amount. Custom lag alert values, if set, will
 	// still take priority.
-	if p.Lag.Nanoseconds() != 0 {
-		p.LagAlert = b.workflow.defaultLagAlert + p.Lag
+	if p.lag.Nanoseconds() != 0 {
+		p.lagAlert = b.workflow.defaultLagAlert + p.lag
 	}
 
 	// If a customer lag alert is provided then override the current defaults.
 	if so.lagAlert.Nanoseconds() != 0 {
-		p.LagAlert = so.lagAlert
+		p.lagAlert = so.lagAlert
 	}
 
 	b.workflow.graph[int(from)] = append(b.workflow.graph[int(from)], int(to))
@@ -228,7 +232,7 @@ func (b *Builder[Type, Status]) AddConnector(name string, c Consumer, cf Connect
 }
 
 func (b *Builder[Type, Status]) Build(eventStreamer EventStreamer, recordStore RecordStore, timeoutStore TimeoutStore, roleScheduler RoleScheduler, opts ...BuildOption) *Workflow[Type, Status] {
-	b.workflow.eventStreamerFn = eventStreamer
+	b.workflow.eventStreamer = eventStreamer
 	b.workflow.recordStore = recordStore
 	b.workflow.timeoutStore = timeoutStore
 	b.workflow.scheduler = roleScheduler
@@ -242,6 +246,11 @@ func (b *Builder[Type, Status]) Build(eventStreamer EventStreamer, recordStore R
 		b.workflow.clock = bo.clock
 	}
 
+	b.workflow.outboxConfig = defaultOutboxConfig()
+	if bo.outboxConfig != nil {
+		b.workflow.outboxConfig = *bo.outboxConfig
+	}
+
 	if b.workflow.defaultPollingFrequency.Milliseconds() == 0 {
 		b.workflow.defaultPollingFrequency = time.Second
 	}
@@ -253,8 +262,9 @@ func (b *Builder[Type, Status]) Build(eventStreamer EventStreamer, recordStore R
 }
 
 type buildOptions struct {
-	clock     clock.Clock
-	debugMode bool
+	clock        clock.Clock
+	debugMode    bool
+	outboxConfig *outboxConfig
 }
 
 type BuildOption func(w *buildOptions)
@@ -262,6 +272,18 @@ type BuildOption func(w *buildOptions)
 func WithClock(c clock.Clock) BuildOption {
 	return func(bo *buildOptions) {
 		bo.clock = c
+	}
+}
+
+func WithOutboxConfig(opts ...OutboxOption) BuildOption {
+	return func(bo *buildOptions) {
+		config := defaultOutboxConfig()
+
+		for _, opt := range opts {
+			opt(&config)
+		}
+
+		bo.outboxConfig = &config
 	}
 }
 
@@ -276,12 +298,12 @@ func (b *Builder[Type, Status]) buildGraph() map[Status][]Status {
 	dedupe := make(map[string]bool)
 	for s, i := range b.workflow.consumers {
 		for _, p := range i {
-			key := path.Join(s.String(), p.DestinationStatus.String())
+			key := path.Join(s.String(), p.destinationStatus.String())
 			if dedupe[key] {
 				continue
 			}
 
-			graph[s] = append(graph[s], p.DestinationStatus)
+			graph[s] = append(graph[s], p.destinationStatus)
 			dedupe[key] = true
 		}
 	}

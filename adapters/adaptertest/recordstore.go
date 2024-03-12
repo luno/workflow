@@ -8,8 +8,10 @@ import (
 
 	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/luno/workflow"
+	"github.com/luno/workflow/workflowpb"
 )
 
 func RunRecordStoreTest(t *testing.T, factory func() workflow.RecordStore) {
@@ -17,6 +19,8 @@ func RunRecordStoreTest(t *testing.T, factory func() workflow.RecordStore) {
 		testStore_Latest,
 		testStore_Lookup,
 		testStore_Store,
+		testStore_ListOutboxEvents,
+		testStore_DeleteOutboxEvent,
 	}
 
 	for _, test := range tests {
@@ -54,14 +58,9 @@ func testStore_Latest(t *testing.T, store workflow.RecordStore) {
 			UpdatedAt:    createdAt,
 		}
 
-		var counter int
-		counterPtr := &counter
-		eventEmitter := func(id int64) error {
-			*counterPtr += 1
-			return nil
-		}
+		maker := func(recordID int64) (workflow.OutboxEventData, error) { return workflow.OutboxEventData{}, nil }
 
-		err = store.Store(ctx, wr, eventEmitter)
+		err = store.Store(ctx, wr, maker)
 		jtest.RequireNil(t, err)
 
 		expected := workflow.WireRecord{
@@ -86,10 +85,8 @@ func testStore_Latest(t *testing.T, store workflow.RecordStore) {
 		wr.Status = int(statusEnd)
 		wr.IsStart = false
 		wr.IsEnd = true
-		err = store.Store(ctx, wr, eventEmitter)
+		err = store.Store(ctx, wr, maker)
 		jtest.RequireNil(t, err)
-
-		require.Equal(t, 2, *counterPtr)
 
 		expected = workflow.WireRecord{
 			ID:           1,
@@ -139,11 +136,9 @@ func testStore_Lookup(t *testing.T, store workflow.RecordStore) {
 			UpdatedAt:    createdAt,
 		}
 
-		eventEmitter := func(id int64) error {
-			return nil
-		}
+		maker := func(recordID int64) (workflow.OutboxEventData, error) { return workflow.OutboxEventData{}, nil }
 
-		err = store.Store(ctx, wr, eventEmitter)
+		err = store.Store(ctx, wr, maker)
 		jtest.RequireNil(t, err)
 
 		expected := workflow.WireRecord{
@@ -195,11 +190,9 @@ func testStore_Store(t *testing.T, store workflow.RecordStore) {
 			UpdatedAt:    createdAt,
 		}
 
-		eventEmitter := func(id int64) error {
-			return nil
-		}
+		maker := func(recordID int64) (workflow.OutboxEventData, error) { return workflow.OutboxEventData{}, nil }
 
-		err = store.Store(ctx, wr, eventEmitter)
+		err = store.Store(ctx, wr, maker)
 		jtest.RequireNil(t, err)
 
 		latest, err := store.Lookup(ctx, 1)
@@ -207,7 +200,7 @@ func testStore_Store(t *testing.T, store workflow.RecordStore) {
 
 		latest.Status = int(statusMiddle)
 
-		err = store.Store(ctx, latest, eventEmitter)
+		err = store.Store(ctx, latest, maker)
 		jtest.RequireNil(t, err)
 
 		expected := workflow.WireRecord{
@@ -230,7 +223,7 @@ func testStore_Store(t *testing.T, store workflow.RecordStore) {
 
 		latest.Status = int(statusEnd)
 
-		err = store.Store(ctx, latest, eventEmitter)
+		err = store.Store(ctx, latest, maker)
 		jtest.RequireNil(t, err)
 
 		expected = workflow.WireRecord{
@@ -247,6 +240,119 @@ func testStore_Store(t *testing.T, store workflow.RecordStore) {
 		}
 
 		recordIsEqual(t, expected, *latest)
+	})
+}
+
+func testStore_ListOutboxEvents(t *testing.T, store workflow.RecordStore) {
+	t.Run("ListOutboxEvents", func(t *testing.T) {
+		ctx := context.Background()
+		workflowName := "my_workflow"
+		foreignID := "Andrew Wormald"
+		runID := "LSDKLJFN-SKDFJB-WERLTBE"
+
+		type example struct {
+			name string
+		}
+
+		e := example{name: foreignID}
+		b, err := json.Marshal(e)
+		jtest.RequireNil(t, err)
+
+		createdAt := time.Now()
+
+		wr := &workflow.WireRecord{
+			WorkflowName: workflowName,
+			ForeignID:    foreignID,
+			RunID:        runID,
+			Status:       int(statusStarted),
+			IsStart:      true,
+			IsEnd:        false,
+			Object:       b,
+			CreatedAt:    createdAt,
+			UpdatedAt:    createdAt,
+		}
+
+		maker := func(recordID int64) (workflow.OutboxEventData, error) {
+			// Record ID would not have been set if it is a new record. Assign the recordID that the Store provides
+			wr.ID = recordID
+			return workflow.WireRecordToOutboxEventData(*wr)
+		}
+
+		err = store.Store(ctx, wr, maker)
+		jtest.RequireNil(t, err)
+
+		ls, err := store.ListOutboxEvents(ctx, workflowName, 1000)
+		jtest.RequireNil(t, err)
+
+		require.Equal(t, 1, len(ls))
+
+		require.Equal(t, int64(1), ls[0].ID)
+		require.Equal(t, workflowName, ls[0].WorkflowName)
+
+		var r workflowpb.OutboxRecord
+		err = proto.Unmarshal(ls[0].Data, &r)
+		jtest.RequireNil(t, err)
+
+		require.Equal(t, int32(statusStarted), r.Type)
+		require.Equal(t, "my_workflow-1", r.Headers[string(workflow.HeaderTopic)])
+		require.Equal(t, "Andrew Wormald", r.Headers[string(workflow.HeaderWorkflowForeignID)])
+		require.Equal(t, "my_workflow", r.Headers[string(workflow.HeaderWorkflowName)])
+	})
+}
+
+func testStore_DeleteOutboxEvent(t *testing.T, store workflow.RecordStore) {
+	t.Run("DeleteOutboxEvent", func(t *testing.T) {
+		ctx := context.Background()
+		workflowName := "my_workflow"
+		foreignID := "Andrew Wormald"
+		runID := "LSDKLJFN-SKDFJB-WERLTBE"
+
+		type example struct {
+			name string
+		}
+
+		e := example{name: foreignID}
+		b, err := json.Marshal(e)
+		jtest.RequireNil(t, err)
+
+		createdAt := time.Now()
+
+		wr := &workflow.WireRecord{
+			WorkflowName: workflowName,
+			ForeignID:    foreignID,
+			RunID:        runID,
+			Status:       int(statusStarted),
+			IsStart:      true,
+			IsEnd:        false,
+			Object:       b,
+			CreatedAt:    createdAt,
+			UpdatedAt:    createdAt,
+		}
+
+		maker := func(recordID int64) (workflow.OutboxEventData, error) {
+			// Record ID would not have been set if it is a new record. Assign the recordID that the Store provides
+			wr.ID = recordID
+			return workflow.WireRecordToOutboxEventData(*wr)
+		}
+
+		err = store.Store(ctx, wr, maker)
+		jtest.RequireNil(t, err)
+
+		latest, err := store.Lookup(ctx, 1)
+		jtest.RequireNil(t, err)
+
+		latest.Status = int(statusMiddle)
+
+		ls, err := store.ListOutboxEvents(ctx, workflowName, 1000)
+		jtest.RequireNil(t, err)
+
+		err = store.DeleteOutboxEvent(ctx, ls[0].ID)
+		jtest.RequireNil(t, err)
+
+		ls, err = store.ListOutboxEvents(ctx, workflowName, 1000)
+		jtest.RequireNil(t, err)
+
+		require.Equal(t, 0, len(ls))
 	})
 }
 

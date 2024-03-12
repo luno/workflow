@@ -104,7 +104,7 @@ func processTimeout[Type any, Status StatusType](ctx context.Context, w *Workflo
 			UpdatedAt:    w.clock.Now(),
 		}
 
-		err = safeUpdate(ctx, w.eventStreamerFn, w.recordStore, w.graph, timeout.Status, wr)
+		err = safeUpdate(ctx, w.recordStore, w.graph, timeout.Status, wr)
 		if err != nil {
 			return err
 		}
@@ -176,7 +176,7 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](w *Workflow[Type, 
 		}
 
 		topic := Topic(w.Name, int(status))
-		consumerStream, err := w.eventStreamerFn.NewConsumer(
+		consumerStream, err := w.eventStreamer.NewConsumer(
 			ctx,
 			topic,
 			role,
@@ -191,11 +191,11 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](w *Workflow[Type, 
 		defer consumerStream.Close()
 
 		cc := consumerConfig[Type, Status]{
-			PollingFrequency: timeouts.PollingFrequency,
-			ErrBackOff:       timeouts.ErrBackOff,
-			Consumer:         consumerFunc,
-			ParallelCount:    1,
-			LagAlert:         timeouts.LagAlert,
+			pollingFrequency: timeouts.PollingFrequency,
+			errBackOff:       timeouts.ErrBackOff,
+			consumer:         consumerFunc,
+			parallelCount:    1,
+			lagAlert:         timeouts.LagAlert,
 		}
 
 		return consumeForever(ctx, w, cc, consumerStream, status, processName)
