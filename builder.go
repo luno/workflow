@@ -82,8 +82,10 @@ func (b *Builder[Type, Status]) AddStep(from Status, c ConsumerFunc[Type, Status
 		p.lagAlert = so.lagAlert
 	}
 
+	if _, ok := b.workflow.graph[int(from)]; !ok {
+		b.workflow.graphOrder = append(b.workflow.graphOrder, int(from))
+	}
 	b.workflow.graph[int(from)] = append(b.workflow.graph[int(from)], int(to))
-	b.workflow.graphOrder = append(b.workflow.graphOrder, int(from))
 	b.workflow.validStatuses[from] = true
 	b.workflow.validStatuses[to] = true
 	b.workflow.consumers[from] = append(b.workflow.consumers[from], p)
@@ -135,8 +137,10 @@ func (b *Builder[Type, Status]) AddCallback(from Status, fn CallbackFunc[Type, S
 		CallbackFunc:      fn,
 	}
 
+	if _, ok := b.workflow.graph[int(from)]; !ok {
+		b.workflow.graphOrder = append(b.workflow.graphOrder, int(from))
+	}
 	b.workflow.graph[int(from)] = append(b.workflow.graph[int(from)], int(to))
-	b.workflow.graphOrder = append(b.workflow.graphOrder, int(from))
 	b.workflow.validStatuses[from] = true
 	b.workflow.validStatuses[to] = true
 	b.workflow.callback[from] = append(b.workflow.callback[from], c)
@@ -199,8 +203,10 @@ func (b *Builder[Type, Status]) AddTimeout(from Status, timer TimerFunc[Type, St
 
 	timeouts.Transitions = append(timeouts.Transitions, t)
 
+	if _, ok := b.workflow.graph[int(from)]; !ok {
+		b.workflow.graphOrder = append(b.workflow.graphOrder, int(from))
+	}
 	b.workflow.graph[int(from)] = append(b.workflow.graph[int(from)], int(to))
-	b.workflow.graphOrder = append(b.workflow.graphOrder, int(from))
 	b.workflow.validStatuses[from] = true
 	b.workflow.validStatuses[to] = true
 	b.workflow.timeouts[from] = timeouts

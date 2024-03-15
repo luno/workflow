@@ -26,7 +26,8 @@ func MermaidDiagram[Type any, Status StatusType](w *Workflow[Type, Status], path
 	}
 
 	mf := MermaidFormat{
-		Direction: d,
+		WorkflowName: w.Name,
+		Direction:    d,
 	}
 
 	startingPoint := make(map[Status]bool)
@@ -46,10 +47,6 @@ func MermaidDiagram[Type any, Status StatusType](w *Workflow[Type, Status], path
 				From: format(Status(from).String()),
 				To:   format(Status(to).String()),
 			})
-
-			if w.endPoints[Status(to)] {
-				mf.TerminalPoints = append(mf.TerminalPoints, format(Status(to).String()))
-			}
 		}
 	}
 
@@ -59,6 +56,12 @@ func MermaidDiagram[Type any, Status StatusType](w *Workflow[Type, Status], path
 		}
 
 		mf.StartingPoints = append(mf.StartingPoints, format(Status(from).String()))
+	}
+
+	for status, isTerminal := range w.endPoints {
+		if isTerminal {
+			mf.TerminalPoints = append(mf.TerminalPoints, format(status.String()))
+		}
 	}
 
 	return template.Must(template.New("").Parse("```"+mermaidTemplate+"```")).Execute(file, mf)
@@ -71,6 +74,7 @@ func format(s string) string {
 }
 
 type MermaidFormat struct {
+	WorkflowName   string
 	Direction      MermaidDirection
 	StartingPoints []string
 	TerminalPoints []string
@@ -93,6 +97,9 @@ type MermaidTransition struct {
 }
 
 var mermaidTemplate = `mermaid
+---
+title: Diagram of {{.WorkflowName}} Workflow
+---
 stateDiagram-v2
 	direction {{.Direction}}
 	{{range $key, $value := .StartingPoints }}
