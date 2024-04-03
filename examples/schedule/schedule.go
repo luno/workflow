@@ -24,9 +24,12 @@ type Deps struct {
 func ExampleWorkflow(d Deps) *workflow.Workflow[Example, examples.Status] {
 	b := workflow.NewBuilder[Example, examples.Status]("schedule trigger example")
 
-	b.AddStep(examples.StatusStarted, func(ctx context.Context, r *workflow.Record[Example, examples.Status]) (bool, error) {
-		return true, nil
-	}, examples.StatusFollowedTheExample)
+	b.AddStep(examples.StatusStarted,
+		func(ctx context.Context, r *workflow.Record[Example, examples.Status]) (examples.Status, error) {
+			return examples.StatusFollowedTheExample, nil
+		},
+		examples.StatusFollowedTheExample,
+	)
 
 	return b.Build(
 		d.EventStreamer,

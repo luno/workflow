@@ -53,22 +53,25 @@ func RunEventStreamerTest(t *testing.T, constructor workflow.EventStreamer) {
 		SyncStatusStarted,
 		setEmail(),
 		SyncStatusEmailSet,
-		workflow.WithStepPollingFrequency(time.Millisecond*200),
-		workflow.WithParallelCount(5),
+	).WithOptions(
+		workflow.PollingFrequency(time.Millisecond*200),
+		workflow.ParallelCount(5),
 	)
 	b.AddTimeout(
 		SyncStatusEmailSet,
 		coolDownTimerFunc(),
 		coolDownTimeout(),
 		SyncStatusRegulationTimeout,
-		workflow.WithTimeoutPollingFrequency(time.Millisecond*200),
+	).WithOptions(
+		workflow.PollingFrequency(time.Millisecond * 200),
 	)
 	b.AddStep(
 		SyncStatusRegulationTimeout,
 		generateUserID(),
 		SyncStatusCompleted,
-		workflow.WithStepPollingFrequency(time.Millisecond*200),
-		workflow.WithParallelCount(5),
+	).WithOptions(
+		workflow.PollingFrequency(time.Millisecond*200),
+		workflow.ParallelCount(5),
 	)
 
 	now := time.Date(2023, time.April, 9, 8, 30, 0, 0, time.UTC)
@@ -108,10 +111,10 @@ func RunEventStreamerTest(t *testing.T, constructor workflow.EventStreamer) {
 	require.NotEmpty(t, record.Object.UID)
 }
 
-func setEmail() func(ctx context.Context, t *workflow.Record[User, SyncStatus]) (bool, error) {
-	return func(ctx context.Context, t *workflow.Record[User, SyncStatus]) (bool, error) {
+func setEmail() func(ctx context.Context, t *workflow.Record[User, SyncStatus]) (SyncStatus, error) {
+	return func(ctx context.Context, t *workflow.Record[User, SyncStatus]) (SyncStatus, error) {
 		t.Object.Email = "andrew@workflow.com"
-		return true, nil
+		return SyncStatusEmailSet, nil
 	}
 }
 
@@ -127,16 +130,19 @@ func coolDownTimerFunc() func(ctx context.Context, r *workflow.Record[User, Sync
 	}
 }
 
-func coolDownTimeout() func(ctx context.Context, r *workflow.Record[User, SyncStatus], now time.Time) (bool, error) {
-	return func(ctx context.Context, r *workflow.Record[User, SyncStatus], now time.Time) (bool, error) {
-		isAndrew := r.Object.Email == "andrew@workflow.com"
-		return isAndrew, nil
+func coolDownTimeout() func(ctx context.Context, r *workflow.Record[User, SyncStatus], now time.Time) (SyncStatus, error) {
+	return func(ctx context.Context, r *workflow.Record[User, SyncStatus], now time.Time) (SyncStatus, error) {
+		if r.Object.Email == "andrew@workflow.com" {
+			return SyncStatusRegulationTimeout, nil
+		}
+
+		return 0, nil
 	}
 }
 
-func generateUserID() func(ctx context.Context, t *workflow.Record[User, SyncStatus]) (bool, error) {
-	return func(ctx context.Context, t *workflow.Record[User, SyncStatus]) (bool, error) {
+func generateUserID() func(ctx context.Context, t *workflow.Record[User, SyncStatus]) (SyncStatus, error) {
+	return func(ctx context.Context, t *workflow.Record[User, SyncStatus]) (SyncStatus, error) {
 		t.Object.UID = uuid.New().String()
-		return true, nil
+		return SyncStatusCompleted, nil
 	}
 }

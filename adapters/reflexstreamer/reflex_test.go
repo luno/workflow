@@ -35,17 +35,17 @@ func TestStreamFunc(t *testing.T) {
 	b := workflow.NewBuilder[string, status](workflowName)
 	b.AddStep(
 		statusStart,
-		func(ctx context.Context, r *workflow.Record[string, status]) (bool, error) {
+		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
 			*r.Object = "Started and "
-			return true, nil
+			return statusMiddle, nil
 		},
 		statusMiddle,
 	)
 	b.AddStep(
 		statusMiddle,
-		func(ctx context.Context, r *workflow.Record[string, status]) (bool, error) {
+		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
 			*r.Object += "Completed in a Workflow"
-			return true, nil
+			return statusEnd, nil
 		},
 		statusEnd,
 	)

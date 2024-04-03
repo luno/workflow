@@ -48,7 +48,7 @@ func pollTimeouts[Type any, Status StatusType](ctx context.Context, w *Workflow[
 				continue
 			}
 
-			for _, config := range timeouts.Transitions {
+			for _, config := range timeouts.transitions {
 				t0 := w.clock.Now()
 				err = processTimeout(ctx, w, config, r, expiredTimeout)
 				if err != nil {
@@ -60,7 +60,7 @@ func pollTimeouts[Type any, Status StatusType](ctx context.Context, w *Workflow[
 			}
 		}
 
-		err = wait(ctx, timeouts.PollingFrequency)
+		err = wait(ctx, timeouts.pollingFrequency)
 		if err != nil {
 			return err
 		}
@@ -80,12 +80,12 @@ func processTimeout[Type any, Status StatusType](ctx context.Context, w *Workflo
 		Object:     &t,
 	}
 
-	ok, err := config.TimeoutFunc(ctx, &record, w.clock.Now())
+	next, err := config.TimeoutFunc(ctx, &record, w.clock.Now())
 	if err != nil {
 		return err
 	}
 
-	if ok {
+	if int(next) != 0 {
 		object, err := Marshal(&t)
 		if err != nil {
 			return err
@@ -96,9 +96,9 @@ func processTimeout[Type any, Status StatusType](ctx context.Context, w *Workflo
 			WorkflowName: record.WorkflowName,
 			ForeignID:    record.ForeignID,
 			RunID:        record.RunID,
-			Status:       int(config.DestinationStatus),
+			Status:       int(next),
 			IsStart:      false,
-			IsEnd:        w.endPoints[config.DestinationStatus],
+			IsEnd:        w.endPoints[next],
 			Object:       object,
 			CreatedAt:    record.CreatedAt,
 			UpdatedAt:    w.clock.Now(),
@@ -120,16 +120,15 @@ func processTimeout[Type any, Status StatusType](ctx context.Context, w *Workflo
 }
 
 type timeouts[Type any, Status StatusType] struct {
-	PollingFrequency time.Duration
-	ErrBackOff       time.Duration
-	LagAlert         time.Duration
-	Transitions      []timeout[Type, Status]
+	pollingFrequency time.Duration
+	errBackOff       time.Duration
+	lagAlert         time.Duration
+	transitions      []timeout[Type, Status]
 }
 
 type timeout[Type any, Status StatusType] struct {
-	DestinationStatus Status
-	TimerFunc         TimerFunc[Type, Status]
-	TimeoutFunc       TimeoutFunc[Type, Status]
+	TimerFunc   TimerFunc[Type, Status]
+	TimeoutFunc TimeoutFunc[Type, Status]
 }
 
 func timeoutPoller[Type any, Status StatusType](w *Workflow[Type, Status], status Status, timeouts timeouts[Type, Status]) {
@@ -145,7 +144,7 @@ func timeoutPoller[Type any, Status StatusType](w *Workflow[Type, Status], statu
 		}
 
 		return nil
-	}, timeouts.ErrBackOff)
+	}, timeouts.errBackOff)
 }
 
 func timeoutAutoInserterConsumer[Type any, Status StatusType](w *Workflow[Type, Status], status Status, timeouts timeouts[Type, Status]) {
@@ -153,11 +152,11 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](w *Workflow[Type, 
 	processName := makeRole(status.String(), "timeout-auto-inserter-consumer")
 
 	w.run(role, processName, func(ctx context.Context) error {
-		consumerFunc := func(ctx context.Context, r *Record[Type, Status]) (bool, error) {
-			for _, config := range timeouts.Transitions {
+		consumerFunc := func(ctx context.Context, r *Record[Type, Status]) (Status, error) {
+			for _, config := range timeouts.transitions {
 				expireAt, err := config.TimerFunc(ctx, r, w.clock.Now())
 				if err != nil {
-					return false, err
+					return 0, err
 				}
 
 				if expireAt.IsZero() {
@@ -167,12 +166,12 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](w *Workflow[Type, 
 
 				err = w.timeoutStore.Create(ctx, r.WorkflowName, r.ForeignID, r.RunID, int(status), expireAt)
 				if err != nil {
-					return false, err
+					return 0, err
 				}
 			}
 
 			// Never update State even when successful
-			return false, nil
+			return 0, nil
 		}
 
 		topic := Topic(w.Name, int(status))
@@ -180,7 +179,7 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](w *Workflow[Type, 
 			ctx,
 			topic,
 			role,
-			WithConsumerPollFrequency(timeouts.PollingFrequency),
+			WithConsumerPollFrequency(timeouts.pollingFrequency),
 			WithEventFilters(
 				shardFilter(1, 1),
 			),
@@ -191,15 +190,15 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](w *Workflow[Type, 
 		defer consumerStream.Close()
 
 		cc := consumerConfig[Type, Status]{
-			pollingFrequency: timeouts.PollingFrequency,
-			errBackOff:       timeouts.ErrBackOff,
+			pollingFrequency: timeouts.pollingFrequency,
+			errBackOff:       timeouts.errBackOff,
 			consumer:         consumerFunc,
 			parallelCount:    1,
-			lagAlert:         timeouts.LagAlert,
+			lagAlert:         timeouts.lagAlert,
 		}
 
 		return consumeForever(ctx, w, cc, consumerStream, status, processName)
-	}, timeouts.ErrBackOff)
+	}, timeouts.errBackOff)
 }
 
 // TimerFunc exists to allow the specification of when the timeout should expire dynamically. If not time is set then a
@@ -211,4 +210,4 @@ type TimerFunc[Type any, Status StatusType] func(ctx context.Context, r *Record[
 // then the timeout is skipped and not retried at a later date. If a non-nil error is returned the TimeoutFunc will be
 // called again until a nil error is returned. If true is returned with a nil error then the provided record and any
 // modifications made to it will be stored and the status updated - continuing the workflow.
-type TimeoutFunc[Type any, Status StatusType] func(ctx context.Context, r *Record[Type, Status], now time.Time) (bool, error)
+type TimeoutFunc[Type any, Status StatusType] func(ctx context.Context, r *Record[Type, Status], now time.Time) (Status, error)

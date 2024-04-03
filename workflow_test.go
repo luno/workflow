@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/luno/jettison/errors"
 	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 	clock_testing "k8s.io/utils/clock/testing"
@@ -102,10 +101,10 @@ func TestWorkflow(t *testing.T) {
 
 	b := workflow.NewBuilder[MyType, status]("user sign up")
 	b.AddStep(StatusInitiated, createProfile, StatusProfileCreated)
-	b.AddStep(StatusProfileCreated, sendEmailConfirmation, StatusEmailConfirmationSent, workflow.WithParallelCount(1))
+	b.AddStep(StatusProfileCreated, sendEmailConfirmation, StatusEmailConfirmationSent)
 	b.AddCallback(StatusEmailConfirmationSent, emailVerifiedCallback, StatusEmailVerified)
 	b.AddCallback(StatusEmailVerified, cellphoneNumberCallback, StatusCellphoneNumberSubmitted)
-	b.AddStep(StatusCellphoneNumberSubmitted, sendOTP, StatusOTPSent, workflow.WithParallelCount(1))
+	b.AddStep(StatusCellphoneNumberSubmitted, sendOTP, StatusOTPSent).WithOptions(workflow.ParallelCount(2))
 	b.AddCallback(StatusOTPSent, otpCallback, StatusOTPVerified)
 	b.AddTimeout(StatusOTPVerified, workflow.DurationTimerFunc[MyType, status](time.Hour), waitForAccountCoolDown, StatusCompleted)
 
@@ -180,13 +179,15 @@ func TestTimeout(t *testing.T) {
 
 	b := workflow.NewBuilder[MyType, status]("user sign up")
 
-	b.AddStep(StatusInitiated, func(ctx context.Context, t *workflow.Record[MyType, status]) (bool, error) {
-		return true, nil
+	b.AddStep(StatusInitiated, func(ctx context.Context, t *workflow.Record[MyType, status]) (status, error) {
+		return StatusProfileCreated, nil
 	}, StatusProfileCreated)
 
-	b.AddTimeout(StatusProfileCreated, workflow.DurationTimerFunc[MyType, status](time.Hour), func(ctx context.Context, t *workflow.Record[MyType, status], now time.Time) (bool, error) {
-		return true, nil
-	}, StatusCompleted, workflow.WithTimeoutPollingFrequency(100*time.Millisecond))
+	b.AddTimeout(StatusProfileCreated, workflow.DurationTimerFunc[MyType, status](time.Hour), func(ctx context.Context, t *workflow.Record[MyType, status], now time.Time) (status, error) {
+		return StatusCompleted, nil
+	}, StatusCompleted).WithOptions(
+		workflow.PollingFrequency(100 * time.Millisecond),
+	)
 
 	recordStore := memrecordstore.New()
 	timeoutStore := memtimeoutstore.New()
@@ -230,142 +231,100 @@ var (
 	expectedOTPVerified       = true
 )
 
-func createProfile(ctx context.Context, mt *workflow.Record[MyType, status]) (bool, error) {
+func createProfile(ctx context.Context, mt *workflow.Record[MyType, status]) (status, error) {
 	mt.Object.Profile = "Andrew Wormald"
 	fmt.Println("creating profile", *mt)
-	return true, nil
+	return StatusProfileCreated, nil
 }
 
-func sendEmailConfirmation(ctx context.Context, mt *workflow.Record[MyType, status]) (bool, error) {
+func sendEmailConfirmation(ctx context.Context, mt *workflow.Record[MyType, status]) (status, error) {
 	fmt.Println("sending email confirmation", *mt)
-	return true, nil
+	return StatusEmailConfirmationSent, nil
 }
 
-func emailVerifiedCallback(ctx context.Context, mt *workflow.Record[MyType, status], r io.Reader) (bool, error) {
+func emailVerifiedCallback(ctx context.Context, mt *workflow.Record[MyType, status], r io.Reader) (status, error) {
 	fmt.Println("email verification callback", *mt)
 
 	b, err := io.ReadAll(r)
 	if err != nil {
-		return false, err
+		return 0, err
 	}
 
 	var ev ExternalEmailVerified
 	err = json.Unmarshal(b, &ev)
 	if err != nil {
-		return false, err
+		return 0, err
 	}
 
-	if ev.IsVerified {
-		mt.Object.Email = "andreww@luno.com"
+	if !ev.IsVerified {
+		// Skip callback
+		return 0, nil
 	}
 
-	return true, nil
+	mt.Object.Email = "andreww@luno.com"
+	return StatusEmailVerified, nil
 }
 
-func cellphoneNumberCallback(ctx context.Context, mt *workflow.Record[MyType, status], r io.Reader) (bool, error) {
+func cellphoneNumberCallback(ctx context.Context, mt *workflow.Record[MyType, status], r io.Reader) (status, error) {
 	fmt.Println("cell phone number callback", *mt)
 	b, err := io.ReadAll(r)
 	if err != nil {
-		return false, err
+		return 0, err
 	}
 
 	var ev ExternalCellPhoneSubmitted
 	err = json.Unmarshal(b, &ev)
 	if err != nil {
-		return false, err
+		return 0, err
 	}
 
 	if ev.DialingCode != "" && ev.Number != "" {
 		mt.Object.Cellphone = fmt.Sprintf("%v %v", ev.DialingCode, ev.Number)
 	}
 
-	return true, nil
+	return StatusCellphoneNumberSubmitted, nil
 }
 
-func sendOTP(ctx context.Context, mt *workflow.Record[MyType, status]) (bool, error) {
+func sendOTP(ctx context.Context, mt *workflow.Record[MyType, status]) (status, error) {
 	fmt.Println("send otp", *mt)
 	mt.Object.OTP = expectedOTP
-	return true, nil
+	return StatusOTPSent, nil
 }
 
-func otpCallback(ctx context.Context, mt *workflow.Record[MyType, status], r io.Reader) (bool, error) {
+func otpCallback(ctx context.Context, mt *workflow.Record[MyType, status], r io.Reader) (status, error) {
 	fmt.Println("otp callback", *mt)
 	b, err := io.ReadAll(r)
 	if err != nil {
-		return false, err
+		return 0, err
 	}
 
 	var otp ExternalOTP
 	err = json.Unmarshal(b, &otp)
 	if err != nil {
-		return false, err
+		return 0, err
 	}
 
 	if otp.OTPCode == expectedOTP {
 		mt.Object.OTPVerified = true
 	}
 
-	return true, nil
+	return StatusOTPVerified, nil
 }
 
-func waitForAccountCoolDown(ctx context.Context, mt *workflow.Record[MyType, status], now time.Time) (bool, error) {
+func waitForAccountCoolDown(ctx context.Context, mt *workflow.Record[MyType, status], now time.Time) (status, error) {
 	fmt.Println(fmt.Sprintf("completed waiting for account cool down %v at %v", *mt, now.String()))
-	return true, nil
-}
-
-func TestNot(t *testing.T) {
-	t.Run("Not - flip true to false", func(t *testing.T) {
-		fn := workflow.Not[string, status](func(ctx context.Context, s *workflow.Record[string, status]) (bool, error) {
-			return true, nil
-		})
-
-		s := "example"
-		r := workflow.Record[string, status]{
-			Object: &s,
-		}
-		actual, err := fn(context.Background(), &r)
-		jtest.RequireNil(t, err)
-		require.False(t, actual)
-	})
-
-	t.Run("Not - flip false to true", func(t *testing.T) {
-		fn := workflow.Not[string, status](func(ctx context.Context, s *workflow.Record[string, status]) (bool, error) {
-			return false, nil
-		})
-
-		s := "example"
-		r := workflow.Record[string, status]{
-			Object: &s,
-		}
-		actual, err := fn(context.Background(), &r)
-		jtest.RequireNil(t, err)
-		require.True(t, actual)
-	})
-
-	t.Run("Not - propagate error and do not flip result to true", func(t *testing.T) {
-		fn := workflow.Not[string, status](func(ctx context.Context, s *workflow.Record[string, status]) (bool, error) {
-			return false, errors.New("expected error")
-		})
-
-		s := "example"
-		r := workflow.Record[string, status]{
-			Object: &s,
-		}
-		actual, err := fn(context.Background(), &r)
-		jtest.Require(t, err, errors.New("expected error"))
-		require.False(t, actual)
-	})
+	return StatusCompleted, nil
 }
 
 func TestWorkflow_ErrWorkflowNotRunning(t *testing.T) {
 	b := workflow.NewBuilder[MyType, status]("sync users")
 
-	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Record[MyType, status]) (bool, error) {
-		return true, nil
+	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Record[MyType, status]) (status, error) {
+		return StatusMiddle, nil
 	}, StatusMiddle)
 
-	b.AddStep(StatusMiddle, func(ctx context.Context, t *workflow.Record[MyType, status]) (bool, error) {
-		return true, nil
+	b.AddStep(StatusMiddle, func(ctx context.Context, t *workflow.Record[MyType, status]) (status, error) {
+		return StatusEnd, nil
 	}, StatusEnd)
 
 	recordStore := memrecordstore.New()
@@ -391,14 +350,14 @@ func TestWorkflow_ErrWorkflowNotRunning(t *testing.T) {
 func TestWorkflow_TestingRequire(t *testing.T) {
 	b := workflow.NewBuilder[MyType, status]("sync users")
 
-	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Record[MyType, status]) (bool, error) {
+	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Record[MyType, status]) (status, error) {
 		t.Object.Email = "andrew@workflow.com"
-		return true, nil
+		return StatusMiddle, nil
 	}, StatusMiddle)
 
-	b.AddStep(StatusMiddle, func(ctx context.Context, t *workflow.Record[MyType, status]) (bool, error) {
+	b.AddStep(StatusMiddle, func(ctx context.Context, t *workflow.Record[MyType, status]) (status, error) {
 		t.Object.Cellphone = "+44 349 8594"
-		return true, nil
+		return StatusEnd, nil
 	}, StatusEnd)
 
 	recordStore := memrecordstore.New()
@@ -442,11 +401,13 @@ func TestTimeTimerFunc(t *testing.T) {
 	b := workflow.NewBuilder[YinYang, status]("timer_func")
 
 	launchDate := time.Date(1992, time.April, 9, 0, 0, 0, 0, time.UTC)
-	b.AddTimeout(StatusStart, workflow.TimeTimerFunc[YinYang, status](launchDate), func(ctx context.Context, t *workflow.Record[YinYang, status], now time.Time) (bool, error) {
-		t.Object.Yin = true
-		t.Object.Yang = true
-		return true, nil
-	},
+	b.AddTimeout(StatusStart,
+		workflow.TimeTimerFunc[YinYang, status](launchDate),
+		func(ctx context.Context, t *workflow.Record[YinYang, status], now time.Time) (status, error) {
+			t.Object.Yin = true
+			t.Object.Yang = true
+			return StatusEnd, nil
+		},
 		StatusEnd,
 	)
 
@@ -512,9 +473,9 @@ func TestConnector(t *testing.T) {
 		},
 	)
 
-	buidler.AddStep(StatusStart, func(ctx context.Context, r *workflow.Record[typeX, status]) (bool, error) {
+	buidler.AddStep(StatusStart, func(ctx context.Context, r *workflow.Record[typeX, status]) (status, error) {
 		r.Object.Val = "workflow step set value"
-		return true, nil
+		return StatusEnd, nil
 	}, StatusEnd)
 
 	workflowX := buidler.Build(
@@ -557,13 +518,14 @@ func TestStepConsumerLag(t *testing.T) {
 	b := workflow.NewBuilder[TimeWatcher, status]("step consumer lag")
 	b.AddStep(
 		StatusStart,
-		func(ctx context.Context, t *workflow.Record[TimeWatcher, status]) (bool, error) {
+		func(ctx context.Context, t *workflow.Record[TimeWatcher, status]) (status, error) {
 			t.Object.ConsumeTime = clock.Now()
 
-			return true, nil
+			return StatusEnd, nil
 		},
 		StatusEnd,
-		workflow.WithStepConsumerLag(lagAmount),
+	).WithOptions(
+		workflow.ConsumeLag(lagAmount),
 	)
 
 	recordStore := memrecordstore.New()

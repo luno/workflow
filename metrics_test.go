@@ -25,9 +25,14 @@ func TestMetricProcessLag(t *testing.T) {
 	metrics.ConsumerLag.Reset()
 
 	b := workflow.NewBuilder[string, status]("example")
-	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Record[string, status]) (bool, error) {
-		return false, nil
-	}, StatusMiddle, workflow.WithStepPollingFrequency(time.Millisecond*100))
+	b.AddStep(StatusStart,
+		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+			return 0, nil
+		},
+		StatusMiddle,
+	).WithOptions(
+		workflow.PollingFrequency(time.Millisecond * 100),
+	)
 
 	nw := time.Now()
 	now := time.Date(nw.Year(), nw.Month(), nw.Day(), nw.Hour(), 0, 0, 0, time.UTC)
@@ -77,7 +82,7 @@ func TestMetricProcessLag(t *testing.T) {
 # HELP workflow_process_lag_seconds lag between now and the current event timestamp in seconds
 # TYPE workflow_process_lag_seconds gauge
 workflow_process_lag_seconds{process_name="outbox-consumer-1-of-1",workflow_name="example"} 3600
-workflow_process_lag_seconds{process_name="start-to-middle-consumer-1-of-1",workflow_name="example"} 0
+workflow_process_lag_seconds{process_name="start-consumer-1-of-1",workflow_name="example"} 0
 `
 
 	err = testutil.CollectAndCompare(metrics.ConsumerLag, strings.NewReader(expected))
@@ -90,9 +95,14 @@ func TestMetricProcessLagAlert(t *testing.T) {
 	metrics.ConsumerLagAlert.Reset()
 
 	b := workflow.NewBuilder[string, status]("example")
-	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Record[string, status]) (bool, error) {
-		return false, nil
-	}, StatusMiddle, workflow.WithStepPollingFrequency(time.Millisecond*100))
+	b.AddStep(StatusStart,
+		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+			return 0, nil
+		},
+		StatusMiddle,
+	).WithOptions(
+		workflow.PollingFrequency(time.Millisecond * 100),
+	)
 
 	nw := time.Now()
 	now := time.Date(nw.Year(), nw.Month(), nw.Day(), nw.Hour(), 0, 0, 0, time.UTC)
@@ -139,12 +149,12 @@ func TestMetricProcessLagAlert(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 750)
 
-	// We expect the "middle-to-end-consumer" to not be lagging as the event for that gets inserted only once we
-	// consume the "start" event in the "start-to-middle-consumer".
+	// We expect the "middle-consumer" to not be lagging as the event for that gets inserted only once we
+	// consume the "start" event in the "start-consumer".
 	expected := `
 # HELP workflow_process_lag_alert Whether or not the consumer lag crosses its alert threshold
 # TYPE workflow_process_lag_alert gauge
-workflow_process_lag_alert{process_name="start-to-middle-consumer-1-of-1",workflow_name="example"} 0
+workflow_process_lag_alert{process_name="start-consumer-1-of-1",workflow_name="example"} 0
 workflow_process_lag_alert{process_name="outbox-consumer-1-of-1",workflow_name="example"} 1
 `
 
@@ -158,12 +168,20 @@ func TestMetricProcessStates(t *testing.T) {
 	metrics.ProcessStates.Reset()
 
 	b := workflow.NewBuilder[string, status]("example")
-	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Record[string, status]) (bool, error) {
-		return true, nil
-	}, StatusMiddle, workflow.WithStepPollingFrequency(time.Millisecond*100))
-	b.AddStep(StatusMiddle, func(ctx context.Context, r *workflow.Record[string, status]) (bool, error) {
-		return true, nil
-	}, StatusEnd, workflow.WithStepPollingFrequency(time.Millisecond*100))
+	b.AddStep(StatusStart,
+		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+			return 0, nil
+		}, StatusMiddle,
+	).WithOptions(
+		workflow.PollingFrequency(time.Millisecond * 100),
+	)
+	b.AddStep(StatusMiddle,
+		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+			return 0, nil
+		}, StatusEnd,
+	).WithOptions(
+		workflow.PollingFrequency(time.Millisecond * 100),
+	)
 
 	nw := time.Now()
 	now := time.Date(nw.Year(), nw.Month(), nw.Day(), nw.Hour(), 0, 0, 0, time.UTC)
@@ -215,8 +233,8 @@ func TestMetricProcessStates(t *testing.T) {
 	expected := `
 # HELP workflow_process_states The current states of all the processes
 # TYPE workflow_process_states gauge
-workflow_process_states{process_name="start-to-middle-consumer-1-of-1", workflow_name="example"} 2
-workflow_process_states{process_name="middle-to-end-consumer-1-of-1", workflow_name="example"} 2
+workflow_process_states{process_name="start-consumer-1-of-1", workflow_name="example"} 2
+workflow_process_states{process_name="middle-consumer-1-of-1", workflow_name="example"} 2
 workflow_process_states{process_name="outbox-consumer-1-of-5",workflow_name="example"} 2
 workflow_process_states{process_name="outbox-consumer-2-of-5",workflow_name="example"} 2
 workflow_process_states{process_name="outbox-consumer-3-of-5",workflow_name="example"} 2
@@ -233,8 +251,8 @@ workflow_process_states{process_name="outbox-consumer-5-of-5",workflow_name="exa
 	expected = `
 # HELP workflow_process_states The current states of all the processes
 # TYPE workflow_process_states gauge
-workflow_process_states{process_name="middle-to-end-consumer-1-of-1",workflow_name="example"} 1
-workflow_process_states{process_name="start-to-middle-consumer-1-of-1",workflow_name="example"} 1
+workflow_process_states{process_name="middle-consumer-1-of-1",workflow_name="example"} 1
+workflow_process_states{process_name="start-consumer-1-of-1",workflow_name="example"} 1
 workflow_process_states{process_name="outbox-consumer-1-of-5",workflow_name="example"} 1
 workflow_process_states{process_name="outbox-consumer-2-of-5",workflow_name="example"} 1
 workflow_process_states{process_name="outbox-consumer-3-of-5",workflow_name="example"} 1
@@ -283,12 +301,20 @@ func TestMetricProcessIdleState(t *testing.T) {
 	metrics.ProcessStates.Reset()
 
 	b := workflow.NewBuilder[string, status]("example")
-	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Record[string, status]) (bool, error) {
-		return true, nil
-	}, StatusMiddle, workflow.WithStepPollingFrequency(time.Millisecond*100))
-	b.AddStep(StatusMiddle, func(ctx context.Context, r *workflow.Record[string, status]) (bool, error) {
-		return true, nil
-	}, StatusEnd, workflow.WithStepPollingFrequency(time.Millisecond*100))
+	b.AddStep(StatusStart,
+		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+			return 0, nil
+		}, StatusMiddle,
+	).WithOptions(
+		workflow.PollingFrequency(time.Millisecond * 100),
+	)
+	b.AddStep(StatusMiddle,
+		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+			return 0, nil
+		}, StatusEnd,
+	).WithOptions(
+		workflow.PollingFrequency(time.Millisecond * 100),
+	)
 
 	nw := time.Now()
 	now := time.Date(nw.Year(), nw.Month(), nw.Day(), nw.Hour(), 0, 0, 0, time.UTC)
@@ -315,8 +341,8 @@ func TestMetricProcessIdleState(t *testing.T) {
 	expected := `
 # HELP workflow_process_states The current states of all the processes
 # TYPE workflow_process_states gauge
-workflow_process_states{process_name="start-to-middle-consumer-1-of-1", workflow_name="example"} 3
-workflow_process_states{process_name="middle-to-end-consumer-1-of-1", workflow_name="example"} 3
+workflow_process_states{process_name="start-consumer-1-of-1", workflow_name="example"} 3
+workflow_process_states{process_name="middle-consumer-1-of-1", workflow_name="example"} 3
 workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="example"} 3
 `
 
@@ -333,8 +359,8 @@ workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="exa
 	expected = `
 # HELP workflow_process_states The current states of all the processes
 # TYPE workflow_process_states gauge
-workflow_process_states{process_name="middle-to-end-consumer-1-of-1",workflow_name="example"} 2
-workflow_process_states{process_name="start-to-middle-consumer-1-of-1",workflow_name="example"} 2
+workflow_process_states{process_name="middle-consumer-1-of-1",workflow_name="example"} 2
+workflow_process_states{process_name="start-consumer-1-of-1",workflow_name="example"} 2
 workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="example"} 2
 `
 
@@ -343,12 +369,12 @@ workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="exa
 
 	wf.Stop()
 
-	// Ensure that the metrics are updated to shutdown when processes are shutdown
+	// Ensure that the metrics are updated to shut down when processes are shutdown
 	expected = `
 # HELP workflow_process_states The current states of all the processes
 # TYPE workflow_process_states gauge
-workflow_process_states{process_name="middle-to-end-consumer-1-of-1",workflow_name="example"} 1
-workflow_process_states{process_name="start-to-middle-consumer-1-of-1",workflow_name="example"} 1
+workflow_process_states{process_name="middle-consumer-1-of-1",workflow_name="example"} 1
+workflow_process_states{process_name="start-consumer-1-of-1",workflow_name="example"} 1
 workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="example"} 1
 `
 
@@ -362,12 +388,20 @@ func TestMetricProcessLatency(t *testing.T) {
 	metrics.ProcessLatency.Reset()
 
 	b := workflow.NewBuilder[string, status]("example")
-	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Record[string, status]) (bool, error) {
-		return true, nil
-	}, StatusMiddle, workflow.WithStepPollingFrequency(time.Millisecond*100))
-	b.AddStep(StatusMiddle, func(ctx context.Context, r *workflow.Record[string, status]) (bool, error) {
-		return true, nil
-	}, StatusEnd, workflow.WithStepPollingFrequency(time.Millisecond*100))
+	b.AddStep(StatusStart,
+		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+			return 0, nil
+		}, StatusMiddle,
+	).WithOptions(
+		workflow.PollingFrequency(time.Millisecond * 100),
+	)
+	b.AddStep(StatusMiddle,
+		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+			return 0, nil
+		}, StatusEnd,
+	).WithOptions(
+		workflow.PollingFrequency(time.Millisecond * 100),
+	)
 
 	nw := time.Now()
 	now := time.Date(nw.Year(), nw.Month(), nw.Day(), nw.Hour(), 0, 0, 0, time.UTC)
@@ -412,41 +446,31 @@ func TestMetricProcessLatency(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 500)
 
-	// We expect the "middle-to-end-consumer" to not be lagging as the event for that gets inserted only once we
-	// consume the "start" event in the "start-to-middle-consumer".
+	// We expect the "middle-consumer" to not be lagging as the event for that gets inserted only once we
+	// consume the "start" event in the "start-consumer".
 	expected := `
 # HELP workflow_process_latency_seconds Event loop latency in seconds
 # TYPE workflow_process_latency_seconds histogram
-workflow_process_latency_seconds_bucket{process_name="start-to-middle-consumer-1-of-1",workflow_name="example",le="0.01"} 1
-workflow_process_latency_seconds_bucket{process_name="start-to-middle-consumer-1-of-1",workflow_name="example",le="0.1"} 1
-workflow_process_latency_seconds_bucket{process_name="start-to-middle-consumer-1-of-1",workflow_name="example",le="1"} 1
-workflow_process_latency_seconds_bucket{process_name="start-to-middle-consumer-1-of-1",workflow_name="example",le="5"} 1
-workflow_process_latency_seconds_bucket{process_name="start-to-middle-consumer-1-of-1",workflow_name="example",le="10"} 1
-workflow_process_latency_seconds_bucket{process_name="start-to-middle-consumer-1-of-1",workflow_name="example",le="60"} 1
-workflow_process_latency_seconds_bucket{process_name="start-to-middle-consumer-1-of-1",workflow_name="example",le="300"} 1
-workflow_process_latency_seconds_bucket{process_name="start-to-middle-consumer-1-of-1",workflow_name="example",le="+Inf"} 1
-workflow_process_latency_seconds_sum{process_name="start-to-middle-consumer-1-of-1",workflow_name="example"} 0
-workflow_process_latency_seconds_count{process_name="start-to-middle-consumer-1-of-1",workflow_name="example"} 1
-workflow_process_latency_seconds_bucket{process_name="middle-to-end-consumer-1-of-1",workflow_name="example",le="0.01"} 1
-workflow_process_latency_seconds_bucket{process_name="middle-to-end-consumer-1-of-1",workflow_name="example",le="0.1"} 1
-workflow_process_latency_seconds_bucket{process_name="middle-to-end-consumer-1-of-1",workflow_name="example",le="1"} 1
-workflow_process_latency_seconds_bucket{process_name="middle-to-end-consumer-1-of-1",workflow_name="example",le="5"} 1
-workflow_process_latency_seconds_bucket{process_name="middle-to-end-consumer-1-of-1",workflow_name="example",le="10"} 1
-workflow_process_latency_seconds_bucket{process_name="middle-to-end-consumer-1-of-1",workflow_name="example",le="60"} 1
-workflow_process_latency_seconds_bucket{process_name="middle-to-end-consumer-1-of-1",workflow_name="example",le="300"} 1
-workflow_process_latency_seconds_bucket{process_name="middle-to-end-consumer-1-of-1",workflow_name="example",le="+Inf"} 1
-workflow_process_latency_seconds_sum{process_name="middle-to-end-consumer-1-of-1",workflow_name="example"} 0
-workflow_process_latency_seconds_count{process_name="middle-to-end-consumer-1-of-1",workflow_name="example"} 1
-workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="0.01"} 2
-workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="0.1"} 2
-workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="1"} 2
-workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="5"} 2
-workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="10"} 2
-workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="60"} 2
-workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="300"} 2
-workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="+Inf"} 2
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="0.01"} 1
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="0.1"} 1
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="1"} 1
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="5"} 1
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="10"} 1
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="60"} 1
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="300"} 1
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="+Inf"} 1
 workflow_process_latency_seconds_sum{process_name="outbox-consumer-1-of-1",workflow_name="example"} 0
-workflow_process_latency_seconds_count{process_name="outbox-consumer-1-of-1",workflow_name="example"} 2
+workflow_process_latency_seconds_count{process_name="outbox-consumer-1-of-1",workflow_name="example"} 1
+workflow_process_latency_seconds_bucket{process_name="start-consumer-1-of-1",workflow_name="example",le="0.01"} 1
+workflow_process_latency_seconds_bucket{process_name="start-consumer-1-of-1",workflow_name="example",le="0.1"} 1
+workflow_process_latency_seconds_bucket{process_name="start-consumer-1-of-1",workflow_name="example",le="1"} 1
+workflow_process_latency_seconds_bucket{process_name="start-consumer-1-of-1",workflow_name="example",le="5"} 1
+workflow_process_latency_seconds_bucket{process_name="start-consumer-1-of-1",workflow_name="example",le="10"} 1
+workflow_process_latency_seconds_bucket{process_name="start-consumer-1-of-1",workflow_name="example",le="60"} 1
+workflow_process_latency_seconds_bucket{process_name="start-consumer-1-of-1",workflow_name="example",le="300"} 1
+workflow_process_latency_seconds_bucket{process_name="start-consumer-1-of-1",workflow_name="example",le="+Inf"} 1
+workflow_process_latency_seconds_sum{process_name="start-consumer-1-of-1",workflow_name="example"} 0
+workflow_process_latency_seconds_count{process_name="start-consumer-1-of-1",workflow_name="example"} 1
 `
 
 	err = testutil.CollectAndCompare(metrics.ProcessLatency, strings.NewReader(expected))
@@ -459,12 +483,20 @@ func TestMetricProcessErrors(t *testing.T) {
 	metrics.ProcessErrors.Reset()
 
 	b := workflow.NewBuilder[string, status]("example")
-	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Record[string, status]) (bool, error) {
-		return false, errors.New("mock error")
-	}, StatusMiddle, workflow.WithStepPollingFrequency(time.Millisecond*100))
-	b.AddStep(StatusMiddle, func(ctx context.Context, r *workflow.Record[string, status]) (bool, error) {
-		return true, nil
-	}, StatusEnd, workflow.WithStepPollingFrequency(time.Millisecond*100))
+	b.AddStep(StatusStart,
+		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+			return 0, errors.New("mock error")
+		}, StatusMiddle,
+	).WithOptions(
+		workflow.PollingFrequency(time.Millisecond * 100),
+	)
+	b.AddStep(StatusMiddle,
+		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+			return 0, nil
+		}, StatusEnd,
+	).WithOptions(
+		workflow.PollingFrequency(time.Millisecond * 100),
+	)
 
 	nw := time.Now()
 	now := time.Date(nw.Year(), nw.Month(), nw.Day(), nw.Hour(), 0, 0, 0, time.UTC)
@@ -507,12 +539,12 @@ func TestMetricProcessErrors(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 100)
 
-	// We expect the "middle-to-end-consumer" to not be lagging as the event for that gets inserted only once we
-	// consume the "start" event in the "start-to-middle-consumer".
+	// We expect the "middle-consumer" to not be lagging as the event for that gets inserted only once we
+	// consume the "start" event in the "start-consumer".
 	expected := `
 # HELP workflow_process_error_count Number of errors processing events
 # TYPE workflow_process_error_count counter
-workflow_process_error_count{process_name="start-to-middle-consumer-1-of-1",workflow_name="example"} 1
+workflow_process_error_count{process_name="start-consumer-1-of-1",workflow_name="example"} 1
 `
 
 	err = testutil.CollectAndCompare(metrics.ProcessErrors, strings.NewReader(expected))
