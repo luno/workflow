@@ -16,24 +16,21 @@ import (
 // the record will not be stored and the event will be skipped and move onto the next event. If a non-nil error is
 // returned then the consumer will back off and try again until a nil error occurs or the retry max has been reached
 // if a Dead Letter Queue has been configured for the workflow.
-type ConsumerFunc[Type any, Status StatusType] func(ctx context.Context, r *Record[Type, Status]) (bool, error)
+type ConsumerFunc[Type any, Status StatusType] func(ctx context.Context, r *Record[Type, Status]) (Status, error)
 
 type consumerConfig[Type any, Status StatusType] struct {
-	pollingFrequency  time.Duration
-	errBackOff        time.Duration
-	destinationStatus Status
-	consumer          ConsumerFunc[Type, Status]
-	parallelCount     int
-	lag               time.Duration
-	lagAlert          time.Duration
+	pollingFrequency time.Duration
+	errBackOff       time.Duration
+	consumer         ConsumerFunc[Type, Status]
+	parallelCount    int
+	lag              time.Duration
+	lagAlert         time.Duration
 }
 
 func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentStatus Status, p consumerConfig[Type, Status], shard, totalShards int) {
 	role := makeRole(
 		w.Name,
 		fmt.Sprintf("%v", int(currentStatus)),
-		"to",
-		fmt.Sprintf("%v", int(p.destinationStatus)),
 		"consumer",
 		fmt.Sprintf("%v", shard),
 		"of",
@@ -49,8 +46,6 @@ func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentSta
 	// storing in the record store, event streamer, timeoutstore, or offset store.
 	processName := makeRole(
 		fmt.Sprintf("%v", currentStatus.String()),
-		"to",
-		fmt.Sprintf("%v", p.destinationStatus.String()),
 		"consumer",
 		fmt.Sprintf("%v", shard),
 		"of",
@@ -134,7 +129,7 @@ func consumeForever[Type any, Status StatusType](ctx context.Context, w *Workflo
 		}
 
 		t2 := w.clock.Now()
-		err = consume(ctx, w, record, p.consumer, ack, p.destinationStatus, processName)
+		err = consume(ctx, w, record, p.consumer, ack, processName)
 		if err != nil {
 			return err
 		}
@@ -163,7 +158,6 @@ func consume[Type any, Status StatusType](
 	current *WireRecord,
 	cf ConsumerFunc[Type, Status],
 	ack Ack,
-	destinationStatus Status,
 	processName string,
 ) error {
 	var t Type
@@ -178,30 +172,29 @@ func consume[Type any, Status StatusType](
 		Object:     &t,
 	}
 
-	ok, err := cf(ctx, &record)
+	next, err := cf(ctx, &record)
 	if err != nil {
 		return errors.Wrap(err, "failed to consume", j.MKV{
 			"workflow_name":      current.WorkflowName,
 			"foreign_id":         current.ForeignID,
 			"current_status":     Status(current.Status).String(),
 			"current_status_int": current.Status,
-			"destination_status": destinationStatus,
 		})
 	}
 
-	if ok {
+	if int(next) != 0 {
 		b, err := Marshal(&record.Object)
 		if err != nil {
 			return err
 		}
 
-		isEnd := w.endPoints[destinationStatus]
+		isEnd := w.endPoints[next]
 		wr := &WireRecord{
 			ID:           record.ID,
 			RunID:        record.RunID,
 			WorkflowName: record.WorkflowName,
 			ForeignID:    record.ForeignID,
-			Status:       int(destinationStatus),
+			Status:       int(next),
 			IsStart:      false,
 			IsEnd:        isEnd,
 			Object:       b,

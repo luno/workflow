@@ -19,12 +19,12 @@ import (
 
 func TestWorkflow_Schedule(t *testing.T) {
 	b := workflow.NewBuilder[MyType, status]("sync users")
-	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Record[MyType, status]) (bool, error) {
-		return true, nil
+	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Record[MyType, status]) (status, error) {
+		return StatusMiddle, nil
 	}, StatusMiddle)
 
-	b.AddStep(StatusMiddle, func(ctx context.Context, t *workflow.Record[MyType, status]) (bool, error) {
-		return true, nil
+	b.AddStep(StatusMiddle, func(ctx context.Context, t *workflow.Record[MyType, status]) (status, error) {
+		return StatusEnd, nil
 	}, StatusEnd)
 
 	now := time.Date(2023, time.April, 9, 8, 30, 0, 0, time.UTC)
@@ -86,8 +86,8 @@ func TestWorkflow_Schedule(t *testing.T) {
 
 func TestWorkflow_ScheduleShutdown(t *testing.T) {
 	b := workflow.NewBuilder[MyType, status]("example")
-	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Record[MyType, status]) (bool, error) {
-		return true, nil
+	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Record[MyType, status]) (status, error) {
+		return 0, nil
 	}, StatusEnd)
 
 	wf := b.Build(
@@ -118,7 +118,7 @@ func TestWorkflow_ScheduleShutdown(t *testing.T) {
 
 	require.Equal(t, map[string]workflow.State{
 		"start-andrew-scheduler-@monthly": workflow.StateRunning,
-		"start-to-end-consumer-1-of-1":    workflow.StateRunning,
+		"start-consumer-1-of-1":           workflow.StateRunning,
 		"outbox-consumer-1-of-1":          workflow.StateRunning,
 	}, wf.States())
 
@@ -126,19 +126,19 @@ func TestWorkflow_ScheduleShutdown(t *testing.T) {
 
 	require.Equal(t, map[string]workflow.State{
 		"start-andrew-scheduler-@monthly": workflow.StateShutdown,
-		"start-to-end-consumer-1-of-1":    workflow.StateShutdown,
+		"start-consumer-1-of-1":           workflow.StateShutdown,
 		"outbox-consumer-1-of-1":          workflow.StateShutdown,
 	}, wf.States())
 }
 
 func TestWorkflow_ScheduleFilter(t *testing.T) {
 	b := workflow.NewBuilder[MyType, status]("sync users")
-	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Record[MyType, status]) (bool, error) {
-		return true, nil
+	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Record[MyType, status]) (status, error) {
+		return StatusMiddle, nil
 	}, StatusMiddle)
 
-	b.AddStep(StatusMiddle, func(ctx context.Context, t *workflow.Record[MyType, status]) (bool, error) {
-		return true, nil
+	b.AddStep(StatusMiddle, func(ctx context.Context, t *workflow.Record[MyType, status]) (status, error) {
+		return StatusEnd, nil
 	}, StatusEnd)
 
 	now := time.Date(2023, time.April, 9, 8, 30, 0, 0, time.UTC)

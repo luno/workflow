@@ -23,19 +23,19 @@ type Deps struct {
 func Workflow(d Deps) *workflow.Workflow[GettingStarted, examples.Status] {
 	b := workflow.NewBuilder[GettingStarted, examples.Status]("getting started")
 
-	b.AddStep(examples.StatusStarted, func(ctx context.Context, r *workflow.Record[GettingStarted, examples.Status]) (bool, error) {
+	b.AddStep(examples.StatusStarted, func(ctx context.Context, r *workflow.Record[GettingStarted, examples.Status]) (examples.Status, error) {
 		r.Object.ReadTheDocs = "✅"
-		return true, nil
+		return examples.StatusReadTheDocs, nil
 	}, examples.StatusReadTheDocs)
 
-	b.AddStep(examples.StatusReadTheDocs, func(ctx context.Context, r *workflow.Record[GettingStarted, examples.Status]) (bool, error) {
+	b.AddStep(examples.StatusReadTheDocs, func(ctx context.Context, r *workflow.Record[GettingStarted, examples.Status]) (examples.Status, error) {
 		r.Object.FollowAnExample = "✅"
-		return true, nil
+		return examples.StatusFollowedTheExample, nil
 	}, examples.StatusFollowedTheExample)
 
-	b.AddStep(examples.StatusFollowedTheExample, func(ctx context.Context, r *workflow.Record[GettingStarted, examples.Status]) (bool, error) {
+	b.AddStep(examples.StatusFollowedTheExample, func(ctx context.Context, r *workflow.Record[GettingStarted, examples.Status]) (examples.Status, error) {
 		r.Object.CreateAFunExample = "✅"
-		return true, nil
+		return examples.StatusCreatedAFunExample, nil
 	}, examples.StatusCreatedAFunExample)
 
 	return b.Build(

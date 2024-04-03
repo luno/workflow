@@ -2,7 +2,7 @@ package workflow
 
 import (
 	"context"
-	"path"
+	"fmt"
 	"time"
 
 	"k8s.io/utils/clock"
@@ -26,7 +26,7 @@ func NewBuilder[Type any, Status StatusType](name string) *Builder[Type, Status]
 			defaultPollingFrequency: defaultPollingFrequency,
 			defaultErrBackOff:       defaultErrBackOff,
 			defaultLagAlert:         defaultLagAlert,
-			consumers:               make(map[Status][]consumerConfig[Type, Status]),
+			consumers:               make(map[Status]consumerConfig[Type, Status]),
 			callback:                make(map[Status][]callback[Type, Status]),
 			timeouts:                make(map[Status]timeouts[Type, Status]),
 			graph:                   make(map[int][]int),
@@ -40,176 +40,151 @@ type Builder[Type any, Status StatusType] struct {
 	workflow *Workflow[Type, Status]
 }
 
-func (b *Builder[Type, Status]) AddStep(from Status, c ConsumerFunc[Type, Status], to Status, opts ...StepOption) {
+func (b *Builder[Type, Status]) AddStep(from Status, c ConsumerFunc[Type, Status], allowedDestinations ...Status) *stepUpdater[Type, Status] {
+	b.workflow.validStatuses[from] = true
+
+	if _, exists := b.workflow.consumers[from]; exists {
+		panic(fmt.Sprintf("'AddStep(%v,' already exists. Only one Step can be configured to consume the status", from.String()))
+	}
+
+	if _, ok := b.workflow.graph[int(from)]; !ok {
+		b.workflow.graphOrder = append(b.workflow.graphOrder, int(from))
+	}
+
+	for _, to := range allowedDestinations {
+		b.workflow.graph[int(from)] = append(b.workflow.graph[int(from)], int(to))
+		b.workflow.validStatuses[to] = true
+	}
+
 	p := consumerConfig[Type, Status]{
-		destinationStatus: to,
-		consumer:          c,
+		consumer:         c,
+		pollingFrequency: b.workflow.defaultPollingFrequency,
+		errBackOff:       b.workflow.defaultErrBackOff,
+		lagAlert:         b.workflow.defaultLagAlert,
 	}
 
-	var so stepOptions
+	b.workflow.consumers[from] = p
+
+	return &stepUpdater[Type, Status]{
+		from:     from,
+		workflow: b.workflow,
+	}
+}
+
+type stepUpdater[Type any, Status StatusType] struct {
+	from     Status
+	workflow *Workflow[Type, Status]
+}
+
+func (s *stepUpdater[Type, Status]) WithOptions(opts ...Option) {
+	consumer := s.workflow.consumers[s.from]
+
+	consumerOpts := options{
+		parallelCount:    consumer.parallelCount,
+		pollingFrequency: consumer.pollingFrequency,
+		errBackOff:       consumer.errBackOff,
+		lag:              consumer.lag,
+		lagAlert:         consumer.lagAlert,
+	}
 	for _, opt := range opts {
-		opt(&so)
+		opt(&consumerOpts)
 	}
 
-	if so.parallelCount > 0 {
-		p.parallelCount = so.parallelCount
-	}
-
-	p.pollingFrequency = b.workflow.defaultPollingFrequency
-	if so.pollingFrequency.Nanoseconds() != 0 {
-		p.pollingFrequency = so.pollingFrequency
-	}
-
-	p.errBackOff = b.workflow.defaultErrBackOff
-	if so.errBackOff.Nanoseconds() != 0 {
-		p.errBackOff = so.errBackOff
-	}
-
-	if so.lag.Nanoseconds() != 0 {
-		p.lag = so.lag
-	}
-
-	p.lagAlert = b.workflow.defaultLagAlert
-
-	// If lag is specified then offset the lag alert by the default amount. Custom lag alert values, if set, will
-	// still take priority.
-	if p.lag.Nanoseconds() != 0 {
-		p.lagAlert = b.workflow.defaultLagAlert + p.lag
-	}
-
-	// If a customer lag alert is provided then override the current defaults.
-	if so.lagAlert.Nanoseconds() != 0 {
-		p.lagAlert = so.lagAlert
-	}
-
-	if _, ok := b.workflow.graph[int(from)]; !ok {
-		b.workflow.graphOrder = append(b.workflow.graphOrder, int(from))
-	}
-	b.workflow.graph[int(from)] = append(b.workflow.graph[int(from)], int(to))
-	b.workflow.validStatuses[from] = true
-	b.workflow.validStatuses[to] = true
-	b.workflow.consumers[from] = append(b.workflow.consumers[from], p)
+	consumer.pollingFrequency = consumerOpts.pollingFrequency
+	consumer.parallelCount = consumerOpts.parallelCount
+	consumer.errBackOff = consumerOpts.errBackOff
+	consumer.lag = consumerOpts.lag
+	consumer.lagAlert = consumerOpts.lagAlert
+	s.workflow.consumers[s.from] = consumer
 }
 
-type stepOptions struct {
-	parallelCount    int
-	pollingFrequency time.Duration
-	errBackOff       time.Duration
-	lag              time.Duration
-	lagAlert         time.Duration
-}
-
-type StepOption func(so *stepOptions)
-
-func WithParallelCount(instances int) StepOption {
-	return func(so *stepOptions) {
-		so.parallelCount = instances
-	}
-}
-
-func WithStepPollingFrequency(d time.Duration) StepOption {
-	return func(so *stepOptions) {
-		so.pollingFrequency = d
-	}
-}
-
-func WithStepErrBackOff(d time.Duration) StepOption {
-	return func(so *stepOptions) {
-		so.errBackOff = d
-	}
-}
-
-func WithStepLagAlert(d time.Duration) StepOption {
-	return func(so *stepOptions) {
-		so.lagAlert = d
-	}
-}
-
-func WithStepConsumerLag(d time.Duration) StepOption {
-	return func(so *stepOptions) {
-		so.lag = d
-	}
-}
-
-func (b *Builder[Type, Status]) AddCallback(from Status, fn CallbackFunc[Type, Status], to Status) {
+func (b *Builder[Type, Status]) AddCallback(from Status, fn CallbackFunc[Type, Status], allowedDestinations ...Status) {
 	c := callback[Type, Status]{
-		DestinationStatus: to,
-		CallbackFunc:      fn,
+		CallbackFunc: fn,
 	}
 
 	if _, ok := b.workflow.graph[int(from)]; !ok {
 		b.workflow.graphOrder = append(b.workflow.graphOrder, int(from))
 	}
-	b.workflow.graph[int(from)] = append(b.workflow.graph[int(from)], int(to))
+
+	for _, to := range allowedDestinations {
+		b.workflow.graph[int(from)] = append(b.workflow.graph[int(from)], int(to))
+		b.workflow.validStatuses[to] = true
+	}
+
 	b.workflow.validStatuses[from] = true
-	b.workflow.validStatuses[to] = true
 	b.workflow.callback[from] = append(b.workflow.callback[from], c)
 }
 
-type timeoutOptions struct {
-	pollingFrequency time.Duration
-	errBackOff       time.Duration
-	lagAlert         time.Duration
-}
-
-type TimeoutOption func(so *timeoutOptions)
-
-func WithTimeoutPollingFrequency(d time.Duration) TimeoutOption {
-	return func(to *timeoutOptions) {
-		to.pollingFrequency = d
-	}
-}
-
-func WithTimeoutErrBackOff(d time.Duration) TimeoutOption {
-	return func(to *timeoutOptions) {
-		to.errBackOff = d
-	}
-}
-
-func WithTimeoutLagAlert(d time.Duration) TimeoutOption {
-	return func(to *timeoutOptions) {
-		to.lagAlert = d
-	}
-}
-
-func (b *Builder[Type, Status]) AddTimeout(from Status, timer TimerFunc[Type, Status], tf TimeoutFunc[Type, Status], to Status, opts ...TimeoutOption) {
+func (b *Builder[Type, Status]) AddTimeout(from Status, timer TimerFunc[Type, Status], tf TimeoutFunc[Type, Status], allowedDestinations ...Status) *timeoutUpdater[Type, Status] {
 	timeouts := b.workflow.timeouts[from]
 
 	t := timeout[Type, Status]{
-		DestinationStatus: to,
-		TimerFunc:         timer,
-		TimeoutFunc:       tf,
+		TimerFunc:   timer,
+		TimeoutFunc: tf,
 	}
 
-	var topt timeoutOptions
-	for _, opt := range opts {
-		opt(&topt)
+	if timeouts.pollingFrequency.Nanoseconds() == 0 {
+		timeouts.pollingFrequency = b.workflow.defaultPollingFrequency
 	}
 
-	timeouts.PollingFrequency = b.workflow.defaultPollingFrequency
-	if topt.pollingFrequency.Nanoseconds() != 0 {
-		timeouts.PollingFrequency = topt.pollingFrequency
+	if timeouts.errBackOff.Nanoseconds() == 0 {
+		timeouts.errBackOff = b.workflow.defaultErrBackOff
 	}
 
-	timeouts.ErrBackOff = b.workflow.defaultErrBackOff
-	if topt.errBackOff.Nanoseconds() != 0 {
-		timeouts.ErrBackOff = topt.errBackOff
+	if timeouts.lagAlert.Nanoseconds() == 0 {
+		timeouts.lagAlert = b.workflow.defaultLagAlert
 	}
 
-	timeouts.LagAlert = b.workflow.defaultLagAlert
-	if topt.lagAlert.Nanoseconds() != 0 {
-		timeouts.LagAlert = topt.lagAlert
-	}
-
-	timeouts.Transitions = append(timeouts.Transitions, t)
+	b.workflow.validStatuses[from] = true
 
 	if _, ok := b.workflow.graph[int(from)]; !ok {
 		b.workflow.graphOrder = append(b.workflow.graphOrder, int(from))
 	}
-	b.workflow.graph[int(from)] = append(b.workflow.graph[int(from)], int(to))
-	b.workflow.validStatuses[from] = true
-	b.workflow.validStatuses[to] = true
+
+	for _, to := range allowedDestinations {
+		b.workflow.graph[int(from)] = append(b.workflow.graph[int(from)], int(to))
+		b.workflow.validStatuses[to] = true
+	}
+
+	timeouts.transitions = append(timeouts.transitions, t)
 	b.workflow.timeouts[from] = timeouts
+
+	return &timeoutUpdater[Type, Status]{
+		from:     from,
+		workflow: b.workflow,
+	}
+}
+
+type timeoutUpdater[Type any, Status StatusType] struct {
+	from     Status
+	workflow *Workflow[Type, Status]
+}
+
+func (s *timeoutUpdater[Type, Status]) WithOptions(opts ...Option) {
+	timeout := s.workflow.timeouts[s.from]
+
+	timeoutOpts := options{
+		pollingFrequency: timeout.pollingFrequency,
+		errBackOff:       timeout.errBackOff,
+		lagAlert:         timeout.lagAlert,
+	}
+	for _, opt := range opts {
+		opt(&timeoutOpts)
+	}
+
+	if timeoutOpts.parallelCount != 0 {
+		panic("Cannot configure parallel timeout")
+	}
+
+	if timeoutOpts.lag != 0 {
+		panic("Cannot configure lag for timeout")
+	}
+
+	timeout.pollingFrequency = timeoutOpts.pollingFrequency
+	timeout.errBackOff = timeoutOpts.errBackOff
+	timeout.lagAlert = timeoutOpts.lagAlert
+	s.workflow.timeouts[s.from] = timeout
 }
 
 func (b *Builder[Type, Status]) AddConnector(name string, c Consumer, cf ConnectorFunc[Type, Status], opts ...ConnectorOption) {
@@ -299,48 +274,6 @@ func WithDebugMode() BuildOption {
 	}
 }
 
-func (b *Builder[Type, Status]) buildGraph() map[Status][]Status {
-	graph := make(map[Status][]Status)
-	dedupe := make(map[string]bool)
-	for s, i := range b.workflow.consumers {
-		for _, p := range i {
-			key := path.Join(s.String(), p.destinationStatus.String())
-			if dedupe[key] {
-				continue
-			}
-
-			graph[s] = append(graph[s], p.destinationStatus)
-			dedupe[key] = true
-		}
-	}
-
-	for s, i := range b.workflow.callback {
-		for _, c := range i {
-			key := path.Join(s.String(), c.DestinationStatus.String())
-			if dedupe[key] {
-				continue
-			}
-
-			graph[s] = append(graph[s], c.DestinationStatus)
-			dedupe[key] = true
-		}
-	}
-
-	for s, t := range b.workflow.timeouts {
-		for _, t := range t.Transitions {
-			key := path.Join(s.String(), t.DestinationStatus.String())
-			if dedupe[key] {
-				continue
-			}
-
-			graph[s] = append(graph[s], t.DestinationStatus)
-			dedupe[key] = true
-		}
-	}
-
-	return graph
-}
-
 func (b *Builder[Type, Status]) determineEndPoints(graph map[int][]int) map[Status]bool {
 	endpoints := make(map[Status]bool)
 	for _, destinations := range graph {
@@ -354,17 +287,6 @@ func (b *Builder[Type, Status]) determineEndPoints(graph map[int][]int) map[Stat
 	}
 
 	return endpoints
-}
-
-func Not[Type any, Status StatusType](c ConsumerFunc[Type, Status]) ConsumerFunc[Type, Status] {
-	return func(ctx context.Context, r *Record[Type, Status]) (bool, error) {
-		pass, err := c(ctx, r)
-		if err != nil {
-			return false, err
-		}
-
-		return !pass, nil
-	}
 }
 
 func DurationTimerFunc[Type any, Status StatusType](duration time.Duration) TimerFunc[Type, Status] {

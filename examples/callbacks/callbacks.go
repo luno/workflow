@@ -27,21 +27,21 @@ type Deps struct {
 func ExampleWorkflow(d Deps) *workflow.Workflow[Example, examples.Status] {
 	b := workflow.NewBuilder[Example, examples.Status]("callback example")
 
-	b.AddCallback(examples.StatusStarted, func(ctx context.Context, r *workflow.Record[Example, examples.Status], reader io.Reader) (bool, error) {
+	b.AddCallback(examples.StatusStarted, func(ctx context.Context, r *workflow.Record[Example, examples.Status], reader io.Reader) (examples.Status, error) {
 		b, err := io.ReadAll(reader)
 		if err != nil {
-			return false, err
+			return 0, err
 		}
 
 		var e EmailConfirmationResponse
 		err = json.Unmarshal(b, &e)
 		if err != nil {
-			return false, err
+			return 0, err
 		}
 
 		r.Object.EmailConfirmed = e.Confirmed
 
-		return true, nil
+		return examples.StatusFollowedTheExample, nil
 	}, examples.StatusFollowedTheExample)
 
 	return b.Build(

@@ -17,16 +17,21 @@ import (
 
 func TestInternalState(t *testing.T) {
 	b := workflow.NewBuilder[string, status]("example")
-	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Record[string, status]) (bool, error) {
-		return true, nil
+	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+		return StatusMiddle, nil
 	}, StatusMiddle)
 
-	b.AddStep(StatusMiddle, func(ctx context.Context, r *workflow.Record[string, status]) (bool, error) {
-		return true, nil
-	}, StatusEnd, workflow.WithParallelCount(3))
+	b.AddStep(StatusMiddle,
+		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+			return StatusEnd, nil
+		},
+		StatusEnd,
+	).WithOptions(
+		workflow.ParallelCount(3),
+	)
 
-	b.AddTimeout(StatusInitiated, workflow.DurationTimerFunc[string, status](time.Hour), func(ctx context.Context, r *workflow.Record[string, status], now time.Time) (bool, error) {
-		return true, nil
+	b.AddTimeout(StatusInitiated, workflow.DurationTimerFunc[string, status](time.Hour), func(ctx context.Context, r *workflow.Record[string, status], now time.Time) (status, error) {
+		return StatusCompleted, nil
 	}, StatusCompleted)
 
 	ctx := context.Background()
@@ -59,10 +64,10 @@ func TestInternalState(t *testing.T) {
 	time.Sleep(time.Second)
 
 	require.Equal(t, map[string]workflow.State{
-		"middle-to-end-consumer-1-of-3":                             workflow.StateRunning,
-		"middle-to-end-consumer-2-of-3":                             workflow.StateRunning,
-		"middle-to-end-consumer-3-of-3":                             workflow.StateRunning,
-		"start-to-middle-consumer-1-of-1":                           workflow.StateRunning,
+		"middle-consumer-1-of-3":                                    workflow.StateRunning,
+		"middle-consumer-2-of-3":                                    workflow.StateRunning,
+		"middle-consumer-3-of-3":                                    workflow.StateRunning,
+		"start-consumer-1-of-1":                                     workflow.StateRunning,
 		"initiated-timeout-auto-inserter-consumer":                  workflow.StateRunning,
 		"initiated-timeout-consumer":                                workflow.StateRunning,
 		"consume-other-stream-connector-to-example-consumer-1-of-2": workflow.StateRunning,
@@ -72,10 +77,10 @@ func TestInternalState(t *testing.T) {
 
 	wf.Stop()
 	require.Equal(t, map[string]workflow.State{
-		"middle-to-end-consumer-1-of-3":                             workflow.StateShutdown,
-		"middle-to-end-consumer-2-of-3":                             workflow.StateShutdown,
-		"middle-to-end-consumer-3-of-3":                             workflow.StateShutdown,
-		"start-to-middle-consumer-1-of-1":                           workflow.StateShutdown,
+		"middle-consumer-1-of-3":                                    workflow.StateShutdown,
+		"middle-consumer-2-of-3":                                    workflow.StateShutdown,
+		"middle-consumer-3-of-3":                                    workflow.StateShutdown,
+		"start-consumer-1-of-1":                                     workflow.StateShutdown,
 		"initiated-timeout-auto-inserter-consumer":                  workflow.StateShutdown,
 		"initiated-timeout-consumer":                                workflow.StateShutdown,
 		"consume-other-stream-connector-to-example-consumer-1-of-2": workflow.StateShutdown,

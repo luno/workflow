@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"reflect"
 	"runtime"
@@ -35,6 +36,24 @@ func (s testStatus) String() string {
 	}
 }
 
+func TestGraph(t *testing.T) {
+	b := NewBuilder[string, testStatus]("determine starting points")
+	b.AddStep(statusStart, nil, statusMiddle)
+	b.AddStep(statusMiddle, nil, statusEnd)
+	wf := b.Build(nil, nil, nil, nil)
+
+	expected := map[int][]int{
+		int(statusStart): {
+			int(statusMiddle),
+		},
+		int(statusMiddle): {
+			int(statusEnd),
+		},
+	}
+
+	require.Equal(t, expected, wf.graph)
+}
+
 func TestDetermineEndPoints(t *testing.T) {
 	b := NewBuilder[string, testStatus]("determine starting points")
 	b.AddStep(statusStart, nil, statusMiddle)
@@ -50,26 +69,18 @@ func TestDetermineEndPoints(t *testing.T) {
 
 func TestWithStepErrBackOff(t *testing.T) {
 	b := NewBuilder[string, testStatus]("determine starting points")
-	b.AddStep(statusStart, nil, statusMiddle, WithStepErrBackOff(time.Minute))
+	b.AddStep(statusStart, nil, statusMiddle).WithOptions(ErrBackOff(time.Minute))
 	wf := b.Build(nil, nil, nil, nil)
 
-	require.Equal(t, time.Minute, wf.consumers[statusStart][0].errBackOff)
-}
-
-func TestStepDestinationStatus(t *testing.T) {
-	b := NewBuilder[string, testStatus]("determine starting points")
-	b.AddStep(statusStart, nil, statusMiddle)
-	wf := b.Build(nil, nil, nil, nil)
-
-	require.Equal(t, statusMiddle, wf.consumers[statusStart][0].destinationStatus)
+	require.Equal(t, time.Minute, wf.consumers[statusStart].errBackOff)
 }
 
 func TestWithParallelCount(t *testing.T) {
 	b := NewBuilder[string, testStatus]("determine starting points")
-	b.AddStep(statusStart, nil, statusMiddle, WithParallelCount(100))
+	b.AddStep(statusStart, nil, statusMiddle).WithOptions(ParallelCount(100))
 	wf := b.Build(nil, nil, nil, nil)
 
-	require.Equal(t, int(100), wf.consumers[statusStart][0].parallelCount)
+	require.Equal(t, int(100), wf.consumers[statusStart].parallelCount)
 }
 
 func TestWithClock(t *testing.T) {
@@ -84,15 +95,21 @@ func TestWithClock(t *testing.T) {
 }
 
 func TestAddingCallbacks(t *testing.T) {
-	var exampleFn CallbackFunc[string, testStatus] = func(ctx context.Context, s *Record[string, testStatus], r io.Reader) (bool, error) {
-		return true, nil
+	var exampleFn CallbackFunc[string, testStatus] = func(ctx context.Context, s *Record[string, testStatus], r io.Reader) (testStatus, error) {
+		return statusEnd, nil
 	}
 
 	b := NewBuilder[string, testStatus]("determine starting points")
 	b.AddCallback(statusStart, exampleFn, statusEnd)
 	wf := b.Build(nil, nil, nil, nil)
 
-	require.Equal(t, statusEnd, wf.callback[statusStart][0].DestinationStatus)
+	expected := map[int][]int{
+		int(statusStart): {
+			int(statusEnd),
+		},
+	}
+
+	require.Equal(t, expected, wf.graph)
 	require.NotNil(t, wf.callback[statusStart][0].CallbackFunc)
 }
 
@@ -101,15 +118,16 @@ func TestWithTimeoutErrBackOff(t *testing.T) {
 	b.AddTimeout(
 		statusStart,
 		DurationTimerFunc[string, testStatus](time.Hour),
-		func(ctx context.Context, t *Record[string, testStatus], now time.Time) (bool, error) {
-			return true, nil
+		func(ctx context.Context, t *Record[string, testStatus], now time.Time) (testStatus, error) {
+			return statusEnd, nil
 		},
 		statusEnd,
-		WithTimeoutErrBackOff(time.Minute),
+	).WithOptions(
+		ErrBackOff(time.Minute),
 	)
 	wf := b.Build(nil, nil, nil, nil)
 
-	require.Equal(t, time.Minute, wf.timeouts[statusStart].ErrBackOff)
+	require.Equal(t, time.Minute, wf.timeouts[statusStart].errBackOff)
 }
 
 func TestWithTimeoutPollingFrequency(t *testing.T) {
@@ -117,15 +135,16 @@ func TestWithTimeoutPollingFrequency(t *testing.T) {
 	b.AddTimeout(
 		statusStart,
 		DurationTimerFunc[string, testStatus](time.Hour),
-		func(ctx context.Context, t *Record[string, testStatus], now time.Time) (bool, error) {
-			return true, nil
+		func(ctx context.Context, t *Record[string, testStatus], now time.Time) (testStatus, error) {
+			return statusEnd, nil
 		},
 		statusEnd,
-		WithTimeoutPollingFrequency(time.Minute),
+	).WithOptions(
+		PollingFrequency(time.Minute),
 	)
 	wf := b.Build(nil, nil, nil, nil)
 
-	require.Equal(t, time.Minute, wf.timeouts[statusStart].PollingFrequency)
+	require.Equal(t, time.Minute, wf.timeouts[statusStart].pollingFrequency)
 }
 
 func TestConnectorConstruction(t *testing.T) {
@@ -170,7 +189,7 @@ var _ Consumer = (*mockConsumer)(nil)
 func TestWithStepLagAlert(t *testing.T) {
 	testCases := []struct {
 		name             string
-		opts             []StepOption
+		opts             []Option
 		expectedLagAlert time.Duration
 	}{
 		{
@@ -179,23 +198,31 @@ func TestWithStepLagAlert(t *testing.T) {
 		},
 		{
 			name: "Ensure lag alert value is assigned",
-			opts: []StepOption{
-				WithStepLagAlert(time.Hour * 9),
+			opts: []Option{
+				LagAlert(time.Hour * 9),
 			},
 			expectedLagAlert: time.Hour * 9,
 		},
 		{
 			name: "Ensure default lag alert is offset if accompanied with a step consumer lag",
-			opts: []StepOption{
-				WithStepConsumerLag(time.Hour),
+			opts: []Option{
+				ConsumeLag(time.Hour),
 			},
 			expectedLagAlert: defaultLagAlert + time.Hour,
 		},
 		{
 			name: "Ensure provided lag alert overrides default lag alert and is not offset when consumer lag is also present",
-			opts: []StepOption{
-				WithStepConsumerLag(time.Hour),
-				WithStepLagAlert(time.Hour * 9),
+			opts: []Option{
+				ConsumeLag(time.Hour),
+				LagAlert(time.Hour * 9),
+			},
+			expectedLagAlert: time.Hour * 9,
+		},
+		{
+			name: "Ensure order provided doesnt impact override lag alert",
+			opts: []Option{
+				LagAlert(time.Hour * 9),
+				ConsumeLag(time.Hour),
 			},
 			expectedLagAlert: time.Hour * 9,
 		},
@@ -206,17 +233,43 @@ func TestWithStepLagAlert(t *testing.T) {
 			b := NewBuilder[string, testStatus]("consumer lag alert")
 			b.AddStep(
 				statusStart,
-				func(ctx context.Context, r *Record[string, testStatus]) (bool, error) {
-					return true, nil
+				func(ctx context.Context, r *Record[string, testStatus]) (testStatus, error) {
+					return statusEnd, nil
 				},
 				statusEnd,
+			).WithOptions(
 				tc.opts...,
 			)
+
 			wf := b.Build(nil, nil, nil, nil)
 
-			require.Equal(t, tc.expectedLagAlert, wf.consumers[statusStart][0].lagAlert)
+			require.Equal(t, tc.expectedLagAlert, wf.consumers[statusStart].lagAlert)
 		})
 	}
+}
+
+func TestAddStepSingleUseValidation(t *testing.T) {
+	b := NewBuilder[string, testStatus]("consumer lag")
+	b.AddStep(
+		statusStart,
+		func(ctx context.Context, r *Record[string, testStatus]) (testStatus, error) {
+			return statusEnd, nil
+		},
+		statusEnd,
+	)
+
+	// Should panic as setting a second config of statusStart
+	require.PanicsWithValue(t,
+		fmt.Sprintf("'AddStep(%v,' already exists. Only one Step can be configured to consume the status", statusStart.String()),
+		func() {
+			b.AddStep(
+				statusStart,
+				func(ctx context.Context, r *Record[string, testStatus]) (testStatus, error) {
+					return statusEnd, nil
+				},
+				statusEnd,
+			)
+		}, "Adding duplicate step should panic")
 }
 
 func TestWithStepConsumerLag(t *testing.T) {
@@ -224,13 +277,14 @@ func TestWithStepConsumerLag(t *testing.T) {
 	b := NewBuilder[string, testStatus]("consumer lag")
 	b.AddStep(
 		statusStart,
-		func(ctx context.Context, r *Record[string, testStatus]) (bool, error) {
-			return true, nil
+		func(ctx context.Context, r *Record[string, testStatus]) (testStatus, error) {
+			return statusEnd, nil
 		},
 		statusEnd,
-		WithStepConsumerLag(specifiedLag),
+	).WithOptions(
+		ConsumeLag(specifiedLag),
 	)
 	wf := b.Build(nil, nil, nil, nil)
 
-	require.Equal(t, specifiedLag, wf.consumers[statusStart][0].lag)
+	require.Equal(t, specifiedLag, wf.consumers[statusStart].lag)
 }

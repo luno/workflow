@@ -10,15 +10,14 @@ import (
 )
 
 type callback[Type any, Status StatusType] struct {
-	DestinationStatus Status
-	CallbackFunc      CallbackFunc[Type, Status]
+	CallbackFunc CallbackFunc[Type, Status]
 }
 
-type CallbackFunc[Type any, Status StatusType] func(ctx context.Context, r *Record[Type, Status], reader io.Reader) (bool, error)
+type CallbackFunc[Type any, Status StatusType] func(ctx context.Context, r *Record[Type, Status], reader io.Reader) (Status, error)
 
 func (w *Workflow[Type, Status]) Callback(ctx context.Context, foreignID string, status Status, payload io.Reader) error {
 	for _, s := range w.callback[status] {
-		err := processCallback(ctx, w, status, s.DestinationStatus, s.CallbackFunc, foreignID, payload)
+		err := processCallback(ctx, w, status, s.CallbackFunc, foreignID, payload)
 		if err != nil {
 			return err
 		}
@@ -27,7 +26,7 @@ func (w *Workflow[Type, Status]) Callback(ctx context.Context, foreignID string,
 	return nil
 }
 
-func processCallback[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], currentStatus, destinationStatus Status, fn CallbackFunc[Type, Status], foreignID string, payload io.Reader) error {
+func processCallback[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], currentStatus Status, fn CallbackFunc[Type, Status], foreignID string, payload io.Reader) error {
 	latest, err := w.recordStore.Latest(ctx, w.Name, foreignID)
 	if err != nil {
 		return errors.Wrap(err, "failed to latest record for callback", j.MKV{
@@ -57,12 +56,12 @@ func processCallback[Type any, Status StatusType](ctx context.Context, w *Workfl
 		payload = bytes.NewReader([]byte{})
 	}
 
-	ok, err := fn(ctx, record, payload)
+	next, err := fn(ctx, record, payload)
 	if err != nil {
 		return err
 	}
 
-	if !ok {
+	if int(next) == 0 {
 		return nil
 	}
 
@@ -76,9 +75,9 @@ func processCallback[Type any, Status StatusType](ctx context.Context, w *Workfl
 		WorkflowName: record.WorkflowName,
 		ForeignID:    record.ForeignID,
 		RunID:        record.RunID,
-		Status:       int(destinationStatus),
+		Status:       int(next),
 		IsStart:      false,
-		IsEnd:        w.endPoints[destinationStatus],
+		IsEnd:        w.endPoints[next],
 		Object:       object,
 		CreatedAt:    record.CreatedAt,
 		UpdatedAt:    w.clock.Now(),

@@ -21,15 +21,21 @@ type TypeA struct {
 func WorkflowA(d WorkflowADeps) *workflow.Workflow[TypeA, examples.Status] {
 	builder := workflow.NewBuilder[TypeA, examples.Status]("workflow A")
 
-	builder.AddStep(examples.StatusStarted, func(ctx context.Context, r *workflow.Record[TypeA, examples.Status]) (bool, error) {
-		r.Object.Value = "Hello"
-		return true, nil
-	}, examples.StatusFollowedTheExample)
+	builder.AddStep(examples.StatusStarted,
+		func(ctx context.Context, r *workflow.Record[TypeA, examples.Status]) (examples.Status, error) {
+			r.Object.Value = "Hello"
+			return examples.StatusFollowedTheExample, nil
+		},
+		examples.StatusFollowedTheExample,
+	)
 
-	builder.AddStep(examples.StatusFollowedTheExample, func(ctx context.Context, r *workflow.Record[TypeA, examples.Status]) (bool, error) {
-		r.Object.Value += " World"
-		return true, nil
-	}, examples.StatusCreatedAFunExample)
+	builder.AddStep(examples.StatusFollowedTheExample,
+		func(ctx context.Context, r *workflow.Record[TypeA, examples.Status]) (examples.Status, error) {
+			r.Object.Value += " World"
+			return examples.StatusCreatedAFunExample, nil
+		},
+		examples.StatusCreatedAFunExample,
+	)
 
 	return builder.Build(
 		d.EventStreamer,
@@ -82,11 +88,14 @@ func WorkflowB(d WorkflowBDeps) *workflow.Workflow[TypeB, examples.Status] {
 		},
 	)
 
-	builder.AddStep(examples.StatusStarted, func(ctx context.Context, r *workflow.Record[TypeB, examples.Status]) (bool, error) {
-		r.Object.Value += ", I have been made from two workflows"
+	builder.AddStep(examples.StatusStarted,
+		func(ctx context.Context, r *workflow.Record[TypeB, examples.Status]) (examples.Status, error) {
+			r.Object.Value += ", I have been made from two workflows"
 
-		return true, nil
-	}, examples.StatusFollowedTheExample)
+			return examples.StatusFollowedTheExample, nil
+		},
+		examples.StatusFollowedTheExample,
+	)
 
 	return builder.Build(
 		d.EventStreamer,
