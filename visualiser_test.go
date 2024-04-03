@@ -13,22 +13,12 @@ func TestVisualiser(t *testing.T) {
 	b := workflow.NewBuilder[string, status]("example")
 	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
 		return StatusMiddle, nil
-	}, StatusMiddle)
+	}, StatusMiddle, StatusEnd)
 
 	b.AddStep(StatusMiddle,
 		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
 			return StatusEnd, nil
 		}, StatusEnd,
-	).WithOptions(
-		workflow.ParallelCount(3),
-	)
-
-	b.AddStep(StatusStart,
-		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
-			return StatusEnd, nil
-		}, StatusEnd,
-	).WithOptions(
-		workflow.ParallelCount(3),
 	)
 
 	wf := b.Build(nil, nil, nil, nil)

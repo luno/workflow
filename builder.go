@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"k8s.io/utils/clock"
@@ -25,7 +26,7 @@ func NewBuilder[Type any, Status StatusType](name string) *Builder[Type, Status]
 			defaultPollingFrequency: defaultPollingFrequency,
 			defaultErrBackOff:       defaultErrBackOff,
 			defaultLagAlert:         defaultLagAlert,
-			consumers:               make(map[Status][]consumerConfig[Type, Status]),
+			consumers:               make(map[Status]consumerConfig[Type, Status]),
 			callback:                make(map[Status][]callback[Type, Status]),
 			timeouts:                make(map[Status]timeouts[Type, Status]),
 			graph:                   make(map[int][]int),
@@ -41,6 +42,10 @@ type Builder[Type any, Status StatusType] struct {
 
 func (b *Builder[Type, Status]) AddStep(from Status, c ConsumerFunc[Type, Status], allowedDestinations ...Status) *stepUpdater[Type, Status] {
 	b.workflow.validStatuses[from] = true
+
+	if _, exists := b.workflow.consumers[from]; exists {
+		panic(fmt.Sprintf("'AddStep(%v,' already exists. Only one Step can be configured to consume the status", from.String()))
+	}
 
 	if _, ok := b.workflow.graph[int(from)]; !ok {
 		b.workflow.graphOrder = append(b.workflow.graphOrder, int(from))
@@ -58,24 +63,21 @@ func (b *Builder[Type, Status]) AddStep(from Status, c ConsumerFunc[Type, Status
 		lagAlert:         b.workflow.defaultLagAlert,
 	}
 
-	index := len(b.workflow.consumers[from])
-	b.workflow.consumers[from] = append(b.workflow.consumers[from], p)
+	b.workflow.consumers[from] = p
 
 	return &stepUpdater[Type, Status]{
 		from:     from,
-		index:    index,
 		workflow: b.workflow,
 	}
 }
 
 type stepUpdater[Type any, Status StatusType] struct {
 	from     Status
-	index    int
 	workflow *Workflow[Type, Status]
 }
 
 func (s *stepUpdater[Type, Status]) WithOptions(opts ...Option) {
-	consumer := s.workflow.consumers[s.from][s.index]
+	consumer := s.workflow.consumers[s.from]
 
 	consumerOpts := options{
 		parallelCount:    consumer.parallelCount,
@@ -93,7 +95,7 @@ func (s *stepUpdater[Type, Status]) WithOptions(opts ...Option) {
 	consumer.errBackOff = consumerOpts.errBackOff
 	consumer.lag = consumerOpts.lag
 	consumer.lagAlert = consumerOpts.lagAlert
-	s.workflow.consumers[s.from][s.index] = consumer
+	s.workflow.consumers[s.from] = consumer
 }
 
 func (b *Builder[Type, Status]) AddCallback(from Status, fn CallbackFunc[Type, Status], allowedDestinations ...Status) {

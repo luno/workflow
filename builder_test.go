@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"reflect"
 	"runtime"
@@ -71,7 +72,7 @@ func TestWithStepErrBackOff(t *testing.T) {
 	b.AddStep(statusStart, nil, statusMiddle).WithOptions(ErrBackOff(time.Minute))
 	wf := b.Build(nil, nil, nil, nil)
 
-	require.Equal(t, time.Minute, wf.consumers[statusStart][0].errBackOff)
+	require.Equal(t, time.Minute, wf.consumers[statusStart].errBackOff)
 }
 
 func TestWithParallelCount(t *testing.T) {
@@ -79,7 +80,7 @@ func TestWithParallelCount(t *testing.T) {
 	b.AddStep(statusStart, nil, statusMiddle).WithOptions(ParallelCount(100))
 	wf := b.Build(nil, nil, nil, nil)
 
-	require.Equal(t, int(100), wf.consumers[statusStart][0].parallelCount)
+	require.Equal(t, int(100), wf.consumers[statusStart].parallelCount)
 }
 
 func TestWithClock(t *testing.T) {
@@ -242,9 +243,33 @@ func TestWithStepLagAlert(t *testing.T) {
 
 			wf := b.Build(nil, nil, nil, nil)
 
-			require.Equal(t, tc.expectedLagAlert, wf.consumers[statusStart][0].lagAlert)
+			require.Equal(t, tc.expectedLagAlert, wf.consumers[statusStart].lagAlert)
 		})
 	}
+}
+
+func TestAddStepSingleUseValidation(t *testing.T) {
+	b := NewBuilder[string, testStatus]("consumer lag")
+	b.AddStep(
+		statusStart,
+		func(ctx context.Context, r *Record[string, testStatus]) (testStatus, error) {
+			return statusEnd, nil
+		},
+		statusEnd,
+	)
+
+	// Should panic as setting a second config of statusStart
+	require.PanicsWithValue(t,
+		fmt.Sprintf("'AddStep(%v,' already exists. Only one Step can be configured to consume the status", statusStart.String()),
+		func() {
+			b.AddStep(
+				statusStart,
+				func(ctx context.Context, r *Record[string, testStatus]) (testStatus, error) {
+					return statusEnd, nil
+				},
+				statusEnd,
+			)
+		}, "Adding duplicate step should panic")
 }
 
 func TestWithStepConsumerLag(t *testing.T) {
@@ -261,5 +286,5 @@ func TestWithStepConsumerLag(t *testing.T) {
 	)
 	wf := b.Build(nil, nil, nil, nil)
 
-	require.Equal(t, specifiedLag, wf.consumers[statusStart][0].lag)
+	require.Equal(t, specifiedLag, wf.consumers[statusStart].lag)
 }

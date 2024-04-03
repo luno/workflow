@@ -195,7 +195,7 @@ func TestMetricProcessStates(t *testing.T) {
 		memrolescheduler.New(),
 		workflow.WithClock(clock),
 		workflow.WithOutboxConfig(
-			workflow.WithOutboxParallelCount(5),
+			workflow.WithOutboxParallelCount(2),
 		),
 	)
 
@@ -235,11 +235,8 @@ func TestMetricProcessStates(t *testing.T) {
 # TYPE workflow_process_states gauge
 workflow_process_states{process_name="start-consumer-1-of-1", workflow_name="example"} 2
 workflow_process_states{process_name="middle-consumer-1-of-1", workflow_name="example"} 2
-workflow_process_states{process_name="outbox-consumer-1-of-5",workflow_name="example"} 2
-workflow_process_states{process_name="outbox-consumer-2-of-5",workflow_name="example"} 2
-workflow_process_states{process_name="outbox-consumer-3-of-5",workflow_name="example"} 2
-workflow_process_states{process_name="outbox-consumer-4-of-5",workflow_name="example"} 2
-workflow_process_states{process_name="outbox-consumer-5-of-5",workflow_name="example"} 2
+workflow_process_states{process_name="outbox-consumer-1-of-2",workflow_name="example"} 2
+workflow_process_states{process_name="outbox-consumer-2-of-2",workflow_name="example"} 2
 `
 
 	err = testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
@@ -253,11 +250,8 @@ workflow_process_states{process_name="outbox-consumer-5-of-5",workflow_name="exa
 # TYPE workflow_process_states gauge
 workflow_process_states{process_name="middle-consumer-1-of-1",workflow_name="example"} 1
 workflow_process_states{process_name="start-consumer-1-of-1",workflow_name="example"} 1
-workflow_process_states{process_name="outbox-consumer-1-of-5",workflow_name="example"} 1
-workflow_process_states{process_name="outbox-consumer-2-of-5",workflow_name="example"} 1
-workflow_process_states{process_name="outbox-consumer-3-of-5",workflow_name="example"} 1
-workflow_process_states{process_name="outbox-consumer-4-of-5",workflow_name="example"} 1
-workflow_process_states{process_name="outbox-consumer-5-of-5",workflow_name="example"} 1
+workflow_process_states{process_name="outbox-consumer-1-of-2",workflow_name="example"} 1
+workflow_process_states{process_name="outbox-consumer-2-of-2",workflow_name="example"} 1
 `
 
 	err = testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))

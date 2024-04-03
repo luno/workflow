@@ -68,7 +68,7 @@ type Workflow[Type any, Status StatusType] struct {
 	timeoutStore  TimeoutStore
 	scheduler     RoleScheduler
 
-	consumers        map[Status][]consumerConfig[Type, Status]
+	consumers        map[Status]consumerConfig[Type, Status]
 	callback         map[Status][]callback[Type, Status]
 	timeouts         map[Status]timeouts[Type, Status]
 	connectorConfigs []connectorConfig[Type, Status]
@@ -108,16 +108,14 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 		}
 
 		// Start the state transition consumers
-		for currentStatus, consumers := range w.consumers {
-			for _, p := range consumers {
-				if p.parallelCount < 2 {
-					// Launch all consumers in runners
-					go consumer(w, currentStatus, p, 1, 1)
-				} else {
-					// Run as sharded parallel consumers
-					for i := 1; i <= p.parallelCount; i++ {
-						go consumer(w, currentStatus, p, i, p.parallelCount)
-					}
+		for currentStatus, config := range w.consumers {
+			if config.parallelCount < 2 {
+				// Launch all consumers in runners
+				go consumer(w, currentStatus, config, 1, 1)
+			} else {
+				// Run as sharded parallel consumers
+				for i := 1; i <= config.parallelCount; i++ {
+					go consumer(w, currentStatus, config, i, config.parallelCount)
 				}
 			}
 		}
