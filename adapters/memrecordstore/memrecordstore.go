@@ -177,42 +177,6 @@ func (s *Store) DeleteOutboxEvent(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (s *Store) List(ctx context.Context, workflowName string, offsetID int64, limit int, order workflow.OrderType) ([]workflow.WireRecord, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	var (
-		entries []workflow.WireRecord
-		length  = int64(len(s.store))
-		start   = offsetID
-		end     = start + int64(limit)
-	)
-
-	for i := start + 1; i <= end; i++ {
-		if i > length {
-			break
-		}
-
-		if len(entries)+1 > limit {
-			break
-		}
-
-		entry := s.store[i]
-		entries = append(entries, *entry)
-	}
-
-	if order == workflow.OrderTypeDescending {
-		var descEntries []workflow.WireRecord
-		for i := len(entries) - 1; i >= 0; i-- {
-			descEntries = append(descEntries, entries[i])
-		}
-
-		return descEntries, nil
-	}
-
-	return entries, nil
-}
-
 func (s *Store) Snapshots(workflowName, foreignID, runID string) []*workflow.WireRecord {
 	s.mu.Lock()
 	defer s.mu.Unlock()

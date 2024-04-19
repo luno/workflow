@@ -3,7 +3,6 @@ package adaptertest
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"testing"
 	"time"
 
@@ -22,7 +21,6 @@ func RunRecordStoreTest(t *testing.T, factory func() workflow.RecordStore) {
 		testStore_Store,
 		testStore_ListOutboxEvents,
 		testStore_DeleteOutboxEvent,
-		testStore_List,
 	}
 
 	for _, test := range tests {
@@ -344,65 +342,6 @@ func testStore_DeleteOutboxEvent(t *testing.T, store workflow.RecordStore) {
 		jtest.RequireNil(t, err)
 
 		require.Equal(t, 0, len(ls))
-	})
-}
-
-func testStore_List(t *testing.T, store workflow.RecordStore) {
-	t.Run("List", func(t *testing.T) {
-		ctx := context.Background()
-		workflowName := "my_workflow"
-		maker := func(recordID int64) (workflow.OutboxEventData, error) { return workflow.OutboxEventData{}, nil }
-
-		type example struct {
-			value string
-		}
-
-		e := example{value: "test"}
-		b, err := json.Marshal(e)
-		jtest.RequireNil(t, err)
-
-		seedCount := 1000
-		for i := 0; i < seedCount; i++ {
-			newRecord := &workflow.WireRecord{
-				WorkflowName: workflowName,
-				ForeignID:    fmt.Sprintf("%v", i),
-				RunID:        "SLDKFLSD-FLSDKF-SLDKNFL",
-				RunState:     workflow.RunStateInitiated,
-				Object:       b,
-			}
-
-			err := store.Store(ctx, newRecord, maker)
-			jtest.RequireNil(t, err)
-		}
-
-		ls, err := store.List(ctx, workflowName, 0, 53, workflow.OrderTypeAscending)
-		jtest.RequireNil(t, err)
-		require.Equal(t, 53, len(ls))
-
-		ls2, err := store.List(ctx, workflowName, 53, 100, workflow.OrderTypeAscending)
-		jtest.RequireNil(t, err)
-		require.Equal(t, 100, len(ls2))
-
-		// Make sure the last of the first page is not the same as the first of the next page
-		require.NotEqual(t, ls[52].ID, ls2[0])
-
-		ls3, err := store.List(ctx, workflowName, 153, seedCount-153, workflow.OrderTypeAscending)
-		jtest.RequireNil(t, err)
-		require.Equal(t, seedCount-153, len(ls3))
-
-		// Make sure the last of the first page is not the same as the first of the next page
-		require.NotEqual(t, ls3[152].ID, ls3[0])
-
-		// Make sure that if 950 is the offset and we only have 1000 then only 1 item would be returned
-		lastPageAsc, err := store.List(ctx, workflowName, 950, 1000, workflow.OrderTypeAscending)
-		jtest.RequireNil(t, err)
-		require.Equal(t, 50, len(lastPageAsc))
-		require.Equal(t, int64(1000), lastPageAsc[len(lastPageAsc)-1].ID)
-
-		lastPageDesc, err := store.List(ctx, workflowName, 950, 1000, workflow.OrderTypeDescending)
-		jtest.RequireNil(t, err)
-		require.Equal(t, 50, len(lastPageDesc))
-		require.Equal(t, int64(1000), lastPageDesc[0].ID)
 	})
 }
 
