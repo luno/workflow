@@ -30,7 +30,7 @@ func (s State) String() string {
 	}
 }
 
-func (w *Workflow[Type, Status]) updateLifecycle(processName string, s State) {
+func (w *Workflow[Type, Status]) updateState(processName string, s State) {
 	w.internalStateMu.Lock()
 	defer w.internalStateMu.Unlock()
 

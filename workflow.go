@@ -147,8 +147,8 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 
 // run is a standardise way of running blocking calls forever with retry such as consumers that need to adhere to role scheduling
 func (w *Workflow[Type, Status]) run(role, processName string, process func(ctx context.Context) error, errBackOff time.Duration) {
-	w.updateLifecycle(processName, StateIdle)
-	defer w.updateLifecycle(processName, StateShutdown)
+	w.updateState(processName, StateIdle)
+	defer w.updateState(processName, StateShutdown)
 
 	for {
 		err := runOnce(w, role, processName, process, errBackOff)
@@ -165,7 +165,7 @@ func (w *Workflow[Type, Status]) run(role, processName string, process func(ctx 
 }
 
 func runOnce[Type any, Status StatusType](w *Workflow[Type, Status], role, processName string, process func(ctx context.Context) error, errBackOff time.Duration) error {
-	w.updateLifecycle(processName, StateIdle)
+	w.updateState(processName, StateIdle)
 
 	ctx, cancel, err := w.scheduler.Await(w.ctx, role)
 	if errors.IsAny(err, context.Canceled) {
@@ -182,7 +182,7 @@ func runOnce[Type any, Status StatusType](w *Workflow[Type, Status], role, proce
 	}
 	defer cancel()
 
-	w.updateLifecycle(processName, StateRunning)
+	w.updateState(processName, StateRunning)
 
 	err = process(ctx)
 	if errors.Is(err, context.Canceled) {
