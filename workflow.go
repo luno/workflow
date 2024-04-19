@@ -280,6 +280,9 @@ func safeUpdate(ctx context.Context, store RecordStore, graph map[int][]int, cur
 type storeAndEmitFunc func(ctx context.Context, store RecordStore, wr *WireRecord, previousRunState RunState) error
 
 func storeAndEmit(ctx context.Context, store RecordStore, wr *WireRecord, previousRunState RunState) error {
+	// Push run state changes for observability
+	metrics.RunStateChanges.WithLabelValues(wr.WorkflowName, previousRunState.String(), wr.RunState.String()).Inc()
+
 	return store.Store(ctx, wr, func(recordID int64) (OutboxEventData, error) {
 		// Record ID would not have been set if it is a new record. Assign the recordID that the Store provides
 		wr.ID = recordID

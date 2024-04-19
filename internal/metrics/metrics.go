@@ -3,9 +3,10 @@ package metrics
 import "github.com/prometheus/client_golang/prometheus"
 
 const (
-	workflowName = "workflow_name"
-	processName  = "process_name"
-	runState     = "run_state"
+	workflowName     = "workflow_name"
+	processName      = "process_name"
+	previousRunState = "previous_run_state"
+	currentRunState  = "current_run_state"
 )
 
 var (
@@ -50,8 +51,8 @@ var (
 	// RunStateChanges reflects the states of all the runs for the workflow
 	RunStateChanges = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "workflow_run_state_changes",
-		Help: "The current states of all the runs",
-	}, []string{workflowName, runState})
+		Help: "The number of workflow run state changes going from state to a new state",
+	}, []string{workflowName, previousRunState, currentRunState})
 )
 
 func init() {
