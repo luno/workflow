@@ -168,7 +168,7 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](w *Workflow[Type, 
 				}
 			}
 
-			// Never update LifecycleState even when successful
+			// Never update status even when successful
 			return 0, nil
 		}
 

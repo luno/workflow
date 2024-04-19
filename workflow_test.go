@@ -132,7 +132,7 @@ func TestWorkflowAcceptanceTest(t *testing.T) {
 	runID, err := wf.Trigger(ctx, fid, StatusInitiated, workflow.WithInitialValue[MyType, status](&mt))
 	jtest.RequireNil(t, err)
 
-	// Once in the correct LifecycleState, trigger third party callbacks
+	// Once in the correct status, trigger third party callbacks
 	workflow.TriggerCallbackOn(t, wf, fid, runID, StatusEmailConfirmationSent, ExternalEmailVerified{
 		IsVerified: true,
 	})
