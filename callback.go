@@ -36,7 +36,7 @@ func processCallback[Type any, Status StatusType](ctx context.Context, w *Workfl
 	}
 
 	if Status(latest.Status) != currentStatus {
-		// Latest record shows that the current status is in a different LifecycleState than expected so skip.
+		// Latest record shows that the current status is in a different State than expected so skip.
 		return nil
 	}
 

@@ -78,10 +78,10 @@ type Workflow[Type any, Status StatusType] struct {
 	connectorConfigs []connectorConfig[Type, Status]
 	outboxConfig     outboxConfig
 
-	processLifecycleMu sync.Mutex
-	// processLifecycles holds the LifecycleState of all expected consumers and timeout go routines using their role names
+	internalStateMu sync.Mutex
+	// internalState holds the State of all expected consumers and timeout go routines using their role names
 	// as the key.
-	processLifecycles map[string]LifecycleState
+	internalState map[string]State
 
 	graph      map[int][]int
 	graphOrder []int
@@ -147,8 +147,8 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 
 // run is a standardise way of running blocking calls forever with retry such as consumers that need to adhere to role scheduling
 func (w *Workflow[Type, Status]) run(role, processName string, process func(ctx context.Context) error, errBackOff time.Duration) {
-	w.updateLifecycle(processName, LifecycleStateIdle)
-	defer w.updateLifecycle(processName, LifecycleStateShutdown)
+	w.updateLifecycle(processName, StateIdle)
+	defer w.updateLifecycle(processName, StateShutdown)
 
 	for {
 		err := runOnce(w, role, processName, process, errBackOff)
@@ -165,7 +165,7 @@ func (w *Workflow[Type, Status]) run(role, processName string, process func(ctx 
 }
 
 func runOnce[Type any, Status StatusType](w *Workflow[Type, Status], role, processName string, process func(ctx context.Context) error, errBackOff time.Duration) error {
-	w.updateLifecycle(processName, LifecycleStateIdle)
+	w.updateLifecycle(processName, StateIdle)
 
 	ctx, cancel, err := w.scheduler.Await(w.ctx, role)
 	if errors.IsAny(err, context.Canceled) {
@@ -182,7 +182,7 @@ func runOnce[Type any, Status StatusType](w *Workflow[Type, Status], role, proce
 	}
 	defer cancel()
 
-	w.updateLifecycle(processName, LifecycleStateRunning)
+	w.updateLifecycle(processName, StateRunning)
 
 	err = process(ctx)
 	if errors.Is(err, context.Canceled) {
@@ -219,9 +219,9 @@ func (w *Workflow[Type, Status]) Stop() {
 
 	for {
 		var runningProcesses int
-		for _, state := range w.Lifecycles() {
+		for _, state := range w.States() {
 			switch state {
-			case LifecycleStateUnknown, LifecycleStateShutdown:
+			case StateUnknown, StateShutdown:
 				continue
 			default:
 				runningProcesses++

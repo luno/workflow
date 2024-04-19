@@ -116,19 +116,19 @@ func TestWorkflow_ScheduleShutdown(t *testing.T) {
 
 	time.Sleep(200 * time.Millisecond)
 
-	require.Equal(t, map[string]workflow.LifecycleState{
-		"start-andrew-scheduler-@monthly": workflow.LifecycleStateRunning,
-		"start-consumer-1-of-1":           workflow.LifecycleStateRunning,
-		"outbox-consumer-1-of-1":          workflow.LifecycleStateRunning,
-	}, wf.Lifecycles())
+	require.Equal(t, map[string]workflow.State{
+		"start-andrew-scheduler-@monthly": workflow.StateRunning,
+		"start-consumer-1-of-1":           workflow.StateRunning,
+		"outbox-consumer-1-of-1":          workflow.StateRunning,
+	}, wf.States())
 
 	wf.Stop()
 
-	require.Equal(t, map[string]workflow.LifecycleState{
-		"start-andrew-scheduler-@monthly": workflow.LifecycleStateShutdown,
-		"start-consumer-1-of-1":           workflow.LifecycleStateShutdown,
-		"outbox-consumer-1-of-1":          workflow.LifecycleStateShutdown,
-	}, wf.Lifecycles())
+	require.Equal(t, map[string]workflow.State{
+		"start-andrew-scheduler-@monthly": workflow.StateShutdown,
+		"start-consumer-1-of-1":           workflow.StateShutdown,
+		"outbox-consumer-1-of-1":          workflow.StateShutdown,
+	}, wf.States())
 }
 
 func TestWorkflow_ScheduleFilter(t *testing.T) {

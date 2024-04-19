@@ -31,7 +31,7 @@ func NewBuilder[Type any, Status StatusType](name string) *Builder[Type, Status]
 			timeouts:                make(map[Status]timeouts[Type, Status]),
 			graph:                   make(map[int][]int),
 			validStatuses:           make(map[Status]bool),
-			processLifecycles:       make(map[string]LifecycleState),
+			internalState:           make(map[string]State),
 		},
 	}
 }
