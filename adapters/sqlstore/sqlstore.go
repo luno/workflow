@@ -30,7 +30,7 @@ func New(writer *sql.DB, reader *sql.DB, recordTableName string, outboxTableName
 		outboxTableName: outboxTableName,
 	}
 
-	e.recordCols = " `id`, `workflow_name`, `foreign_id`, `run_id`, `status`, `object`, `is_start`, `is_end`, `created_at`, `updated_at` "
+	e.recordCols = " `id`, `workflow_name`, `foreign_id`, `run_id`, `run_state`, `status`, `object`, `created_at`, `updated_at` "
 	e.recordSelectPrefix = " select " + e.recordCols + " from " + e.recordTableName + " where "
 
 	e.outboxCols = " `id`, `workflow_name`, `data`, `created_at` "
@@ -62,12 +62,12 @@ func (s *SQLStore) Store(ctx context.Context, r *workflow.WireRecord, maker work
 
 	var recordID int64
 	if mustCreate {
-		recordID, err = s.create(ctx, tx, r.WorkflowName, r.ForeignID, r.RunID, r.Status, r.Object, r.IsStart, r.IsEnd)
+		recordID, err = s.create(ctx, tx, r.WorkflowName, r.ForeignID, r.RunID, r.Status, r.Object, int(r.RunState))
 		if err != nil {
 			return err
 		}
 	} else {
-		err := s.update(ctx, tx, r.WorkflowName, r.ForeignID, r.RunID, r.Status, r.Object, r.IsStart, r.IsEnd, r.ID)
+		err := s.update(ctx, tx, r.WorkflowName, r.ForeignID, r.RunID, r.Status, r.Object, int(r.RunState), r.ID)
 		if err != nil {
 			return err
 		}
@@ -117,4 +117,18 @@ func (s *SQLStore) DeleteOutboxEvent(ctx context.Context, id int64) error {
 	}
 
 	return nil
+}
+
+func (s *SQLStore) List(ctx context.Context, workflowName string, offsetID int64, limit int, order workflow.OrderType) ([]workflow.WireRecord, error) {
+	ls, err := s.listWhere(ctx, s.reader, "workflow_name=? and id>? order by id "+order.String()+" limit ?", workflowName, offsetID, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	var list []workflow.WireRecord
+	for _, l := range ls {
+		list = append(list, *l)
+	}
+
+	return list, nil
 }

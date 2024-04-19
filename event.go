@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"strconv"
 	"time"
 
 	"google.golang.org/protobuf/proto"
@@ -49,7 +50,7 @@ type OutboxEventData struct {
 	Data []byte
 }
 
-func WireRecordToOutboxEventData(record WireRecord) (OutboxEventData, error) {
+func WireRecordToOutboxEventData(record WireRecord, previousRunState RunState) (OutboxEventData, error) {
 	topic := Topic(record.WorkflowName, record.Status)
 
 	headers := make(map[string]string)
@@ -57,6 +58,8 @@ func WireRecordToOutboxEventData(record WireRecord) (OutboxEventData, error) {
 	headers[string(HeaderWorkflowName)] = record.WorkflowName
 	headers[string(HeaderTopic)] = topic
 	headers[string(HeaderRunID)] = record.RunID
+	headers[string(HeaderRunState)] = strconv.FormatInt(int64(record.RunState), 10)
+	headers[string(HeaderPreviousRunState)] = strconv.FormatInt(int64(previousRunState), 10)
 
 	r := workflowpb.OutboxRecord{
 		ForeignId: record.ID,
@@ -82,4 +85,6 @@ const (
 	HeaderWorkflowForeignID Header = "workflow_foreign_id"
 	HeaderTopic             Header = "topic"
 	HeaderRunID             Header = "run_id"
+	HeaderRunState          Header = "run_state"
+	HeaderPreviousRunState  Header = "previous_run_state"
 )

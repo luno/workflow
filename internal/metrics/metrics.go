@@ -5,6 +5,7 @@ import "github.com/prometheus/client_golang/prometheus"
 const (
 	workflowName = "workflow_name"
 	processName  = "process_name"
+	runState     = "run_state"
 )
 
 var (
@@ -45,6 +46,12 @@ var (
 		Name: "workflow_process_skipped_events_count",
 		Help: "Number of events skipped by consumer",
 	}, []string{workflowName, processName})
+
+	// RunStateChanges reflects the states of all the runs for the workflow
+	RunStateChanges = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "workflow_run_state_changes",
+		Help: "The current states of all the runs",
+	}, []string{workflowName, runState})
 )
 
 func init() {
@@ -55,14 +62,6 @@ func init() {
 		ProcessLatency,
 		ProcessErrors,
 		ProcessSkippedEvents,
+		RunStateChanges,
 	)
-}
-
-func Reset() {
-	ConsumerLag.Reset()
-	ConsumerLagAlert.Reset()
-	ProcessStates.Reset()
-	ProcessLatency.Reset()
-	ProcessErrors.Reset()
-	ProcessSkippedEvents.Reset()
 }

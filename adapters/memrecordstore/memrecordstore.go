@@ -67,12 +67,23 @@ func (s *Store) Lookup(ctx context.Context, id int64) (*workflow.WireRecord, err
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	r, ok := s.store[id]
+	record, ok := s.store[id]
 	if !ok {
 		return nil, errors.Wrap(workflow.ErrRecordNotFound, "")
 	}
 
-	return r, nil
+	// Return a new pointer so modifications don't affect the store.
+	return &workflow.WireRecord{
+		ID:           record.ID,
+		WorkflowName: record.WorkflowName,
+		ForeignID:    record.ForeignID,
+		RunID:        record.RunID,
+		RunState:     record.RunState,
+		Status:       record.Status,
+		Object:       record.Object,
+		CreatedAt:    record.CreatedAt,
+		UpdatedAt:    record.UpdatedAt,
+	}, nil
 }
 
 func (s *Store) Store(ctx context.Context, record *workflow.WireRecord, maker workflow.OutboxEventDataMaker) error {
@@ -119,7 +130,18 @@ func (s *Store) Latest(ctx context.Context, workflowName, foreignID string) (*wo
 		return nil, errors.Wrap(workflow.ErrRecordNotFound, "")
 	}
 
-	return record, nil
+	// Return a new pointer so modifications don't affect the store.
+	return &workflow.WireRecord{
+		ID:           record.ID,
+		WorkflowName: record.WorkflowName,
+		ForeignID:    record.ForeignID,
+		RunID:        record.RunID,
+		RunState:     record.RunState,
+		Status:       record.Status,
+		Object:       record.Object,
+		CreatedAt:    record.CreatedAt,
+		UpdatedAt:    record.UpdatedAt,
+	}, nil
 }
 
 func (s *Store) ListOutboxEvents(ctx context.Context, workflowName string, limit int64) ([]workflow.OutboxEvent, error) {
@@ -153,6 +175,42 @@ func (s *Store) DeleteOutboxEvent(ctx context.Context, id int64) error {
 
 	s.outbox = filtered
 	return nil
+}
+
+func (s *Store) List(ctx context.Context, workflowName string, offsetID int64, limit int, order workflow.OrderType) ([]workflow.WireRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var (
+		entries []workflow.WireRecord
+		length  = int64(len(s.store))
+		start   = offsetID
+		end     = start + int64(limit)
+	)
+
+	for i := start + 1; i <= end; i++ {
+		if i > length {
+			break
+		}
+
+		if len(entries)+1 > limit {
+			break
+		}
+
+		entry := s.store[i]
+		entries = append(entries, *entry)
+	}
+
+	if order == workflow.OrderTypeDescending {
+		var descEntries []workflow.WireRecord
+		for i := len(entries) - 1; i >= 0; i-- {
+			descEntries = append(descEntries, entries[i])
+		}
+
+		return descEntries, nil
+	}
+
+	return entries, nil
 }
 
 func (s *Store) Snapshots(workflowName, foreignID, runID string) []*workflow.WireRecord {

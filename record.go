@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"context"
 	"time"
 
 	"github.com/luno/jettison/errors"
@@ -14,6 +15,10 @@ type Record[Type any, Status StatusType] struct {
 	WireRecord
 	Status Status
 	Object *Type
+
+	// stopper provides controls over the run state of the record. Record is not serializable and is not
+	// intended to be and thus WireRecord exists as a serializable representation of a record.
+	stopper[Status]
 }
 
 type WireRecord struct {
@@ -21,9 +26,8 @@ type WireRecord struct {
 	WorkflowName string
 	ForeignID    string
 	RunID        string
+	RunState     RunState
 	Status       int
-	IsStart      bool
-	IsEnd        bool
 	Object       []byte
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
@@ -44,8 +48,7 @@ func ToProto(r *WireRecord) *workflowpb.Record {
 		ForeignId:    r.ForeignID,
 		RunId:        r.RunID,
 		Status:       int32(r.Status),
-		IsStart:      r.IsStart,
-		IsEnd:        r.IsEnd,
+		RunState:     int32(r.RunState),
 		Object:       r.Object,
 		CreatedAt:    timestamppb.New(r.CreatedAt),
 		UpdatedAt:    timestamppb.New(r.UpdatedAt),
@@ -64,10 +67,39 @@ func UnmarshalRecord(b []byte) (*WireRecord, error) {
 		ForeignID:    wpb.ForeignId,
 		RunID:        wpb.RunId,
 		Status:       int(wpb.Status),
-		IsStart:      wpb.IsStart,
-		IsEnd:        wpb.IsEnd,
+		RunState:     RunState(wpb.RunState),
 		Object:       wpb.Object,
 		CreatedAt:    wpb.CreatedAt.AsTime(),
 		UpdatedAt:    wpb.UpdatedAt.AsTime(),
 	}, nil
+}
+
+func buildConsumableRecord[Type any, Status StatusType](ctx context.Context, store RecordStore, storeFunc storeAndEmitFunc, wr *WireRecord) (*Record[Type, Status], error) {
+	var t Type
+	err := Unmarshal(wr.Object, &t)
+	if err != nil {
+		return nil, err
+	}
+
+	controller := newRunStateController[Status](wr, store, storeFunc)
+	record := Record[Type, Status]{
+		WireRecord: *wr,
+		Status:     Status(wr.Status),
+		Object:     &t,
+		stopper:    controller,
+	}
+
+	// The first time the record is consumed, it needs to be marked as RunStateRunning to represent that the record
+	// has begun being processed. Even if the consumer errors then this should update should remain in place and
+	// not be executed on the subsequent retries.
+	if record.RunState == RunStateInitiated {
+		_, err := controller.markAsRunning(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		record.RunState = RunStateRunning
+	}
+
+	return &record, nil
 }

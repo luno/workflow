@@ -7,6 +7,7 @@ import (
 
 	"github.com/luno/jettison/errors"
 	"github.com/luno/jettison/j"
+	"github.com/luno/jettison/log"
 )
 
 type callback[Type any, Status StatusType] struct {
@@ -35,19 +36,13 @@ func processCallback[Type any, Status StatusType](ctx context.Context, w *Workfl
 	}
 
 	if Status(latest.Status) != currentStatus {
-		// Latest record shows that the current status is in a different State than expected so skip.
+		// Latest record shows that the current status is in a different LifecycleState than expected so skip.
 		return nil
 	}
 
-	var t Type
-	err = Unmarshal(latest.Object, &t)
+	record, err := buildConsumableRecord[Type, Status](ctx, w.recordStore, storeAndEmit, latest)
 	if err != nil {
 		return err
-	}
-
-	record := &Record[Type, Status]{
-		WireRecord: *latest,
-		Object:     &t,
 	}
 
 	if payload == nil {
@@ -61,7 +56,18 @@ func processCallback[Type any, Status StatusType](ctx context.Context, w *Workfl
 		return err
 	}
 
-	if int(next) == 0 {
+	if skipUpdate(next) {
+		if w.debugMode {
+			log.Info(ctx, "skipping update", j.MKV{
+				"description":   skipUpdateDescription(next),
+				"record_id":     record.ID,
+				"workflow_name": w.Name,
+				"foreign_id":    record.ForeignID,
+				"run_id":        record.RunID,
+				"run_state":     record.RunState.String(),
+				"record_status": record.Status.String(),
+			})
+		}
 		return nil
 	}
 
@@ -70,14 +76,19 @@ func processCallback[Type any, Status StatusType](ctx context.Context, w *Workfl
 		return err
 	}
 
+	runState := RunStateRunning
+	isEnd := w.endPoints[next]
+	if isEnd {
+		runState = RunStateCompleted
+	}
+
 	wr := &WireRecord{
 		ID:           record.ID,
 		WorkflowName: record.WorkflowName,
 		ForeignID:    record.ForeignID,
 		RunID:        record.RunID,
+		RunState:     runState,
 		Status:       int(next),
-		IsStart:      false,
-		IsEnd:        w.endPoints[next],
 		Object:       object,
 		CreatedAt:    record.CreatedAt,
 		UpdatedAt:    w.clock.Now(),

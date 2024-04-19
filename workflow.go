@@ -47,6 +47,10 @@ type API[Type any, Status StatusType] interface {
 
 	// Stop tells the workflow to shut down gracefully.
 	Stop()
+
+	// RunStateController allows the interacting and controlling a workflow record such as Pause, Resume, Cancel, and
+	// DeleteData (e.g. right to be forgotten).
+	RunStateController(ctx context.Context, id int64) (RunStateController[Status], error)
 }
 
 type Workflow[Type any, Status StatusType] struct {
@@ -74,10 +78,10 @@ type Workflow[Type any, Status StatusType] struct {
 	connectorConfigs []connectorConfig[Type, Status]
 	outboxConfig     outboxConfig
 
-	internalStateMu sync.Mutex
-	// internalState holds the State of all expected consumers and timeout  go routines using their role names
+	processLifecycleMu sync.Mutex
+	// processLifecycles holds the LifecycleState of all expected consumers and timeout go routines using their role names
 	// as the key.
-	internalState map[string]State
+	processLifecycles map[string]LifecycleState
 
 	graph      map[int][]int
 	graphOrder []int
@@ -143,8 +147,8 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 
 // run is a standardise way of running blocking calls forever with retry such as consumers that need to adhere to role scheduling
 func (w *Workflow[Type, Status]) run(role, processName string, process func(ctx context.Context) error, errBackOff time.Duration) {
-	w.updateState(processName, StateIdle)
-	defer w.updateState(processName, StateShutdown)
+	w.updateLifecycle(processName, LifecycleStateIdle)
+	defer w.updateLifecycle(processName, LifecycleStateShutdown)
 
 	for {
 		err := runOnce(w, role, processName, process, errBackOff)
@@ -161,7 +165,7 @@ func (w *Workflow[Type, Status]) run(role, processName string, process func(ctx 
 }
 
 func runOnce[Type any, Status StatusType](w *Workflow[Type, Status], role, processName string, process func(ctx context.Context) error, errBackOff time.Duration) error {
-	w.updateState(processName, StateIdle)
+	w.updateLifecycle(processName, LifecycleStateIdle)
 
 	ctx, cancel, err := w.scheduler.Await(w.ctx, role)
 	if errors.IsAny(err, context.Canceled) {
@@ -178,7 +182,7 @@ func runOnce[Type any, Status StatusType](w *Workflow[Type, Status], role, proce
 	}
 	defer cancel()
 
-	w.updateState(processName, StateRunning)
+	w.updateLifecycle(processName, LifecycleStateRunning)
 
 	err = process(ctx)
 	if errors.Is(err, context.Canceled) {
@@ -215,9 +219,9 @@ func (w *Workflow[Type, Status]) Stop() {
 
 	for {
 		var runningProcesses int
-		for _, state := range w.States() {
+		for _, state := range w.Lifecycles() {
 			switch state {
-			case StateUnknown, StateShutdown:
+			case LifecycleStateUnknown, LifecycleStateShutdown:
 				continue
 			default:
 				runningProcesses++
@@ -230,6 +234,8 @@ func (w *Workflow[Type, Status]) Stop() {
 		}
 	}
 }
+
+type safeUpdater func(ctx context.Context, store RecordStore, graph map[int][]int, currentStatus int, next *WireRecord) error
 
 func safeUpdate(ctx context.Context, store RecordStore, graph map[int][]int, currentStatus int, next *WireRecord) error {
 	latest, err := store.Lookup(ctx, next.ID)
@@ -268,13 +274,15 @@ func safeUpdate(ctx context.Context, store RecordStore, graph map[int][]int, cur
 		})
 	}
 
-	return storeAndEmit(ctx, store, next)
+	return storeAndEmit(ctx, store, next, latest.RunState)
 }
 
-func storeAndEmit(ctx context.Context, store RecordStore, wr *WireRecord) error {
+type storeAndEmitFunc func(ctx context.Context, store RecordStore, wr *WireRecord, previousRunState RunState) error
+
+func storeAndEmit(ctx context.Context, store RecordStore, wr *WireRecord, previousRunState RunState) error {
 	return store.Store(ctx, wr, func(recordID int64) (OutboxEventData, error) {
 		// Record ID would not have been set if it is a new record. Assign the recordID that the Store provides
 		wr.ID = recordID
-		return WireRecordToOutboxEventData(*wr)
+		return WireRecordToOutboxEventData(*wr, previousRunState)
 	})
 }

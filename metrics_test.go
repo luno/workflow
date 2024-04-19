@@ -63,8 +63,7 @@ func TestMetricProcessLag(t *testing.T) {
 		ForeignID:    "29384723984732",
 		RunID:        runID,
 		Status:       int(StatusStart),
-		IsStart:      true,
-		IsEnd:        false,
+		RunState:     workflow.RunStateRunning,
 		Object:       payload,
 		CreatedAt:    clock.Now(),
 	})
@@ -134,8 +133,7 @@ func TestMetricProcessLagAlert(t *testing.T) {
 		ForeignID:    "29384723984732",
 		RunID:        runID,
 		Status:       int(StatusStart),
-		IsStart:      true,
-		IsEnd:        false,
+		RunState:     workflow.RunStateRunning,
 		Object:       payload,
 		CreatedAt:    clock.Now(),
 	})
@@ -215,8 +213,7 @@ func TestMetricProcessStates(t *testing.T) {
 		ForeignID:    "29384723984732",
 		RunID:        runID,
 		Status:       int(StatusStart),
-		IsStart:      true,
-		IsEnd:        false,
+		RunState:     workflow.RunStateRunning,
 		Object:       payload,
 		CreatedAt:    clock.Now(),
 	})
@@ -387,14 +384,14 @@ func TestMetricProcessLatency(t *testing.T) {
 			return 0, nil
 		}, StatusMiddle,
 	).WithOptions(
-		workflow.PollingFrequency(time.Millisecond * 100),
+		workflow.PollingFrequency(time.Millisecond * 10),
 	)
 	b.AddStep(StatusMiddle,
 		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
 			return 0, nil
 		}, StatusEnd,
 	).WithOptions(
-		workflow.PollingFrequency(time.Millisecond * 100),
+		workflow.PollingFrequency(time.Millisecond * 10),
 	)
 
 	nw := time.Now()
@@ -426,8 +423,7 @@ func TestMetricProcessLatency(t *testing.T) {
 		ForeignID:    "29384723984732",
 		RunID:        runID,
 		Status:       int(StatusStart),
-		IsStart:      true,
-		IsEnd:        false,
+		RunState:     workflow.RunStateRunning,
 		Object:       payload,
 		CreatedAt:    clock.Now(),
 	})
@@ -521,8 +517,7 @@ func TestMetricProcessErrors(t *testing.T) {
 		ForeignID:    "29384723984732",
 		RunID:        runID,
 		Status:       int(StatusStart),
-		IsStart:      true,
-		IsEnd:        false,
+		RunState:     workflow.RunStateRunning,
 		Object:       payload,
 		CreatedAt:    clock.Now(),
 	})
@@ -553,6 +548,6 @@ func update(ctx context.Context, store workflow.RecordStore, wr *workflow.WireRe
 	return store.Store(ctx, wr, func(recordID int64) (workflow.OutboxEventData, error) {
 		// Record ID would not have been set if it is a new record. Assign the recordID that the Store provides
 		wr.ID = recordID
-		return workflow.WireRecordToOutboxEventData(*wr)
+		return workflow.WireRecordToOutboxEventData(*wr, workflow.RunStateUnknown)
 	})
 }
