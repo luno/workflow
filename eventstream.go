@@ -67,33 +67,33 @@ func shardFilter(shard, totalShards int) EventFilter {
 
 func runStateUpdatesFilter() EventFilter {
 	return func(e *Event) bool {
-		if e.Headers[HeaderPreviousRunState] != "" && e.Headers[HeaderRunState] != "" {
-			intValue, err := strconv.ParseInt(e.Headers[HeaderPreviousRunState], 10, 64)
-			if err != nil {
-				// NoReturnErr: Ignore failure to parse int from string
-				return false
-			}
-
-			previous := RunState(intValue)
-
-			intValue, err = strconv.ParseInt(e.Headers[HeaderRunState], 10, 64)
-			if err != nil {
-				// NoReturnErr: Ignore failure to parse int from string
-				return false
-			}
-
-			current := RunState(intValue)
-
-			if current.Stopped() {
-				return true
-			}
-
-			if previous == RunStateInitiated && current == RunStateRunning {
-				// Ignore all events generated from moving from Initiated to Running
-				return true
-			}
-
+		if e.Headers[HeaderPreviousRunState] == "" || e.Headers[HeaderRunState] == "" {
 			return false
+		}
+
+		intValue, err := strconv.ParseInt(e.Headers[HeaderPreviousRunState], 10, 64)
+		if err != nil {
+			// NoReturnErr: Ignore failure to parse int from string
+			return false
+		}
+
+		previous := RunState(intValue)
+
+		intValue, err = strconv.ParseInt(e.Headers[HeaderRunState], 10, 64)
+		if err != nil {
+			// NoReturnErr: Ignore failure to parse int from string
+			return false
+		}
+
+		current := RunState(intValue)
+
+		if current.Stopped() {
+			return true
+		}
+
+		if previous == RunStateInitiated && current == RunStateRunning {
+			// Ignore all events generated from moving from Initiated to Running
+			return true
 		}
 
 		return false
