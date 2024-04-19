@@ -13,8 +13,6 @@ func TestShardFilter(t *testing.T) {
 	shardLeft := 1
 	shardRight := 2
 
-	shardFilter(shardRight, totalShards)
-
 	right := make(map[int64]bool)
 	left := make(map[int64]bool)
 	for _, id := range ids {
