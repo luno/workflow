@@ -153,14 +153,6 @@ func (c *Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, err
 			CreatedAt: m.Time,
 		}
 
-		// Filter out unwanted events
-		filter := c.options.EventFilter
-		if filter != nil {
-			if skip := filter(event); skip {
-				continue
-			}
-		}
-
 		return event,
 			func() error {
 				return c.reader.CommitMessages(ctx, commit...)

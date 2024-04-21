@@ -155,12 +155,6 @@ func (c Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, erro
 			continue
 		}
 
-		// Filter out unwanted events
-		filter := c.options.EventFilter
-		if filter != nil && filter(event) {
-			continue
-		}
-
 		return event, func() error {
 			// Increment cursor for consumer only if ack function is called.
 			eventID := strconv.FormatInt(event.ID, 10)

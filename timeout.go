@@ -178,10 +178,6 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](w *Workflow[Type, 
 			topic,
 			role,
 			WithConsumerPollFrequency(timeouts.pollingFrequency),
-			WithEventFilters(
-				shardFilter(1, 1),
-				runStateUpdatesFilter(),
-			),
 		)
 		if err != nil {
 			return err
@@ -196,7 +192,7 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](w *Workflow[Type, 
 			lagAlert:         timeouts.lagAlert,
 		}
 
-		return consumeForever(ctx, w, cc, consumerStream, status, processName)
+		return consumeForever(ctx, w, cc, consumerStream, status, processName, 1, 1)
 	}, timeouts.errBackOff)
 }
 
