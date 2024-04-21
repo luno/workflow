@@ -11,7 +11,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/luno/workflow"
-	"github.com/luno/workflow/workflowpb"
+	"github.com/luno/workflow/internal/outboxpb"
 )
 
 func RunRecordStoreTest(t *testing.T, factory func() workflow.RecordStore) {
@@ -279,7 +279,7 @@ func testStore_ListOutboxEvents(t *testing.T, store workflow.RecordStore) {
 		require.Equal(t, int64(1), ls[0].ID)
 		require.Equal(t, workflowName, ls[0].WorkflowName)
 
-		var r workflowpb.OutboxRecord
+		var r outboxpb.OutboxRecord
 		err = proto.Unmarshal(ls[0].Data, &r)
 		jtest.RequireNil(t, err)
 
