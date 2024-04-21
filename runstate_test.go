@@ -62,11 +62,14 @@ func TestRunState(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		fn := tc.workflow
+		expected := tc.expected
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			recordStore := memrecordstore.New()
-			w := tc.workflow(recordStore)
+			w := fn(recordStore)
 
 			ctx := context.Background()
 			w.Run(ctx)
@@ -80,7 +83,7 @@ func TestRunState(t *testing.T) {
 
 			snapshots := recordStore.Snapshots(w.Name, "fid", runID)
 
-			for i, state := range tc.expected {
+			for i, state := range expected {
 				require.Equal(t, state, snapshots[i].RunState)
 			}
 		})
