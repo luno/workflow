@@ -51,8 +51,7 @@ func testStore_Latest(t *testing.T, store workflow.RecordStore) {
 			ForeignID:    foreignID,
 			RunID:        runID,
 			Status:       int(statusStarted),
-			IsStart:      true,
-			IsEnd:        false,
+			RunState:     workflow.RunStateInitiated,
 			Object:       b,
 			CreatedAt:    createdAt,
 			UpdatedAt:    createdAt,
@@ -68,9 +67,8 @@ func testStore_Latest(t *testing.T, store workflow.RecordStore) {
 			WorkflowName: workflowName,
 			ForeignID:    foreignID,
 			RunID:        runID,
+			RunState:     workflow.RunStateInitiated,
 			Status:       int(statusStarted),
-			IsStart:      true,
-			IsEnd:        false,
 			Object:       b,
 			CreatedAt:    createdAt,
 			UpdatedAt:    createdAt,
@@ -83,8 +81,7 @@ func testStore_Latest(t *testing.T, store workflow.RecordStore) {
 
 		wr = latest
 		wr.Status = int(statusEnd)
-		wr.IsStart = false
-		wr.IsEnd = true
+		wr.RunState = workflow.RunStateCompleted
 		err = store.Store(ctx, wr, maker)
 		jtest.RequireNil(t, err)
 
@@ -93,10 +90,9 @@ func testStore_Latest(t *testing.T, store workflow.RecordStore) {
 			WorkflowName: workflowName,
 			ForeignID:    foreignID,
 			RunID:        runID,
+			RunState:     workflow.RunStateCompleted,
 			Status:       int(statusEnd),
 			Object:       b,
-			IsStart:      false,
-			IsEnd:        true,
 			CreatedAt:    createdAt,
 			UpdatedAt:    createdAt,
 		}
@@ -128,9 +124,8 @@ func testStore_Lookup(t *testing.T, store workflow.RecordStore) {
 			WorkflowName: workflowName,
 			ForeignID:    foreignID,
 			RunID:        runID,
+			RunState:     workflow.RunStateInitiated,
 			Status:       int(statusStarted),
-			IsStart:      true,
-			IsEnd:        false,
 			Object:       b,
 			CreatedAt:    createdAt,
 			UpdatedAt:    createdAt,
@@ -146,9 +141,8 @@ func testStore_Lookup(t *testing.T, store workflow.RecordStore) {
 			WorkflowName: workflowName,
 			ForeignID:    foreignID,
 			RunID:        runID,
+			RunState:     workflow.RunStateInitiated,
 			Status:       int(statusStarted),
-			IsStart:      true,
-			IsEnd:        false,
 			Object:       b,
 			CreatedAt:    createdAt,
 			UpdatedAt:    createdAt,
@@ -182,9 +176,8 @@ func testStore_Store(t *testing.T, store workflow.RecordStore) {
 			WorkflowName: workflowName,
 			ForeignID:    foreignID,
 			RunID:        runID,
+			RunState:     workflow.RunStateInitiated,
 			Status:       int(statusStarted),
-			IsStart:      true,
-			IsEnd:        false,
 			Object:       b,
 			CreatedAt:    createdAt,
 			UpdatedAt:    createdAt,
@@ -208,9 +201,8 @@ func testStore_Store(t *testing.T, store workflow.RecordStore) {
 			WorkflowName: workflowName,
 			ForeignID:    foreignID,
 			RunID:        runID,
+			RunState:     workflow.RunStateInitiated,
 			Status:       int(statusMiddle),
-			IsStart:      true,
-			IsEnd:        false,
 			Object:       b,
 			CreatedAt:    createdAt,
 			UpdatedAt:    createdAt,
@@ -231,9 +223,8 @@ func testStore_Store(t *testing.T, store workflow.RecordStore) {
 			WorkflowName: workflowName,
 			ForeignID:    foreignID,
 			RunID:        runID,
+			RunState:     workflow.RunStateInitiated,
 			Status:       int(statusEnd),
-			IsStart:      true,
-			IsEnd:        false,
 			Object:       b,
 			CreatedAt:    createdAt,
 			UpdatedAt:    createdAt,
@@ -264,9 +255,8 @@ func testStore_ListOutboxEvents(t *testing.T, store workflow.RecordStore) {
 			WorkflowName: workflowName,
 			ForeignID:    foreignID,
 			RunID:        runID,
+			RunState:     workflow.RunStateInitiated,
 			Status:       int(statusStarted),
-			IsStart:      true,
-			IsEnd:        false,
 			Object:       b,
 			CreatedAt:    createdAt,
 			UpdatedAt:    createdAt,
@@ -275,7 +265,7 @@ func testStore_ListOutboxEvents(t *testing.T, store workflow.RecordStore) {
 		maker := func(recordID int64) (workflow.OutboxEventData, error) {
 			// Record ID would not have been set if it is a new record. Assign the recordID that the Store provides
 			wr.ID = recordID
-			return workflow.WireRecordToOutboxEventData(*wr)
+			return workflow.WireRecordToOutboxEventData(*wr, workflow.RunStateInitiated)
 		}
 
 		err = store.Store(ctx, wr, maker)
@@ -321,9 +311,8 @@ func testStore_DeleteOutboxEvent(t *testing.T, store workflow.RecordStore) {
 			WorkflowName: workflowName,
 			ForeignID:    foreignID,
 			RunID:        runID,
+			RunState:     workflow.RunStateInitiated,
 			Status:       int(statusStarted),
-			IsStart:      true,
-			IsEnd:        false,
 			Object:       b,
 			CreatedAt:    createdAt,
 			UpdatedAt:    createdAt,
@@ -332,7 +321,7 @@ func testStore_DeleteOutboxEvent(t *testing.T, store workflow.RecordStore) {
 		maker := func(recordID int64) (workflow.OutboxEventData, error) {
 			// Record ID would not have been set if it is a new record. Assign the recordID that the Store provides
 			wr.ID = recordID
-			return workflow.WireRecordToOutboxEventData(*wr)
+			return workflow.WireRecordToOutboxEventData(*wr, workflow.RunStateInitiated)
 		}
 
 		err = store.Store(ctx, wr, maker)
@@ -363,8 +352,7 @@ func recordIsEqual(t *testing.T, a, b workflow.WireRecord) {
 	require.Equal(t, a.RunID, b.RunID)
 	require.Equal(t, a.Status, b.Status)
 	require.Equal(t, a.Object, b.Object)
-	require.Equal(t, a.IsStart, b.IsStart)
-	require.Equal(t, a.IsEnd, b.IsEnd)
+	require.Equal(t, a.RunState, b.RunState)
 	require.WithinDuration(t, a.CreatedAt, b.CreatedAt, time.Second*10)
 	require.WithinDuration(t, a.UpdatedAt, b.UpdatedAt, time.Second*10)
 }

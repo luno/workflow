@@ -67,12 +67,23 @@ func (s *Store) Lookup(ctx context.Context, id int64) (*workflow.WireRecord, err
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	r, ok := s.store[id]
+	record, ok := s.store[id]
 	if !ok {
 		return nil, errors.Wrap(workflow.ErrRecordNotFound, "")
 	}
 
-	return r, nil
+	// Return a new pointer so modifications don't affect the store.
+	return &workflow.WireRecord{
+		ID:           record.ID,
+		WorkflowName: record.WorkflowName,
+		ForeignID:    record.ForeignID,
+		RunID:        record.RunID,
+		RunState:     record.RunState,
+		Status:       record.Status,
+		Object:       record.Object,
+		CreatedAt:    record.CreatedAt,
+		UpdatedAt:    record.UpdatedAt,
+	}, nil
 }
 
 func (s *Store) Store(ctx context.Context, record *workflow.WireRecord, maker workflow.OutboxEventDataMaker) error {
@@ -119,7 +130,18 @@ func (s *Store) Latest(ctx context.Context, workflowName, foreignID string) (*wo
 		return nil, errors.Wrap(workflow.ErrRecordNotFound, "")
 	}
 
-	return record, nil
+	// Return a new pointer so modifications don't affect the store.
+	return &workflow.WireRecord{
+		ID:           record.ID,
+		WorkflowName: record.WorkflowName,
+		ForeignID:    record.ForeignID,
+		RunID:        record.RunID,
+		RunState:     record.RunState,
+		Status:       record.Status,
+		Object:       record.Object,
+		CreatedAt:    record.CreatedAt,
+		UpdatedAt:    record.UpdatedAt,
+	}, nil
 }
 
 func (s *Store) ListOutboxEvents(ctx context.Context, workflowName string, limit int64) ([]workflow.OutboxEvent, error) {

@@ -47,6 +47,10 @@ type API[Type any, Status StatusType] interface {
 
 	// Stop tells the workflow to shut down gracefully.
 	Stop()
+
+	// RunStateController allows the interacting and controlling a workflow record such as Pause, Resume, Cancel, and
+	// DeleteData (e.g. right to be forgotten).
+	RunStateController(ctx context.Context, id int64) (RunStateController[Status], error)
 }
 
 type Workflow[Type any, Status StatusType] struct {
@@ -73,9 +77,10 @@ type Workflow[Type any, Status StatusType] struct {
 	timeouts         map[Status]timeouts[Type, Status]
 	connectorConfigs []connectorConfig[Type, Status]
 	outboxConfig     outboxConfig
+	customDelete     customDelete
 
 	internalStateMu sync.Mutex
-	// internalState holds the State of all expected consumers and timeout  go routines using their role names
+	// internalState holds the State of all expected consumers and timeout go routines using their role names
 	// as the key.
 	internalState map[string]State
 
@@ -231,6 +236,8 @@ func (w *Workflow[Type, Status]) Stop() {
 	}
 }
 
+type safeUpdater func(ctx context.Context, store RecordStore, graph map[int][]int, currentStatus int, next *WireRecord) error
+
 func safeUpdate(ctx context.Context, store RecordStore, graph map[int][]int, currentStatus int, next *WireRecord) error {
 	latest, err := store.Lookup(ctx, next.ID)
 	if err != nil {
@@ -268,13 +275,18 @@ func safeUpdate(ctx context.Context, store RecordStore, graph map[int][]int, cur
 		})
 	}
 
-	return storeAndEmit(ctx, store, next)
+	return storeAndEmit(ctx, store, next, latest.RunState)
 }
 
-func storeAndEmit(ctx context.Context, store RecordStore, wr *WireRecord) error {
+type storeAndEmitFunc func(ctx context.Context, store RecordStore, wr *WireRecord, previousRunState RunState) error
+
+func storeAndEmit(ctx context.Context, store RecordStore, wr *WireRecord, previousRunState RunState) error {
+	// Push run state changes for observability
+	metrics.RunStateChanges.WithLabelValues(wr.WorkflowName, previousRunState.String(), wr.RunState.String()).Inc()
+
 	return store.Store(ctx, wr, func(recordID int64) (OutboxEventData, error) {
 		// Record ID would not have been set if it is a new record. Assign the recordID that the Store provides
 		wr.ID = recordID
-		return WireRecordToOutboxEventData(*wr)
+		return WireRecordToOutboxEventData(*wr, previousRunState)
 	})
 }

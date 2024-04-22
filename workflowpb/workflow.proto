@@ -11,12 +11,13 @@ message Record {
   string run_id = 2;
   string workflow_name = 3;
   string foreign_id = 4;
-  bool is_start = 5;
-  bool is_end = 6;
+  bool is_start = 5 [deprecated = true]; // Use RunState
+  bool is_end = 6 [deprecated = true]; // Use RunState
   bytes object = 7;
   google.protobuf.Timestamp created_at = 8;
   int32 status = 9;
   google.protobuf.Timestamp updated_at = 10;
+  int32 run_state = 11;
 }
 
 message OutboxRecord {

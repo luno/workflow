@@ -68,27 +68,26 @@ func pollTimeouts[Type any, Status StatusType](ctx context.Context, w *Workflow[
 }
 
 func processTimeout[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], config timeout[Type, Status], r *WireRecord, timeout Timeout) error {
-	var t Type
-	err := Unmarshal(r.Object, &t)
+	record, err := buildConsumableRecord[Type, Status](ctx, w.recordStore, storeAndEmit, r, w.customDelete)
 	if err != nil {
 		return err
 	}
 
-	record := Record[Type, Status]{
-		WireRecord: *r,
-		Status:     Status(r.Status),
-		Object:     &t,
-	}
-
-	next, err := config.TimeoutFunc(ctx, &record, w.clock.Now())
+	next, err := config.TimeoutFunc(ctx, record, w.clock.Now())
 	if err != nil {
 		return err
 	}
 
 	if int(next) != 0 {
-		object, err := Marshal(&t)
+		object, err := Marshal(&record.Object)
 		if err != nil {
 			return err
+		}
+
+		runState := RunStateRunning
+		isEnd := w.endPoints[next]
+		if isEnd {
+			runState = RunStateCompleted
 		}
 
 		wr := &WireRecord{
@@ -96,9 +95,8 @@ func processTimeout[Type any, Status StatusType](ctx context.Context, w *Workflo
 			WorkflowName: record.WorkflowName,
 			ForeignID:    record.ForeignID,
 			RunID:        record.RunID,
+			RunState:     runState,
 			Status:       int(next),
-			IsStart:      false,
-			IsEnd:        w.endPoints[next],
 			Object:       object,
 			CreatedAt:    record.CreatedAt,
 			UpdatedAt:    w.clock.Now(),
@@ -170,7 +168,7 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](w *Workflow[Type, 
 				}
 			}
 
-			// Never update State even when successful
+			// Never update status even when successful
 			return 0, nil
 		}
 
@@ -182,6 +180,7 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](w *Workflow[Type, 
 			WithConsumerPollFrequency(timeouts.pollingFrequency),
 			WithEventFilters(
 				shardFilter(1, 1),
+				runStateUpdatesFilter(),
 			),
 		)
 		if err != nil {

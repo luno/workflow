@@ -7,6 +7,7 @@ import (
 
 	"github.com/luno/jettison/errors"
 	"github.com/luno/jettison/j"
+	"github.com/luno/jettison/log"
 
 	"github.com/luno/workflow/internal/metrics"
 )
@@ -62,6 +63,7 @@ func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentSta
 			WithConsumerPollFrequency(pollFrequency),
 			WithEventFilters(
 				shardFilter(shard, totalShards),
+				runStateUpdatesFilter(),
 			),
 		)
 		if err != nil {
@@ -128,8 +130,29 @@ func consumeForever[Type any, Status StatusType](ctx context.Context, w *Workflo
 			continue
 		}
 
+		if record.RunState.Stopped() {
+			if w.debugMode {
+				log.Info(ctx, "Skipping consumption of stopped workflow record", j.MKV{
+					"event_id":       e.ID,
+					"workflow":       record.WorkflowName,
+					"run_id":         record.RunID,
+					"foreign_id":     record.ForeignID,
+					"process_name":   processName,
+					"current_status": record.Status,
+					"run_state":      record.RunState.String(),
+				})
+			}
+
+			err = ack()
+			if err != nil {
+				return err
+			}
+
+			continue
+		}
+
 		t2 := w.clock.Now()
-		err = consume(ctx, w, record, p.consumer, ack, processName)
+		err = consume(ctx, w, record, p.consumer, ack, safeUpdate, storeAndEmit, processName)
 		if err != nil {
 			return err
 		}
@@ -158,56 +181,67 @@ func consume[Type any, Status StatusType](
 	current *WireRecord,
 	cf ConsumerFunc[Type, Status],
 	ack Ack,
+	updater safeUpdater,
+	storeAndEmitter storeAndEmitFunc,
 	processName string,
 ) error {
-	var t Type
-	err := Unmarshal(current.Object, &t)
+	record, err := buildConsumableRecord[Type, Status](ctx, w.recordStore, storeAndEmitter, current, w.customDelete)
 	if err != nil {
 		return err
 	}
 
-	record := Record[Type, Status]{
-		WireRecord: *current,
-		Status:     Status(current.Status),
-		Object:     &t,
-	}
-
-	next, err := cf(ctx, &record)
+	next, err := cf(ctx, record)
 	if err != nil {
 		return errors.Wrap(err, "failed to consume", j.MKV{
-			"workflow_name":      current.WorkflowName,
-			"foreign_id":         current.ForeignID,
-			"current_status":     Status(current.Status).String(),
-			"current_status_int": current.Status,
+			"workflow_name":      record.WorkflowName,
+			"foreign_id":         record.ForeignID,
+			"current_status":     record.Status.String(),
+			"current_status_int": record.Status,
 		})
 	}
 
-	if int(next) != 0 {
-		b, err := Marshal(&record.Object)
-		if err != nil {
-			return err
+	if skipUpdate(next) {
+		if w.debugMode {
+			log.Info(ctx, "skipping update", j.MKV{
+				"description":   skipUpdateDescription(next),
+				"record_id":     record.ID,
+				"workflow_name": w.Name,
+				"foreign_id":    record.ForeignID,
+				"run_id":        record.RunID,
+				"run_state":     record.RunState.String(),
+				"record_status": record.Status.String(),
+			})
 		}
 
-		isEnd := w.endPoints[next]
-		wr := &WireRecord{
-			ID:           record.ID,
-			RunID:        record.RunID,
-			WorkflowName: record.WorkflowName,
-			ForeignID:    record.ForeignID,
-			Status:       int(next),
-			IsStart:      false,
-			IsEnd:        isEnd,
-			Object:       b,
-			CreatedAt:    record.CreatedAt,
-			UpdatedAt:    w.clock.Now(),
-		}
-
-		err = safeUpdate(ctx, w.recordStore, w.graph, current.Status, wr)
-		if err != nil {
-			return err
-		}
-	} else {
 		metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName).Inc()
+		return ack()
+	}
+
+	b, err := Marshal(&record.Object)
+	if err != nil {
+		return err
+	}
+
+	runState := RunStateRunning
+	isEnd := w.endPoints[next]
+	if isEnd {
+		runState = RunStateCompleted
+	}
+	wr := &WireRecord{
+		ID:           record.ID,
+		WorkflowName: record.WorkflowName,
+		ForeignID:    record.ForeignID,
+		RunID:        record.RunID,
+		RunState:     runState,
+		Status:       int(next),
+		Object:       b,
+		CreatedAt:    record.CreatedAt,
+		UpdatedAt:    w.clock.Now(),
+	}
+
+	err = updater(ctx, w.recordStore, w.graph, current.Status, wr)
+	if err != nil {
+		return err
 	}
 
 	return ack()

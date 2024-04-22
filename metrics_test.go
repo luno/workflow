@@ -63,8 +63,7 @@ func TestMetricProcessLag(t *testing.T) {
 		ForeignID:    "29384723984732",
 		RunID:        runID,
 		Status:       int(StatusStart),
-		IsStart:      true,
-		IsEnd:        false,
+		RunState:     workflow.RunStateRunning,
 		Object:       payload,
 		CreatedAt:    clock.Now(),
 	})
@@ -134,8 +133,7 @@ func TestMetricProcessLagAlert(t *testing.T) {
 		ForeignID:    "29384723984732",
 		RunID:        runID,
 		Status:       int(StatusStart),
-		IsStart:      true,
-		IsEnd:        false,
+		RunState:     workflow.RunStateRunning,
 		Object:       payload,
 		CreatedAt:    clock.Now(),
 	})
@@ -215,8 +213,7 @@ func TestMetricProcessStates(t *testing.T) {
 		ForeignID:    "29384723984732",
 		RunID:        runID,
 		Status:       int(StatusStart),
-		IsStart:      true,
-		IsEnd:        false,
+		RunState:     workflow.RunStateRunning,
 		Object:       payload,
 		CreatedAt:    clock.Now(),
 	})
@@ -387,14 +384,14 @@ func TestMetricProcessLatency(t *testing.T) {
 			return 0, nil
 		}, StatusMiddle,
 	).WithOptions(
-		workflow.PollingFrequency(time.Millisecond * 100),
+		workflow.PollingFrequency(time.Millisecond * 10),
 	)
 	b.AddStep(StatusMiddle,
 		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
 			return 0, nil
 		}, StatusEnd,
 	).WithOptions(
-		workflow.PollingFrequency(time.Millisecond * 100),
+		workflow.PollingFrequency(time.Millisecond * 10),
 	)
 
 	nw := time.Now()
@@ -426,8 +423,7 @@ func TestMetricProcessLatency(t *testing.T) {
 		ForeignID:    "29384723984732",
 		RunID:        runID,
 		Status:       int(StatusStart),
-		IsStart:      true,
-		IsEnd:        false,
+		RunState:     workflow.RunStateRunning,
 		Object:       payload,
 		CreatedAt:    clock.Now(),
 	})
@@ -521,8 +517,7 @@ func TestMetricProcessErrors(t *testing.T) {
 		ForeignID:    "29384723984732",
 		RunID:        runID,
 		Status:       int(StatusStart),
-		IsStart:      true,
-		IsEnd:        false,
+		RunState:     workflow.RunStateRunning,
 		Object:       payload,
 		CreatedAt:    clock.Now(),
 	})
@@ -547,12 +542,108 @@ workflow_process_error_count{process_name="start-consumer-1-of-1",workflow_name=
 	metrics.ProcessErrors.Reset()
 }
 
-func TestMetricProcessSkippedEvents(t *testing.T) {}
+func TestRunStateChanges(t *testing.T) {
+	metrics.RunStateChanges.Reset()
+
+	b := workflow.NewBuilder[string, status]("example")
+	b.AddStep(StatusStart,
+		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+			return StatusMiddle, nil
+		}, StatusMiddle,
+	).WithOptions(
+		workflow.PollingFrequency(time.Millisecond * 10),
+	)
+	b.AddStep(StatusMiddle,
+		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+			return StatusEnd, nil
+		}, StatusEnd,
+	).WithOptions(
+		workflow.PollingFrequency(time.Millisecond * 10),
+	)
+
+	w := b.Build(
+		memstreamer.New(),
+		memrecordstore.New(),
+		memtimeoutstore.New(),
+		memrolescheduler.New(),
+		workflow.WithOutboxConfig(workflow.WithOutboxPollingFrequency(time.Millisecond)),
+	)
+
+	ctx := context.Background()
+	w.Run(ctx)
+	t.Cleanup(w.Stop)
+
+	_, err := w.Trigger(ctx, "983467934", StatusStart)
+	jtest.RequireNil(t, err)
+
+	time.Sleep(time.Millisecond * 500)
+
+	expected := `
+# HELP workflow_run_state_changes The number of workflow run state changes going from state to a new state
+# TYPE workflow_run_state_changes counter
+workflow_run_state_changes{current_run_state="Initiated",previous_run_state="Unknown",workflow_name="example"} 1
+workflow_run_state_changes{current_run_state="Running",previous_run_state="Initiated",workflow_name="example"} 1
+workflow_run_state_changes{current_run_state="Running",previous_run_state="Running",workflow_name="example"} 1
+workflow_run_state_changes{current_run_state="Completed",previous_run_state="Running",workflow_name="example"} 1
+`
+
+	err = testutil.CollectAndCompare(metrics.RunStateChanges, strings.NewReader(expected))
+	jtest.RequireNil(t, err)
+
+	metrics.RunStateChanges.Reset()
+}
+
+func TestMetricProcessSkippedEvents(t *testing.T) {
+	metrics.ProcessSkippedEvents.Reset()
+
+	b := workflow.NewBuilder[string, status]("example")
+	b.AddStep(StatusStart,
+		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+			return 0, nil
+		}, StatusMiddle,
+	).WithOptions(
+		workflow.PollingFrequency(time.Millisecond * 10),
+	)
+
+	w := b.Build(
+		memstreamer.New(),
+		memrecordstore.New(),
+		memtimeoutstore.New(),
+		memrolescheduler.New(),
+		workflow.WithOutboxConfig(workflow.WithOutboxPollingFrequency(time.Millisecond)),
+	)
+
+	ctx := context.Background()
+	w.Run(ctx)
+	t.Cleanup(w.Stop)
+
+	_, err := w.Trigger(ctx, "9834679343", StatusStart)
+	jtest.RequireNil(t, err)
+
+	_, err = w.Trigger(ctx, "2349839483", StatusStart)
+	jtest.RequireNil(t, err)
+
+	_, err = w.Trigger(ctx, "7548702398", StatusStart)
+	jtest.RequireNil(t, err)
+
+	time.Sleep(time.Millisecond * 500)
+
+	expected := `
+# HELP workflow_process_skipped_events_count Number of events skipped by consumer
+# TYPE workflow_process_skipped_events_count counter
+workflow_process_skipped_events_count{process_name="start-consumer-1-of-1",workflow_name="example"} 3
+`
+
+	err = testutil.CollectAndCompare(metrics.ProcessSkippedEvents, strings.NewReader(expected))
+	jtest.RequireNil(t, err)
+
+	metrics.ProcessSkippedEvents.Reset()
+}
 
 func update(ctx context.Context, store workflow.RecordStore, wr *workflow.WireRecord) error {
 	return store.Store(ctx, wr, func(recordID int64) (workflow.OutboxEventData, error) {
 		// Record ID would not have been set if it is a new record. Assign the recordID that the Store provides
 		wr.ID = recordID
-		return workflow.WireRecordToOutboxEventData(*wr)
+		return workflow.WireRecordToOutboxEventData(*wr, workflow.RunStateUnknown)
 	})
 }

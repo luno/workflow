@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/luno/jettison/errors"
@@ -57,7 +58,42 @@ func WithEventFilters(ef ...EventFilter) ConsumerOption {
 func shardFilter(shard, totalShards int) EventFilter {
 	return func(e *Event) bool {
 		if totalShards > 1 {
-			return e.ID%int64(totalShards) != int64(shard)
+			return e.ID%int64(totalShards) != int64(shard)-1
+		}
+
+		return false
+	}
+}
+
+func runStateUpdatesFilter() EventFilter {
+	return func(e *Event) bool {
+		if e.Headers[HeaderPreviousRunState] == "" || e.Headers[HeaderRunState] == "" {
+			return false
+		}
+
+		intValue, err := strconv.ParseInt(e.Headers[HeaderPreviousRunState], 10, 64)
+		if err != nil {
+			// NoReturnErr: Ignore failure to parse int from string
+			return false
+		}
+
+		previous := RunState(intValue)
+
+		intValue, err = strconv.ParseInt(e.Headers[HeaderRunState], 10, 64)
+		if err != nil {
+			// NoReturnErr: Ignore failure to parse int from string
+			return false
+		}
+
+		current := RunState(intValue)
+
+		if current.Stopped() {
+			return true
+		}
+
+		if previous == RunStateInitiated && current == RunStateRunning {
+			// Ignore all events generated from moving from Initiated to Running
+			return true
 		}
 
 		return false
@@ -114,6 +150,7 @@ func awaitWorkflowStatusByForeignID[Type any, Status StatusType](ctx context.Con
 		WithEventFilters(
 			FilterByForeignID(foreignID),
 			FilterByRunID(runID),
+			runStateUpdatesFilter(),
 		),
 	)
 	if err != nil {
@@ -153,6 +190,7 @@ func awaitWorkflowStatusByForeignID[Type any, Status StatusType](ctx context.Con
 			WireRecord: *r,
 			Status:     Status(r.Status),
 			Object:     &t,
+			stopper:    newRunStateController[Status](r, w.recordStore, storeAndEmit, w.customDelete),
 		}, ack()
 	}
 }
