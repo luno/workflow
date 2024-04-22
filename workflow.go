@@ -77,6 +77,7 @@ type Workflow[Type any, Status StatusType] struct {
 	timeouts         map[Status]timeouts[Type, Status]
 	connectorConfigs []connectorConfig[Type, Status]
 	outboxConfig     outboxConfig
+	customDelete     customDelete
 
 	internalStateMu sync.Mutex
 	// internalState holds the State of all expected consumers and timeout go routines using their role names

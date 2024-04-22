@@ -40,7 +40,7 @@ func processCallback[Type any, Status StatusType](ctx context.Context, w *Workfl
 		return nil
 	}
 
-	record, err := buildConsumableRecord[Type, Status](ctx, w.recordStore, storeAndEmit, latest)
+	record, err := buildConsumableRecord[Type, Status](ctx, w.recordStore, storeAndEmit, latest, w.customDelete)
 	if err != nil {
 		return err
 	}

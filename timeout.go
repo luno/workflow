@@ -68,7 +68,7 @@ func pollTimeouts[Type any, Status StatusType](ctx context.Context, w *Workflow[
 }
 
 func processTimeout[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], config timeout[Type, Status], r *WireRecord, timeout Timeout) error {
-	record, err := buildConsumableRecord[Type, Status](ctx, w.recordStore, storeAndEmit, r)
+	record, err := buildConsumableRecord[Type, Status](ctx, w.recordStore, storeAndEmit, r, w.customDelete)
 	if err != nil {
 		return err
 	}

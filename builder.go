@@ -236,6 +236,10 @@ func (b *Builder[Type, Status]) Build(eventStreamer EventStreamer, recordStore R
 		b.workflow.defaultPollingFrequency = time.Second
 	}
 
+	if bo.customDelete != nil {
+		b.workflow.customDelete = bo.customDelete
+	}
+
 	b.workflow.endPoints = b.determineEndPoints(b.workflow.graph)
 	b.workflow.debugMode = bo.debugMode
 
@@ -246,6 +250,7 @@ type buildOptions struct {
 	clock        clock.Clock
 	debugMode    bool
 	outboxConfig *outboxConfig
+	customDelete customDelete
 }
 
 type BuildOption func(w *buildOptions)
@@ -271,6 +276,25 @@ func WithOutboxConfig(opts ...OutboxOption) BuildOption {
 func WithDebugMode() BuildOption {
 	return func(bo *buildOptions) {
 		bo.debugMode = true
+	}
+}
+
+func WithCustomDelete[Type any](fn func(object *Type) error) BuildOption {
+	return func(bo *buildOptions) {
+		bo.customDelete = func(wr *WireRecord) ([]byte, error) {
+			var t Type
+			err := Unmarshal(wr.Object, &t)
+			if err != nil {
+				return nil, err
+			}
+
+			err = fn(&t)
+			if err != nil {
+				return nil, err
+			}
+
+			return Marshal(&t)
+		}
 	}
 }
 

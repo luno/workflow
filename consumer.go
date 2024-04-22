@@ -185,7 +185,7 @@ func consume[Type any, Status StatusType](
 	storeAndEmitter storeAndEmitFunc,
 	processName string,
 ) error {
-	record, err := buildConsumableRecord[Type, Status](ctx, w.recordStore, storeAndEmitter, current)
+	record, err := buildConsumableRecord[Type, Status](ctx, w.recordStore, storeAndEmitter, current, w.customDelete)
 	if err != nil {
 		return err
 	}

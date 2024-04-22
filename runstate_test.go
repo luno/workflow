@@ -123,8 +123,13 @@ func TestWorkflowRunStateController(t *testing.T) {
 	mu := sync.Mutex{}
 	canRelease := false
 
-	b := workflow.NewBuilder[string, status]("example")
-	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+	type myObject struct {
+		Name string
+		Car  string
+	}
+
+	b := workflow.NewBuilder[myObject, status]("example")
+	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Record[myObject, status]) (status, error) {
 		// This consumer should block until it's released
 		for {
 			mu.Lock()
@@ -150,6 +155,10 @@ func TestWorkflowRunStateController(t *testing.T) {
 		recordStore,
 		memtimeoutstore.New(),
 		memrolescheduler.New(),
+		workflow.WithCustomDelete(func(object *myObject) error {
+			object.Name = "Right to be forgotten"
+			return nil
+		}),
 	)
 
 	ctx := context.Background()
@@ -157,7 +166,10 @@ func TestWorkflowRunStateController(t *testing.T) {
 	t.Cleanup(w.Stop)
 
 	foreignID := "foreignID"
-	runID, err := w.Trigger(ctx, foreignID, StatusStart)
+	runID, err := w.Trigger(ctx, foreignID, StatusStart, workflow.WithInitialValue[myObject, status](&myObject{
+		Name: "Andrew Wormald",
+		Car:  "Audi",
+	}))
 	jtest.RequireNil(t, err)
 
 	record, err := recordStore.Latest(ctx, w.Name, foreignID)
@@ -208,6 +220,13 @@ func TestWorkflowRunStateController(t *testing.T) {
 	jtest.RequireNil(t, err)
 
 	require.Equal(t, workflow.RunStateDataDeleted, record.RunState)
+
+	var object myObject
+	err = workflow.Unmarshal(record.Object, &object)
+	jtest.RequireNil(t, err)
+
+	require.Equal(t, "Right to be forgotten", object.Name)
+	require.Equal(t, "Audi", object.Car)
 
 	w.Stop()
 }

@@ -96,17 +96,20 @@ type stopper[Status StatusType] interface {
 	Cancel(ctx context.Context) (Status, error)
 }
 
-func newRunStateController[Status StatusType](wr *WireRecord, rs RecordStore, storeFunc storeAndEmitFunc) RunStateController[Status] {
+func newRunStateController[Status StatusType](wr *WireRecord, rs RecordStore, storeFunc storeAndEmitFunc, customDelete customDelete) RunStateController[Status] {
 	return &runStateControllerImpl[Status]{
 		record:          wr,
+		customDelete:    customDelete,
 		recordStore:     rs,
 		storeAndEmitter: storeFunc,
 	}
 }
 
+type customDelete func(wr *WireRecord) ([]byte, error)
+
 type runStateControllerImpl[Status StatusType] struct {
 	record          *WireRecord
-	customDelete    func() ([]byte, error)
+	customDelete    customDelete
 	recordStore     RecordStore
 	storeAndEmitter storeAndEmitFunc
 }
@@ -169,12 +172,12 @@ func (rsc *runStateControllerImpl[Status]) DeleteData(ctx context.Context) (Stat
 
 	// If a custom delete has been configured then use the custom delete
 	if rsc.customDelete != nil {
-		b, err := rsc.customDelete()
+		bytes, err := rsc.customDelete(rsc.record)
 		if err != nil {
 			return 0, err
 		}
 
-		replacementData = b
+		replacementData = bytes
 	}
 
 	currentRunState := rsc.record.RunState
@@ -239,5 +242,5 @@ func (w *Workflow[Type, Status]) RunStateController(ctx context.Context, foreign
 		return nil, err
 	}
 
-	return newRunStateController[Status](r, w.recordStore, storeAndEmit), nil
+	return newRunStateController[Status](r, w.recordStore, storeAndEmit, w.customDelete), nil
 }
