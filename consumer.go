@@ -61,21 +61,25 @@ func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentSta
 			topic,
 			role,
 			WithConsumerPollFrequency(pollFrequency),
-			WithEventFilters(
-				shardFilter(shard, totalShards),
-				runStateUpdatesFilter(),
-			),
 		)
 		if err != nil {
 			return err
 		}
 		defer consumerStream.Close()
 
-		return consumeForever[Type, Status](ctx, w, p, consumerStream, currentStatus, processName)
+		return consumeForever[Type, Status](ctx, w, p, consumerStream, currentStatus, processName, shard, totalShards)
 	}, p.errBackOff)
 }
 
-func consumeForever[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], p consumerConfig[Type, Status], c Consumer, status Status, processName string) error {
+func consumeForever[Type any, Status StatusType](
+	ctx context.Context,
+	w *Workflow[Type, Status],
+	p consumerConfig[Type, Status],
+	c Consumer,
+	status Status,
+	processName string,
+	shard, totalShards int,
+) error {
 	for {
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -106,6 +110,19 @@ func consumeForever[Type any, Status StatusType](ctx context.Context, w *Workflo
 
 		// Push metrics and alerting around the age of the event being processed.
 		pushLagMetricAndAlerting(w.Name, processName, e.CreatedAt, p.lagAlert, w.clock)
+
+		shouldFilter := FilterUsing(e,
+			shardFilter(shard, totalShards),
+			runStateUpdatesFilter(),
+		)
+		if shouldFilter {
+			err = ack()
+			if err != nil {
+				return err
+			}
+
+			continue
+		}
 
 		record, err := w.recordStore.Lookup(ctx, e.ForeignID)
 		if errors.Is(err, ErrRecordNotFound) {
