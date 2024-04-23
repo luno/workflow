@@ -66,8 +66,6 @@ func TestRunState(t *testing.T) {
 		expected := tc.expected
 
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
 			recordStore := memrecordstore.New()
 			w := fn(recordStore)
 
