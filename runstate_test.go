@@ -166,7 +166,7 @@ func TestWorkflowRunStateController(t *testing.T) {
 	t.Cleanup(w.Stop)
 
 	foreignID := "foreignID"
-	runID, err := w.Trigger(ctx, foreignID, StatusStart, workflow.WithInitialValue[myObject, status](&myObject{
+	_, err := w.Trigger(ctx, foreignID, StatusStart, workflow.WithInitialValue[myObject, status](&myObject{
 		Name: "Andrew Wormald",
 		Car:  "Audi",
 	}))
@@ -186,7 +186,7 @@ func TestWorkflowRunStateController(t *testing.T) {
 	canRelease = true
 	mu.Unlock()
 
-	rsc, err := w.RunStateController(ctx, foreignID, runID)
+	rsc, err := w.RunStateController(ctx, 1)
 	jtest.RequireNil(t, err)
 
 	_, err = rsc.Pause(ctx)

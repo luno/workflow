@@ -235,9 +235,8 @@ var runStateTransitions = map[RunState]map[RunState]bool{
 	},
 }
 
-func (w *Workflow[Type, Status]) RunStateController(ctx context.Context, foreignID, runID string) (RunStateController[Status], error) {
-	// TODO: Migrate to lookup by foreignID and runID
-	r, err := w.recordStore.Latest(ctx, w.Name, foreignID)
+func (w *Workflow[Type, Status]) RunStateController(ctx context.Context, id int64) (RunStateController[Status], error) {
+	r, err := w.recordStore.Lookup(ctx, id)
 	if err != nil {
 		return nil, err
 	}
