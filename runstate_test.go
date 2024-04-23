@@ -17,6 +17,8 @@ import (
 )
 
 func TestRunState(t *testing.T) {
+	t.Parallel()
+
 	testCases := []struct {
 		name      string
 		workflow  func(recordStore workflow.RecordStore) *workflow.Workflow[string, status]

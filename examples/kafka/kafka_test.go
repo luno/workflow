@@ -13,6 +13,8 @@ import (
 )
 
 func TestExampleWorkflow(t *testing.T) {
+	t.Parallel()
+
 	wf := kafka.ExampleWorkflow()
 	t.Cleanup(wf.Stop)
 
