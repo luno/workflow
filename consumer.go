@@ -214,9 +214,10 @@ func consume[Type any, Status StatusType](
 	if err != nil {
 		// Only keep track of errors if we need to
 		if pauseAfterErrCount > 0 {
-			w.errorCounter.Add(err, processName)
+			w.errorCounter.Add(err, processName, record.RunID)
 
-			if w.errorCounter.Count(err, processName) >= pauseAfterErrCount {
+			if w.errorCounter.Count(err, processName, record.RunID) >= pauseAfterErrCount {
+				originalErr := err
 				_, err := record.Pause(ctx)
 				if err != nil {
 					return errors.Wrap(err, "failed to pause record after exceeding allowed error count", j.MKV{
@@ -227,6 +228,8 @@ func consume[Type any, Status StatusType](
 					})
 				}
 
+				// Record paused - now clear the error counter.
+				w.errorCounter.Clear(originalErr, processName, record.RunID)
 				return ack()
 			}
 		}
