@@ -33,7 +33,6 @@ func TestConsume(t *testing.T) {
 	}
 
 	t.Run("Golden path consume", func(t *testing.T) {
-		t.Parallel()
 		calls := map[string]int{
 			"consumerFunc": 0,
 			"ack":          0,
@@ -77,8 +76,6 @@ func TestConsume(t *testing.T) {
 	})
 
 	t.Run("Skip consume", func(t *testing.T) {
-		t.Parallel()
-
 		calls := map[string]int{
 			"consumerFunc": 0,
 			"ack":          0,
@@ -119,8 +116,6 @@ func TestConsume(t *testing.T) {
 	})
 
 	t.Run("Mark record as Running", func(t *testing.T) {
-		t.Parallel()
-
 		currentRecord := &WireRecord{
 			ID:           1,
 			WorkflowName: "example",

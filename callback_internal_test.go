@@ -38,7 +38,6 @@ func TestProcessCallback(t *testing.T) {
 	}
 
 	t.Run("Golden path callback", func(t *testing.T) {
-		t.Parallel()
 		calls := map[string]int{
 			"callbackFunc": 0,
 			"updater":      0,
@@ -82,7 +81,6 @@ func TestProcessCallback(t *testing.T) {
 	})
 
 	t.Run("Skip consume", func(t *testing.T) {
-		t.Parallel()
 		calls := map[string]int{
 			"callbackFunc": 0,
 			"updater":      0,
@@ -119,8 +117,6 @@ func TestProcessCallback(t *testing.T) {
 	})
 
 	t.Run("Mark record as Running", func(t *testing.T) {
-		t.Parallel()
-
 		currentRecord := &WireRecord{
 			ID:           1,
 			WorkflowName: "example",
@@ -173,8 +169,6 @@ func TestProcessCallback(t *testing.T) {
 	})
 
 	t.Run("Return on lookup error", func(t *testing.T) {
-		t.Parallel()
-
 		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*WireRecord, error) {
 			return nil, errors.New("test error")
 		}
@@ -184,8 +178,6 @@ func TestProcessCallback(t *testing.T) {
 	})
 
 	t.Run("Return on callbackFunc error", func(t *testing.T) {
-		t.Parallel()
-
 		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*WireRecord, error) {
 			return current, nil
 		}
@@ -199,8 +191,6 @@ func TestProcessCallback(t *testing.T) {
 	})
 
 	t.Run("Ignore if record is in different state", func(t *testing.T) {
-		t.Parallel()
-
 		currentRecord := &WireRecord{
 			Status: int(statusMiddle),
 		}
@@ -214,8 +204,6 @@ func TestProcessCallback(t *testing.T) {
 	})
 
 	t.Run("Return error if failed to update to run state", func(t *testing.T) {
-		t.Parallel()
-
 		calls := map[string]int{
 			"storeAndEmit": 0,
 			"latestLookup": 0,
@@ -252,8 +240,6 @@ func TestProcessCallback(t *testing.T) {
 	})
 
 	t.Run("Update run state to completed on terminal status", func(t *testing.T) {
-		t.Parallel()
-
 		currentRecord := &WireRecord{
 			ID:           1,
 			WorkflowName: "example",

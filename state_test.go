@@ -16,8 +16,6 @@ import (
 )
 
 func TestInternalState(t *testing.T) {
-	t.Parallel()
-
 	b := workflow.NewBuilder[string, status]("example")
 	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
 		return StatusMiddle, nil
