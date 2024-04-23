@@ -5,17 +5,21 @@ import (
 	"testing"
 	"time"
 
+	"github.com/luno/jettison/errors"
 	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 	clock_testing "k8s.io/utils/clock/testing"
+
+	"github.com/luno/workflow/internal/errorcounter"
 )
 
 func TestConsume(t *testing.T) {
 	ctx := context.Background()
 	w := &Workflow[string, testStatus]{
-		Name:  "example",
-		ctx:   ctx,
-		clock: clock_testing.NewFakeClock(time.Date(2024, time.April, 19, 0, 0, 0, 0, time.UTC)),
+		Name:         "example",
+		ctx:          ctx,
+		clock:        clock_testing.NewFakeClock(time.Date(2024, time.April, 19, 0, 0, 0, 0, time.UTC)),
+		errorCounter: errorcounter.New(),
 	}
 
 	value := "data"
@@ -61,7 +65,7 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		err := consume(ctx, w, current, consumer, ack, store, updater, "processName")
+		err := consume(ctx, w, current, consumer, ack, store, updater, "processName", 0)
 		jtest.RequireNil(t, err)
 
 		expectedCalls := map[string]int{
@@ -100,7 +104,7 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		err := consume(ctx, w, current, consumer, ack, store, updater, "processName")
+		err := consume(ctx, w, current, consumer, ack, store, updater, "processName", 0)
 		jtest.RequireNil(t, err)
 
 		expectedCalls := map[string]int{
@@ -150,7 +154,7 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		err := consume(ctx, w, currentRecord, consumer, ack, store, updater, "processName")
+		err := consume(ctx, w, currentRecord, consumer, ack, store, updater, "processName", 0)
 		jtest.RequireNil(t, err)
 
 		expectedCalls := map[string]int{
@@ -158,6 +162,59 @@ func TestConsume(t *testing.T) {
 			"ack":          1,
 			"updater":      0,
 			"store":        1,
+		}
+		require.Equal(t, expectedCalls, calls)
+	})
+
+	t.Run("Pause record after exceeding allowed error count", func(t *testing.T) {
+		t.Parallel()
+
+		calls := map[string]int{
+			"consumerFunc": 0,
+			"ack":          0,
+			"updater":      0,
+			"storeAndEmit": 0,
+		}
+
+		testErr := errors.New("test error")
+
+		consumer := ConsumerFunc[string, testStatus](func(ctx context.Context, r *Record[string, testStatus]) (testStatus, error) {
+			calls["consumerFunc"] += 1
+			return 0, testErr
+		})
+
+		ack := func() error {
+			calls["ack"] += 1
+			return nil
+		}
+
+		updater := func(ctx context.Context, store RecordStore, graph map[int][]int, currentStatus int, next *WireRecord) error {
+			calls["updater"] += 1
+			return nil
+		}
+
+		storeAndEmitter := func(ctx context.Context, store RecordStore, wr *WireRecord, previousRunState RunState) error {
+			calls["storeAndEmit"] += 1
+
+			// Ensure that the call is pausing the record
+			require.Equal(t, RunStatePaused, wr.RunState)
+			return nil
+		}
+
+		err := consume(ctx, w, current, consumer, ack, updater, storeAndEmitter, "processName", 3)
+		jtest.Require(t, testErr, err)
+
+		err = consume(ctx, w, current, consumer, ack, updater, storeAndEmitter, "processName", 3)
+		jtest.Require(t, testErr, err)
+
+		err = consume(ctx, w, current, consumer, ack, updater, storeAndEmitter, "processName", 3)
+		jtest.RequireNil(t, err)
+
+		expectedCalls := map[string]int{
+			"consumerFunc": 3,
+			"ack":          1,
+			"updater":      0,
+			"storeAndEmit": 1,
 		}
 		require.Equal(t, expectedCalls, calls)
 	})

@@ -7,6 +7,7 @@ import (
 
 	"k8s.io/utils/clock"
 
+	"github.com/luno/workflow/internal/errorcounter"
 	"github.com/luno/workflow/internal/graph"
 )
 
@@ -32,6 +33,7 @@ func NewBuilder[Type any, Status StatusType](name string) *Builder[Type, Status]
 			callback:                make(map[Status][]callback[Type, Status]),
 			timeouts:                make(map[Status]timeouts[Type, Status]),
 			statusGraph:             graph.New(),
+			errorCounter:            errorcounter.New(),
 			internalState:           make(map[string]State),
 		},
 	}
@@ -74,11 +76,12 @@ func (s *stepUpdater[Type, Status]) WithOptions(opts ...Option) {
 	consumer := s.workflow.consumers[s.from]
 
 	consumerOpts := options{
-		parallelCount:    consumer.parallelCount,
-		pollingFrequency: consumer.pollingFrequency,
-		errBackOff:       consumer.errBackOff,
-		lag:              consumer.lag,
-		lagAlert:         consumer.lagAlert,
+		parallelCount:      consumer.parallelCount,
+		pollingFrequency:   consumer.pollingFrequency,
+		errBackOff:         consumer.errBackOff,
+		lag:                consumer.lag,
+		lagAlert:           consumer.lagAlert,
+		pauseAfterErrCount: consumer.pauseAfterErrCount,
 	}
 	for _, opt := range opts {
 		opt(&consumerOpts)
@@ -89,6 +92,7 @@ func (s *stepUpdater[Type, Status]) WithOptions(opts ...Option) {
 	consumer.errBackOff = consumerOpts.errBackOff
 	consumer.lag = consumerOpts.lag
 	consumer.lagAlert = consumerOpts.lagAlert
+	consumer.pauseAfterErrCount = consumerOpts.pauseAfterErrCount
 	s.workflow.consumers[s.from] = consumer
 }
 
@@ -146,9 +150,10 @@ func (s *timeoutUpdater[Type, Status]) WithOptions(opts ...Option) {
 	timeout := s.workflow.timeouts[s.from]
 
 	timeoutOpts := options{
-		pollingFrequency: timeout.pollingFrequency,
-		errBackOff:       timeout.errBackOff,
-		lagAlert:         timeout.lagAlert,
+		pollingFrequency:   timeout.pollingFrequency,
+		errBackOff:         timeout.errBackOff,
+		lagAlert:           timeout.lagAlert,
+		pauseAfterErrCount: timeout.pauseAfterErrCount,
 	}
 	for _, opt := range opts {
 		opt(&timeoutOpts)
@@ -165,6 +170,7 @@ func (s *timeoutUpdater[Type, Status]) WithOptions(opts ...Option) {
 	timeout.pollingFrequency = timeoutOpts.pollingFrequency
 	timeout.errBackOff = timeoutOpts.errBackOff
 	timeout.lagAlert = timeoutOpts.lagAlert
+	timeout.pauseAfterErrCount = timeoutOpts.pauseAfterErrCount
 	s.workflow.timeouts[s.from] = timeout
 }
 

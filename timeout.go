@@ -91,6 +91,7 @@ func processTimeout[Type any, Status StatusType](
 		return err
 	}
 
+	// TODO(andreww): Add pause after max error
 	next, err := config.TimeoutFunc(ctx, record, w.clock.Now())
 	if err != nil {
 		return err
@@ -123,10 +124,11 @@ func processTimeout[Type any, Status StatusType](
 }
 
 type timeouts[Type any, Status StatusType] struct {
-	pollingFrequency time.Duration
-	errBackOff       time.Duration
-	lagAlert         time.Duration
-	transitions      []timeout[Type, Status]
+	pollingFrequency   time.Duration
+	errBackOff         time.Duration
+	lagAlert           time.Duration
+	pauseAfterErrCount int
+	transitions        []timeout[Type, Status]
 }
 
 type timeout[Type any, Status StatusType] struct {
