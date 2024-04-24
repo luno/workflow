@@ -1,9 +1,11 @@
 package graph_test
 
 import (
-	"github.com/luno/workflow/internal/graph"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/luno/workflow/internal/graph"
 )
 
 func TestGraph(t *testing.T) {
