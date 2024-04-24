@@ -25,52 +25,35 @@ func MermaidDiagram[Type any, Status StatusType](w *Workflow[Type, Status], path
 		d = LeftToRightDirection
 	}
 
+	graphInfo := w.statusGraph.Info()
+
+	var starting []string
+	for _, node := range graphInfo.StartingNodes {
+		starting = append(starting, Status(node).String())
+	}
+
+	var terminal []string
+	for _, node := range graphInfo.TerminalNodes {
+		terminal = append(terminal, Status(node).String())
+	}
+
+	var transitions []MermaidTransition
+	for _, transition := range graphInfo.Transitions {
+		transitions = append(transitions, MermaidTransition{
+			From: Status(transition.From).String(),
+			To:   Status(transition.To).String(),
+		})
+	}
+
 	mf := MermaidFormat{
-		WorkflowName: w.Name,
-		Direction:    d,
-	}
-
-	startingPoint := make(map[Status]bool)
-	for _, from := range w.graphOrder {
-		if _, ok := startingPoint[Status(from)]; !ok {
-			startingPoint[Status(from)] = true
-		}
-
-		if w.endPoints[Status(from)] {
-			mf.TerminalPoints = append(mf.TerminalPoints, format(Status(from).String()))
-		}
-
-		for _, to := range w.graph[from] {
-			startingPoint[Status(to)] = false
-
-			mf.Transitions = append(mf.Transitions, MermaidTransition{
-				From: format(Status(from).String()),
-				To:   format(Status(to).String()),
-			})
-		}
-	}
-
-	for _, from := range w.graphOrder {
-		if !startingPoint[Status(from)] {
-			continue
-		}
-
-		mf.StartingPoints = append(mf.StartingPoints, format(Status(from).String()))
-	}
-
-	for status, isTerminal := range w.endPoints {
-		if isTerminal {
-			mf.TerminalPoints = append(mf.TerminalPoints, format(status.String()))
-		}
+		WorkflowName:   w.Name,
+		Direction:      d,
+		StartingPoints: starting,
+		TerminalPoints: terminal,
+		Transitions:    transitions,
 	}
 
 	return template.Must(template.New("").Parse("```"+mermaidTemplate+"```")).Execute(file, mf)
-}
-
-func format(s string) string {
-	s = strings.ReplaceAll(s, " ", "_")
-
-	return s
 }
 
 type MermaidFormat struct {

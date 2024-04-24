@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/luno/jettison/j"
+	"github.com/luno/jettison/log"
+
 	"github.com/luno/workflow/internal/metrics"
 )
 
@@ -21,6 +24,10 @@ type Timeout struct {
 
 // pollTimeouts attempts to find the very next
 func pollTimeouts[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], status Status, timeouts timeouts[Type, Status], processName string) error {
+	updateFn := newUpdater[Type, Status](w.recordStore.Lookup, w.recordStore.Store, w.statusGraph, w.clock)
+	store := w.recordStore.Store
+	lookup := w.recordStore.Lookup
+
 	for {
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -50,7 +57,7 @@ func pollTimeouts[Type any, Status StatusType](ctx context.Context, w *Workflow[
 
 			for _, config := range timeouts.transitions {
 				t0 := w.clock.Now()
-				err = processTimeout(ctx, w, config, r, expiredTimeout)
+				err = processTimeout(ctx, w, config, r, expiredTimeout, lookup, store, updateFn, processName)
 				if err != nil {
 					metrics.ProcessLatency.WithLabelValues(w.Name, processName).Observe(w.clock.Since(t0).Seconds())
 					return err
@@ -67,8 +74,18 @@ func pollTimeouts[Type any, Status StatusType](ctx context.Context, w *Workflow[
 	}
 }
 
-func processTimeout[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], config timeout[Type, Status], r *WireRecord, timeout Timeout) error {
-	record, err := buildConsumableRecord[Type, Status](ctx, w.recordStore, storeAndEmit, r, w.customDelete)
+func processTimeout[Type any, Status StatusType](
+	ctx context.Context,
+	w *Workflow[Type, Status],
+	config timeout[Type, Status],
+	r *WireRecord,
+	timeout Timeout,
+	lookup lookupFunc,
+	store storeFunc,
+	updater updater[Type, Status],
+	processName string,
+) error {
+	record, err := buildConsumableRecord[Type, Status](ctx, store, r, w.customDelete)
 	if err != nil {
 		return err
 	}
@@ -78,43 +95,30 @@ func processTimeout[Type any, Status StatusType](ctx context.Context, w *Workflo
 		return err
 	}
 
-	if int(next) != 0 {
-		object, err := Marshal(&record.Object)
-		if err != nil {
-			return err
+	if skipUpdate(next) {
+		if w.debugMode {
+			log.Info(ctx, "skipping newUpdater", j.MKV{
+				"description":   skipUpdateDescription(next),
+				"record_id":     record.ID,
+				"workflow_name": w.Name,
+				"foreign_id":    record.ForeignID,
+				"run_id":        record.RunID,
+				"run_state":     record.RunState.String(),
+				"record_status": record.Status.String(),
+			})
 		}
 
-		runState := RunStateRunning
-		isEnd := w.endPoints[next]
-		if isEnd {
-			runState = RunStateCompleted
-		}
-
-		wr := &WireRecord{
-			ID:           record.ID,
-			WorkflowName: record.WorkflowName,
-			ForeignID:    record.ForeignID,
-			RunID:        record.RunID,
-			RunState:     runState,
-			Status:       int(next),
-			Object:       object,
-			CreatedAt:    record.CreatedAt,
-			UpdatedAt:    w.clock.Now(),
-		}
-
-		err = safeUpdate(ctx, w.recordStore, w.graph, timeout.Status, wr)
-		if err != nil {
-			return err
-		}
-
-		// Mark timeout as having been executed (aka completed) only in the case that true is returned.
-		err = w.timeoutStore.Complete(ctx, timeout.ID)
-		if err != nil {
-			return err
-		}
+		metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName).Inc()
+		return nil
 	}
 
-	return nil
+	err = updater(ctx, Status(timeout.Status), next, record)
+	if err != nil {
+		return err
+	}
+
+	// Mark timeout as having been executed (aka completed) only in the case that true is returned.
+	return w.timeoutStore.Complete(ctx, timeout.ID)
 }
 
 type timeouts[Type any, Status StatusType] struct {
@@ -168,7 +172,7 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](w *Workflow[Type, 
 				}
 			}
 
-			// Never update status even when successful
+			// Never newUpdater status even when successful
 			return 0, nil
 		}
 

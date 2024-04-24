@@ -80,6 +80,7 @@ func consumeForever[Type any, Status StatusType](
 	processName string,
 	shard, totalShards int,
 ) error {
+	updater := newUpdater[Type, Status](w.recordStore.Lookup, w.recordStore.Store, w.statusGraph, w.clock)
 	for {
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -169,7 +170,7 @@ func consumeForever[Type any, Status StatusType](
 		}
 
 		t2 := w.clock.Now()
-		err = consume(ctx, w, record, p.consumer, ack, safeUpdate, storeAndEmit, processName)
+		err = consume(ctx, w, record, p.consumer, ack, w.recordStore.Store, updater, processName)
 		if err != nil {
 			return err
 		}
@@ -198,11 +199,11 @@ func consume[Type any, Status StatusType](
 	current *WireRecord,
 	cf ConsumerFunc[Type, Status],
 	ack Ack,
-	updater safeUpdater,
-	storeAndEmitter storeAndEmitFunc,
+	store storeFunc,
+	updater updater[Type, Status],
 	processName string,
 ) error {
-	record, err := buildConsumableRecord[Type, Status](ctx, w.recordStore, storeAndEmitter, current, w.customDelete)
+	record, err := buildConsumableRecord[Type, Status](ctx, store, current, w.customDelete)
 	if err != nil {
 		return err
 	}
@@ -219,7 +220,7 @@ func consume[Type any, Status StatusType](
 
 	if skipUpdate(next) {
 		if w.debugMode {
-			log.Info(ctx, "skipping update", j.MKV{
+			log.Info(ctx, "skipping newUpdater", j.MKV{
 				"description":   skipUpdateDescription(next),
 				"record_id":     record.ID,
 				"workflow_name": w.Name,
@@ -234,29 +235,7 @@ func consume[Type any, Status StatusType](
 		return ack()
 	}
 
-	b, err := Marshal(&record.Object)
-	if err != nil {
-		return err
-	}
-
-	runState := RunStateRunning
-	isEnd := w.endPoints[next]
-	if isEnd {
-		runState = RunStateCompleted
-	}
-	wr := &WireRecord{
-		ID:           record.ID,
-		WorkflowName: record.WorkflowName,
-		ForeignID:    record.ForeignID,
-		RunID:        record.RunID,
-		RunState:     runState,
-		Status:       int(next),
-		Object:       b,
-		CreatedAt:    record.CreatedAt,
-		UpdatedAt:    w.clock.Now(),
-	}
-
-	err = updater(ctx, w.recordStore, w.graph, current.Status, wr)
+	err = updater(ctx, Status(current.Status), next, record)
 	if err != nil {
 		return err
 	}

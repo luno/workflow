@@ -15,8 +15,7 @@ func (w *Workflow[Type, Status]) Schedule(foreignID string, startingStatus Statu
 		return errors.Wrap(ErrWorkflowNotRunning, "ensure Run() is called before attempting to trigger the workflow")
 	}
 
-	_, ok := w.validStatuses[startingStatus]
-	if !ok {
+	if !w.statusGraph.IsValid(int(startingStatus)) {
 		return errors.Wrap(ErrStatusProvidedNotConfigured, fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name))
 	}
 

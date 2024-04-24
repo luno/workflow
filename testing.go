@@ -67,8 +67,7 @@ func Require[Type any, Status StatusType](t *testing.T, w *Workflow[Type, Status
 		panic("Require can only be used for testing")
 	}
 
-	_, ok := w.validStatuses[waitFor]
-	if !ok {
+	if !w.statusGraph.IsValid(int(waitFor)) {
 		t.Error(fmt.Sprintf(`Status provided is not configured for workflow: "%v" (Workflow: %v)`, waitFor, w.Name))
 		return
 	}
