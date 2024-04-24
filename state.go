@@ -6,6 +6,7 @@ import (
 	"github.com/luno/workflow/internal/metrics"
 )
 
+//go:generate stringer -type=State
 type State int
 
 const (
@@ -15,19 +16,19 @@ const (
 	StateIdle     State = 3
 )
 
+var stateStrings = map[State]string{
+	StateUnknown:  "Unknown",
+	StateShutdown: "Shutdown",
+	StateRunning:  "Running",
+	StateIdle:     "Idle",
+}
+
 func (s State) String() string {
-	switch s {
-	case StateUnknown:
-		return "Unknown"
-	case StateShutdown:
-		return "Shutdown"
-	case StateRunning:
-		return "Running"
-	case StateIdle:
-		return "Idle"
-	default:
-		return fmt.Sprintf("State(%d)", s)
+	if val, ok := stateStrings[s]; ok {
+		return val
 	}
+
+	return fmt.Sprintf("State(%d)", s)
 }
 
 func (w *Workflow[Type, Status]) updateState(processName string, s State) {

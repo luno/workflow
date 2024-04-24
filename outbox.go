@@ -10,7 +10,7 @@ import (
 	"k8s.io/utils/clock"
 
 	"github.com/luno/workflow/internal/metrics"
-	"github.com/luno/workflow/workflowpb"
+	"github.com/luno/workflow/internal/outboxpb"
 )
 
 func outboxConsumer[Type any, Status StatusType](w *Workflow[Type, Status], config outboxConfig, shard, totalShards int) {
@@ -108,7 +108,7 @@ func purgeOutbox[Type any, Status StatusType](
 
 	// Send the events to the EventStreamer.
 	for _, e := range events {
-		var outboxRecord workflowpb.OutboxRecord
+		var outboxRecord outboxpb.OutboxRecord
 		err := proto.Unmarshal(e.Data, &outboxRecord)
 		if err != nil {
 			return errors.Wrap(err, "Unable to proto unmarshal outbox record")

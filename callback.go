@@ -18,7 +18,7 @@ type CallbackFunc[Type any, Status StatusType] func(ctx context.Context, r *Reco
 
 func (w *Workflow[Type, Status]) Callback(ctx context.Context, foreignID string, status Status, payload io.Reader) error {
 	for _, s := range w.callback[status] {
-		err := processCallback(ctx, w, status, s.CallbackFunc, foreignID, payload)
+		err := processCallback(ctx, w, status, s.CallbackFunc, foreignID, payload, w.recordStore.Latest, safeUpdate, storeAndEmit)
 		if err != nil {
 			return err
 		}
@@ -27,20 +27,32 @@ func (w *Workflow[Type, Status]) Callback(ctx context.Context, foreignID string,
 	return nil
 }
 
-func processCallback[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], currentStatus Status, fn CallbackFunc[Type, Status], foreignID string, payload io.Reader) error {
-	latest, err := w.recordStore.Latest(ctx, w.Name, foreignID)
+type latestLookup func(ctx context.Context, workflowName, foreignID string) (*WireRecord, error)
+
+func processCallback[Type any, Status StatusType](
+	ctx context.Context,
+	w *Workflow[Type, Status],
+	currentStatus Status,
+	fn CallbackFunc[Type, Status],
+	foreignID string,
+	payload io.Reader,
+	latest latestLookup,
+	updater safeUpdater,
+	storeAndEmitter storeAndEmitFunc,
+) error {
+	wr, err := latest(ctx, w.Name, foreignID)
 	if err != nil {
 		return errors.Wrap(err, "failed to latest record for callback", j.MKV{
 			"foreign_id": foreignID,
 		})
 	}
 
-	if Status(latest.Status) != currentStatus {
+	if Status(wr.Status) != currentStatus {
 		// Latest record shows that the current status is in a different State than expected so skip.
 		return nil
 	}
 
-	record, err := buildConsumableRecord[Type, Status](ctx, w.recordStore, storeAndEmit, latest, w.customDelete)
+	record, err := buildConsumableRecord[Type, Status](ctx, w.recordStore, storeAndEmitter, wr, w.customDelete)
 	if err != nil {
 		return err
 	}
@@ -82,7 +94,7 @@ func processCallback[Type any, Status StatusType](ctx context.Context, w *Workfl
 		runState = RunStateCompleted
 	}
 
-	wr := &WireRecord{
+	update := &WireRecord{
 		ID:           record.ID,
 		WorkflowName: record.WorkflowName,
 		ForeignID:    record.ForeignID,
@@ -94,5 +106,5 @@ func processCallback[Type any, Status StatusType](ctx context.Context, w *Workfl
 		UpdatedAt:    w.clock.Now(),
 	}
 
-	return safeUpdate(ctx, w.recordStore, w.graph, int(currentStatus), wr)
+	return updater(ctx, w.recordStore, w.graph, int(currentStatus), update)
 }

@@ -6,7 +6,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"github.com/luno/workflow/workflowpb"
+	"github.com/luno/workflow/internal/outboxpb"
 )
 
 type Event struct {
@@ -61,7 +61,7 @@ func WireRecordToOutboxEventData(record WireRecord, previousRunState RunState) (
 	headers[string(HeaderRunState)] = strconv.FormatInt(int64(record.RunState), 10)
 	headers[string(HeaderPreviousRunState)] = strconv.FormatInt(int64(previousRunState), 10)
 
-	r := workflowpb.OutboxRecord{
+	r := outboxpb.OutboxRecord{
 		ForeignId: record.ID,
 		Type:      int32(record.Status),
 		Headers:   headers,

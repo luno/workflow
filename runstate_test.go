@@ -17,6 +17,8 @@ import (
 )
 
 func TestRunState(t *testing.T) {
+	t.Parallel()
+
 	testCases := []struct {
 		name      string
 		workflow  func(recordStore workflow.RecordStore) *workflow.Workflow[string, status]
@@ -66,8 +68,6 @@ func TestRunState(t *testing.T) {
 		expected := tc.expected
 
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
 			recordStore := memrecordstore.New()
 			w := fn(recordStore)
 

@@ -94,6 +94,8 @@ type ExternalOTP struct {
 }
 
 func TestWorkflowAcceptanceTest(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(func() {
 		cancel()

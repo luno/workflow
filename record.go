@@ -3,12 +3,6 @@ package workflow
 import (
 	"context"
 	"time"
-
-	"github.com/luno/jettison/errors"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
-
-	"github.com/luno/workflow/workflowpb"
 )
 
 type Record[Type any, Status StatusType] struct {
@@ -31,47 +25,6 @@ type WireRecord struct {
 	Object       []byte
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
-}
-
-func (r *WireRecord) ProtoMarshal() ([]byte, error) {
-	pb, err := proto.Marshal(ToProto(r))
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to proto marshal record")
-	}
-
-	return pb, nil
-}
-
-func ToProto(r *WireRecord) *workflowpb.Record {
-	return &workflowpb.Record{
-		WorkflowName: r.WorkflowName,
-		ForeignId:    r.ForeignID,
-		RunId:        r.RunID,
-		Status:       int32(r.Status),
-		RunState:     int32(r.RunState),
-		Object:       r.Object,
-		CreatedAt:    timestamppb.New(r.CreatedAt),
-		UpdatedAt:    timestamppb.New(r.UpdatedAt),
-	}
-}
-
-func UnmarshalRecord(b []byte) (*WireRecord, error) {
-	var wpb workflowpb.Record
-	err := proto.Unmarshal(b, &wpb)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to proto marshal record")
-	}
-
-	return &WireRecord{
-		WorkflowName: wpb.WorkflowName,
-		ForeignID:    wpb.ForeignId,
-		RunID:        wpb.RunId,
-		Status:       int(wpb.Status),
-		RunState:     RunState(wpb.RunState),
-		Object:       wpb.Object,
-		CreatedAt:    wpb.CreatedAt.AsTime(),
-		UpdatedAt:    wpb.UpdatedAt.AsTime(),
-	}, nil
 }
 
 func buildConsumableRecord[Type any, Status StatusType](ctx context.Context, store RecordStore, storeFunc storeAndEmitFunc, wr *WireRecord, cd customDelete) (*Record[Type, Status], error) {
