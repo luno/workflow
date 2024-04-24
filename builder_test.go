@@ -12,6 +12,8 @@ import (
 	"github.com/luno/jettison/errors"
 	"github.com/stretchr/testify/require"
 	clock_testing "k8s.io/utils/clock/testing"
+
+	"github.com/luno/workflow/internal/graph"
 )
 
 type testStatus int
@@ -36,35 +38,38 @@ func (s testStatus) String() string {
 	}
 }
 
-func TestGraph(t *testing.T) {
+func TestStatusGraph(t *testing.T) {
 	b := NewBuilder[string, testStatus]("determine starting points")
 	b.AddStep(statusStart, nil, statusMiddle)
-	b.AddStep(statusMiddle, nil, statusEnd)
-	wf := b.Build(nil, nil, nil, nil)
+	b.AddCallback(statusMiddle, nil, statusEnd)
 
-	expected := map[int][]int{
-		int(statusStart): {
-			int(statusMiddle),
+	w := b.Build(nil, nil, nil, nil)
+
+	info := w.statusGraph.Info()
+	expectedTransitions := []graph.Transition{
+		{
+			From: int(statusStart),
+			To:   int(statusMiddle),
 		},
-		int(statusMiddle): {
-			int(statusEnd),
+		{
+			From: int(statusMiddle),
+			To:   int(statusEnd),
 		},
 	}
 
-	require.Equal(t, expected, wf.graph)
-}
+	require.Equal(t, expectedTransitions, info.Transitions)
 
-func TestDetermineEndPoints(t *testing.T) {
-	b := NewBuilder[string, testStatus]("determine starting points")
-	b.AddStep(statusStart, nil, statusMiddle)
-	b.AddStep(statusMiddle, nil, statusEnd)
-	wf := b.Build(nil, nil, nil, nil)
-
-	expected := map[testStatus]bool{
-		statusEnd: true,
+	expectedStarting := []int{
+		int(statusStart),
 	}
 
-	require.Equal(t, expected, wf.endPoints)
+	require.Equal(t, expectedStarting, info.StartingNodes)
+
+	expectedTerminal := []int{
+		int(statusEnd),
+	}
+
+	require.Equal(t, expectedTerminal, info.TerminalNodes)
 }
 
 func TestWithStepErrBackOff(t *testing.T) {
@@ -103,13 +108,6 @@ func TestAddingCallbacks(t *testing.T) {
 	b.AddCallback(statusStart, exampleFn, statusEnd)
 	wf := b.Build(nil, nil, nil, nil)
 
-	expected := map[int][]int{
-		int(statusStart): {
-			int(statusEnd),
-		},
-	}
-
-	require.Equal(t, expected, wf.graph)
 	require.NotNil(t, wf.callback[statusStart][0].CallbackFunc)
 }
 

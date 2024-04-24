@@ -50,21 +50,18 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		updater := func(ctx context.Context, store RecordStore, graph map[int][]int, currentStatus int, next *WireRecord) error {
+		updater := func(ctx context.Context, current testStatus, next testStatus, record *Record[string, testStatus]) error {
 			calls["updater"] += 1
-
-			val := "new data"
-			expected, err := Marshal(&val)
-			jtest.RequireNil(t, err)
-
-			require.Equal(t, expected, next.Object)
+			require.Equal(t, "new data", *record.Object)
 			return nil
 		}
 
-		// Not expected to be called
-		storeAndEmitter := storeAndEmitFunc(nil)
+		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+			calls["store"] += 1
+			return nil
+		}
 
-		err := consume(ctx, w, current, consumer, ack, updater, storeAndEmitter, "processName")
+		err := consume(ctx, w, current, consumer, ack, store, updater, "processName")
 		jtest.RequireNil(t, err)
 
 		expectedCalls := map[string]int{
@@ -93,17 +90,17 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		updater := func(ctx context.Context, store RecordStore, graph map[int][]int, currentStatus int, next *WireRecord) error {
+		updater := func(ctx context.Context, current testStatus, next testStatus, record *Record[string, testStatus]) error {
 			calls["updater"] += 1
 			return nil
 		}
 
-		storeAndEmitter := func(ctx context.Context, store RecordStore, wr *WireRecord, previousRunState RunState) error {
-			calls["storeAndEmit"] += 1
+		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+			calls["store"] += 1
 			return nil
 		}
 
-		err := consume(ctx, w, current, consumer, ack, updater, storeAndEmitter, "processName")
+		err := consume(ctx, w, current, consumer, ack, store, updater, "processName")
 		jtest.RequireNil(t, err)
 
 		expectedCalls := map[string]int{
@@ -130,7 +127,7 @@ func TestConsume(t *testing.T) {
 			"consumerFunc": 0,
 			"ack":          0,
 			"updater":      0,
-			"storeAndEmit": 0,
+			"store":        0,
 		}
 
 		consumer := ConsumerFunc[string, testStatus](func(ctx context.Context, r *Record[string, testStatus]) (testStatus, error) {
@@ -143,26 +140,24 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		updater := func(ctx context.Context, store RecordStore, graph map[int][]int, currentStatus int, next *WireRecord) error {
+		updater := func(ctx context.Context, current testStatus, next testStatus, record *Record[string, testStatus]) error {
 			calls["updater"] += 1
 			return nil
 		}
 
-		storeAndEmitter := func(ctx context.Context, store RecordStore, wr *WireRecord, previousRunState RunState) error {
-			calls["storeAndEmit"] += 1
-
-			require.Equal(t, RunStateRunning, wr.RunState)
+		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+			calls["store"] += 1
 			return nil
 		}
 
-		err := consume(ctx, w, currentRecord, consumer, ack, updater, storeAndEmitter, "processName")
+		err := consume(ctx, w, currentRecord, consumer, ack, store, updater, "processName")
 		jtest.RequireNil(t, err)
 
 		expectedCalls := map[string]int{
 			"consumerFunc": 1,
 			"ack":          1,
 			"updater":      0,
-			"storeAndEmit": 1,
+			"store":        1,
 		}
 		require.Equal(t, expectedCalls, calls)
 	})

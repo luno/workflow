@@ -96,22 +96,20 @@ type stopper[Status StatusType] interface {
 	Cancel(ctx context.Context) (Status, error)
 }
 
-func newRunStateController[Status StatusType](wr *WireRecord, rs RecordStore, storeFunc storeAndEmitFunc, customDelete customDelete) RunStateController[Status] {
+func newRunStateController[Status StatusType](wr *WireRecord, store storeFunc, customDelete customDelete) RunStateController[Status] {
 	return &runStateControllerImpl[Status]{
-		record:          wr,
-		customDelete:    customDelete,
-		recordStore:     rs,
-		storeAndEmitter: storeFunc,
+		record:       wr,
+		customDelete: customDelete,
+		store:        store,
 	}
 }
 
 type customDelete func(wr *WireRecord) ([]byte, error)
 
 type runStateControllerImpl[Status StatusType] struct {
-	record          *WireRecord
-	customDelete    customDelete
-	recordStore     RecordStore
-	storeAndEmitter storeAndEmitFunc
+	record       *WireRecord
+	customDelete customDelete
+	store        storeFunc
 }
 
 func (rsc *runStateControllerImpl[Status]) markAsRunning(ctx context.Context) (Status, error) {
@@ -123,7 +121,7 @@ func (rsc *runStateControllerImpl[Status]) markAsRunning(ctx context.Context) (S
 	currentRunState := rsc.record.RunState
 
 	rsc.record.RunState = RunStateRunning
-	return Status(SkipTypeRunStateUpdate), rsc.storeAndEmitter(ctx, rsc.recordStore, rsc.record, currentRunState)
+	return Status(SkipTypeRunStateUpdate), updateWireRecord(ctx, rsc.store, rsc.record, currentRunState)
 }
 
 func (rsc *runStateControllerImpl[Status]) Pause(ctx context.Context) (Status, error) {
@@ -135,7 +133,7 @@ func (rsc *runStateControllerImpl[Status]) Pause(ctx context.Context) (Status, e
 	currentRunState := rsc.record.RunState
 
 	rsc.record.RunState = RunStatePaused
-	return Status(SkipTypeRunStateUpdate), rsc.storeAndEmitter(ctx, rsc.recordStore, rsc.record, currentRunState)
+	return Status(SkipTypeRunStateUpdate), updateWireRecord(ctx, rsc.store, rsc.record, currentRunState)
 }
 
 func (rsc *runStateControllerImpl[Status]) Resume(ctx context.Context) (Status, error) {
@@ -147,7 +145,7 @@ func (rsc *runStateControllerImpl[Status]) Resume(ctx context.Context) (Status, 
 	currentRunState := rsc.record.RunState
 
 	rsc.record.RunState = RunStateRunning
-	return Status(SkipTypeRunStateUpdate), rsc.storeAndEmitter(ctx, rsc.recordStore, rsc.record, currentRunState)
+	return Status(SkipTypeRunStateUpdate), updateWireRecord(ctx, rsc.store, rsc.record, currentRunState)
 }
 
 func (rsc *runStateControllerImpl[Status]) Cancel(ctx context.Context) (Status, error) {
@@ -159,7 +157,7 @@ func (rsc *runStateControllerImpl[Status]) Cancel(ctx context.Context) (Status, 
 	currentRunState := rsc.record.RunState
 
 	rsc.record.RunState = RunStateCancelled
-	return Status(SkipTypeRunStateUpdate), rsc.storeAndEmitter(ctx, rsc.recordStore, rsc.record, currentRunState)
+	return Status(SkipTypeRunStateUpdate), updateWireRecord(ctx, rsc.store, rsc.record, currentRunState)
 }
 
 func (rsc *runStateControllerImpl[Status]) DeleteData(ctx context.Context) (Status, error) {
@@ -184,7 +182,7 @@ func (rsc *runStateControllerImpl[Status]) DeleteData(ctx context.Context) (Stat
 
 	rsc.record.RunState = RunStateDataDeleted
 	rsc.record.Object = replacementData
-	return Status(SkipTypeRunStateUpdate), rsc.storeAndEmitter(ctx, rsc.recordStore, rsc.record, currentRunState)
+	return Status(SkipTypeRunStateUpdate), updateWireRecord(ctx, rsc.store, rsc.record, currentRunState)
 }
 
 func validateRunStateTransition(record *WireRecord, runState RunState, sentinelErr error) error {
@@ -235,12 +233,11 @@ var runStateTransitions = map[RunState]map[RunState]bool{
 	},
 }
 
-func (w *Workflow[Type, Status]) RunStateController(ctx context.Context, foreignID, runID string) (RunStateController[Status], error) {
-	// TODO: Migrate to lookup by foreignID and runID
-	r, err := w.recordStore.Latest(ctx, w.Name, foreignID)
+func (w *Workflow[Type, Status]) RunStateController(ctx context.Context, id int64) (RunStateController[Status], error) {
+	r, err := w.recordStore.Lookup(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	return newRunStateController[Status](r, w.recordStore, storeAndEmit, w.customDelete), nil
+	return newRunStateController[Status](r, w.recordStore.Store, w.customDelete), nil
 }

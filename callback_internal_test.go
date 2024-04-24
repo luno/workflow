@@ -10,18 +10,20 @@ import (
 	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 	clock_testing "k8s.io/utils/clock/testing"
+
+	"github.com/luno/workflow/internal/graph"
 )
 
 func TestProcessCallback(t *testing.T) {
 	ctx := context.Background()
 	w := &Workflow[string, testStatus]{
-		Name:  "example",
-		ctx:   ctx,
-		clock: clock_testing.NewFakeClock(time.Date(2024, time.April, 19, 0, 0, 0, 0, time.UTC)),
-		endPoints: map[testStatus]bool{
-			statusEnd: true,
-		},
+		Name:        "example",
+		ctx:         ctx,
+		clock:       clock_testing.NewFakeClock(time.Date(2024, time.April, 19, 0, 0, 0, 0, time.UTC)),
+		statusGraph: graph.New(),
 	}
+
+	w.statusGraph.AddTransition(int(statusStart), int(statusEnd))
 
 	value := "data"
 	b, err := Marshal(&value)
@@ -50,14 +52,9 @@ func TestProcessCallback(t *testing.T) {
 			return statusEnd, nil
 		})
 
-		updater := func(ctx context.Context, store RecordStore, graph map[int][]int, currentStatus int, next *WireRecord) error {
+		updater := func(ctx context.Context, current testStatus, next testStatus, record *Record[string, testStatus]) error {
 			calls["updater"] += 1
-
-			val := "new data"
-			expected, err := Marshal(&val)
-			jtest.RequireNil(t, err)
-
-			require.Equal(t, expected, next.Object)
+			require.Equal(t, "new data", *record.Object)
 			return nil
 		}
 
@@ -66,10 +63,12 @@ func TestProcessCallback(t *testing.T) {
 			return current, nil
 		}
 
-		// Not expected to be called
-		storeAndEmitter := storeAndEmitFunc(nil)
+		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+			calls["store"] += 1
+			return nil
+		}
 
-		err := processCallback(ctx, w, testStatus(current.Status), callbackFn, current.ForeignID, nil, latestLookup, updater, storeAndEmitter)
+		err := processCallback(ctx, w, testStatus(current.Status), callbackFn, current.ForeignID, nil, latestLookup, store, updater)
 		jtest.RequireNil(t, err)
 
 		expectedCalls := map[string]int{
@@ -92,7 +91,7 @@ func TestProcessCallback(t *testing.T) {
 			return testStatus(SkipTypeDefault), nil
 		})
 
-		updater := func(ctx context.Context, store RecordStore, graph map[int][]int, currentStatus int, next *WireRecord) error {
+		updater := func(ctx context.Context, current testStatus, next testStatus, record *Record[string, testStatus]) error {
 			calls["updater"] += 1
 			return nil
 		}
@@ -102,10 +101,12 @@ func TestProcessCallback(t *testing.T) {
 			return current, nil
 		}
 
-		// Not expected to be called
-		storeAndEmitter := storeAndEmitFunc(nil)
+		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+			calls["store"] += 1
+			return nil
+		}
 
-		err := processCallback(ctx, w, testStatus(current.Status), callbackFn, current.ForeignID, nil, latestLookup, updater, storeAndEmitter)
+		err := processCallback(ctx, w, testStatus(current.Status), callbackFn, current.ForeignID, nil, latestLookup, store, updater)
 		jtest.RequireNil(t, err)
 
 		expectedCalls := map[string]int{
@@ -130,7 +131,7 @@ func TestProcessCallback(t *testing.T) {
 		calls := map[string]int{
 			"callbackFunc": 0,
 			"updater":      0,
-			"storeAndEmit": 0,
+			"store":        0,
 			"latestLookup": 0,
 		}
 
@@ -139,7 +140,7 @@ func TestProcessCallback(t *testing.T) {
 			return statusEnd, nil
 		})
 
-		updater := func(ctx context.Context, store RecordStore, graph map[int][]int, currentStatus int, next *WireRecord) error {
+		updater := func(ctx context.Context, current testStatus, next testStatus, record *Record[string, testStatus]) error {
 			calls["updater"] += 1
 			return nil
 		}
@@ -149,20 +150,18 @@ func TestProcessCallback(t *testing.T) {
 			return currentRecord, nil
 		}
 
-		storeAndEmitter := func(ctx context.Context, store RecordStore, wr *WireRecord, previousRunState RunState) error {
-			calls["storeAndEmit"] += 1
-
-			require.Equal(t, RunStateRunning, wr.RunState)
+		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+			calls["store"] += 1
 			return nil
 		}
 
-		err := processCallback(ctx, w, testStatus(current.Status), callbackFn, current.ForeignID, nil, latestLookup, updater, storeAndEmitter)
+		err := processCallback(ctx, w, testStatus(current.Status), callbackFn, current.ForeignID, nil, latestLookup, store, updater)
 		jtest.RequireNil(t, err)
 
 		expectedCalls := map[string]int{
 			"callbackFunc": 1,
 			"updater":      1,
-			"storeAndEmit": 1,
+			"store":        1,
 			"latestLookup": 1,
 		}
 		require.Equal(t, expectedCalls, calls)
@@ -203,9 +202,9 @@ func TestProcessCallback(t *testing.T) {
 		jtest.RequireNil(t, err)
 	})
 
-	t.Run("Return error if failed to update to run state", func(t *testing.T) {
+	t.Run("Return error if failed to update run state", func(t *testing.T) {
 		calls := map[string]int{
-			"storeAndEmit": 0,
+			"store":        0,
 			"latestLookup": 0,
 		}
 
@@ -224,64 +223,17 @@ func TestProcessCallback(t *testing.T) {
 			return currentRecord, nil
 		}
 
-		storeAndEmitter := func(ctx context.Context, store RecordStore, wr *WireRecord, previousRunState RunState) error {
-			calls["storeAndEmit"] += 1
+		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+			calls["store"] += 1
 			return errors.New("test error")
 		}
 
-		err := processCallback(ctx, w, statusStart, nil, current.ForeignID, nil, latestLookup, nil, storeAndEmitter)
+		err := processCallback(ctx, w, statusStart, nil, current.ForeignID, nil, latestLookup, store, nil)
 		jtest.Require(t, errors.New("test error"), err)
 
 		expectedCalls := map[string]int{
-			"storeAndEmit": 1,
+			"store":        1,
 			"latestLookup": 1,
-		}
-		require.Equal(t, expectedCalls, calls)
-	})
-
-	t.Run("Update run state to completed on terminal status", func(t *testing.T) {
-		currentRecord := &WireRecord{
-			ID:           1,
-			WorkflowName: "example",
-			ForeignID:    "32948623984623",
-			RunID:        "JHFJDS-LSFKHJSLD-KSJDBLSL",
-			RunState:     RunStateRunning,
-			Status:       int(statusMiddle),
-			Object:       b,
-		}
-
-		calls := map[string]int{
-			"callbackFunc": 0,
-			"updater":      0,
-			"latestLookup": 0,
-		}
-
-		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*WireRecord, error) {
-			calls["latestLookup"] += 1
-			return currentRecord, nil
-		}
-
-		callbackFn := CallbackFunc[string, testStatus](func(ctx context.Context, r *Record[string, testStatus], reader io.Reader) (testStatus, error) {
-			calls["callbackFunc"] += 1
-			return statusEnd, nil
-		})
-
-		updater := func(ctx context.Context, store RecordStore, graph map[int][]int, currentStatus int, next *WireRecord) error {
-			calls["updater"] += 1
-			require.Equal(t, RunStateCompleted, next.RunState)
-			return nil
-		}
-
-		// Not expected to be called
-		storeAndEmitter := storeAndEmitFunc(nil)
-
-		err := processCallback(ctx, w, statusMiddle, callbackFn, current.ForeignID, nil, latestLookup, updater, storeAndEmitter)
-		jtest.RequireNil(t, err)
-
-		expectedCalls := map[string]int{
-			"callbackFunc": 1,
-			"latestLookup": 1,
-			"updater":      1,
 		}
 		require.Equal(t, expectedCalls, calls)
 	})

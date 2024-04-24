@@ -14,8 +14,7 @@ func (w *Workflow[Type, Status]) Trigger(ctx context.Context, foreignID string, 
 		return "", errors.Wrap(ErrWorkflowNotRunning, "ensure Run() is called before attempting to trigger the workflow")
 	}
 
-	_, ok := w.validStatuses[startingStatus]
-	if !ok {
+	if !w.statusGraph.IsValid(int(startingStatus)) {
 		return "", errors.Wrap(ErrStatusProvidedNotConfigured, fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name))
 	}
 
@@ -68,7 +67,7 @@ func (w *Workflow[Type, Status]) Trigger(ctx context.Context, foreignID string, 
 		UpdatedAt:    w.clock.Now(),
 	}
 
-	err = storeAndEmit(ctx, w.recordStore, wr, RunStateUnknown)
+	err = updateWireRecord(ctx, w.recordStore.Store, wr, RunStateUnknown)
 	if err != nil {
 		return "", err
 	}

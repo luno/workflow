@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"k8s.io/utils/clock"
+
+	"github.com/luno/workflow/internal/graph"
 )
 
 const (
@@ -29,8 +31,7 @@ func NewBuilder[Type any, Status StatusType](name string) *Builder[Type, Status]
 			consumers:               make(map[Status]consumerConfig[Type, Status]),
 			callback:                make(map[Status][]callback[Type, Status]),
 			timeouts:                make(map[Status]timeouts[Type, Status]),
-			graph:                   make(map[int][]int),
-			validStatuses:           make(map[Status]bool),
+			statusGraph:             graph.New(),
 			internalState:           make(map[string]State),
 		},
 	}
@@ -41,19 +42,12 @@ type Builder[Type any, Status StatusType] struct {
 }
 
 func (b *Builder[Type, Status]) AddStep(from Status, c ConsumerFunc[Type, Status], allowedDestinations ...Status) *stepUpdater[Type, Status] {
-	b.workflow.validStatuses[from] = true
-
 	if _, exists := b.workflow.consumers[from]; exists {
 		panic(fmt.Sprintf("'AddStep(%v,' already exists. Only one Step can be configured to consume the status", from.String()))
 	}
 
-	if _, ok := b.workflow.graph[int(from)]; !ok {
-		b.workflow.graphOrder = append(b.workflow.graphOrder, int(from))
-	}
-
 	for _, to := range allowedDestinations {
-		b.workflow.graph[int(from)] = append(b.workflow.graph[int(from)], int(to))
-		b.workflow.validStatuses[to] = true
+		b.workflow.statusGraph.AddTransition(int(from), int(to))
 	}
 
 	p := consumerConfig[Type, Status]{
@@ -103,16 +97,10 @@ func (b *Builder[Type, Status]) AddCallback(from Status, fn CallbackFunc[Type, S
 		CallbackFunc: fn,
 	}
 
-	if _, ok := b.workflow.graph[int(from)]; !ok {
-		b.workflow.graphOrder = append(b.workflow.graphOrder, int(from))
-	}
-
 	for _, to := range allowedDestinations {
-		b.workflow.graph[int(from)] = append(b.workflow.graph[int(from)], int(to))
-		b.workflow.validStatuses[to] = true
+		b.workflow.statusGraph.AddTransition(int(from), int(to))
 	}
 
-	b.workflow.validStatuses[from] = true
 	b.workflow.callback[from] = append(b.workflow.callback[from], c)
 }
 
@@ -136,15 +124,8 @@ func (b *Builder[Type, Status]) AddTimeout(from Status, timer TimerFunc[Type, St
 		timeouts.lagAlert = b.workflow.defaultLagAlert
 	}
 
-	b.workflow.validStatuses[from] = true
-
-	if _, ok := b.workflow.graph[int(from)]; !ok {
-		b.workflow.graphOrder = append(b.workflow.graphOrder, int(from))
-	}
-
 	for _, to := range allowedDestinations {
-		b.workflow.graph[int(from)] = append(b.workflow.graph[int(from)], int(to))
-		b.workflow.validStatuses[to] = true
+		b.workflow.statusGraph.AddTransition(int(from), int(to))
 	}
 
 	timeouts.transitions = append(timeouts.transitions, t)
@@ -240,7 +221,6 @@ func (b *Builder[Type, Status]) Build(eventStreamer EventStreamer, recordStore R
 		b.workflow.customDelete = bo.customDelete
 	}
 
-	b.workflow.endPoints = b.determineEndPoints(b.workflow.graph)
 	b.workflow.debugMode = bo.debugMode
 
 	return b.workflow

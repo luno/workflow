@@ -17,8 +17,10 @@ type callback[Type any, Status StatusType] struct {
 type CallbackFunc[Type any, Status StatusType] func(ctx context.Context, r *Record[Type, Status], reader io.Reader) (Status, error)
 
 func (w *Workflow[Type, Status]) Callback(ctx context.Context, foreignID string, status Status, payload io.Reader) error {
+	updateFn := newUpdater[Type, Status](w.recordStore.Lookup, w.recordStore.Store, w.statusGraph, w.clock)
+
 	for _, s := range w.callback[status] {
-		err := processCallback(ctx, w, status, s.CallbackFunc, foreignID, payload, w.recordStore.Latest, safeUpdate, storeAndEmit)
+		err := processCallback(ctx, w, status, s.CallbackFunc, foreignID, payload, w.recordStore.Latest, w.recordStore.Store, updateFn)
 		if err != nil {
 			return err
 		}
@@ -37,8 +39,8 @@ func processCallback[Type any, Status StatusType](
 	foreignID string,
 	payload io.Reader,
 	latest latestLookup,
-	updater safeUpdater,
-	storeAndEmitter storeAndEmitFunc,
+	store storeFunc,
+	updater updater[Type, Status],
 ) error {
 	wr, err := latest(ctx, w.Name, foreignID)
 	if err != nil {
@@ -52,7 +54,7 @@ func processCallback[Type any, Status StatusType](
 		return nil
 	}
 
-	record, err := buildConsumableRecord[Type, Status](ctx, w.recordStore, storeAndEmitter, wr, w.customDelete)
+	record, err := buildConsumableRecord[Type, Status](ctx, store, wr, w.customDelete)
 	if err != nil {
 		return err
 	}
@@ -83,28 +85,5 @@ func processCallback[Type any, Status StatusType](
 		return nil
 	}
 
-	object, err := Marshal(&record.Object)
-	if err != nil {
-		return err
-	}
-
-	runState := RunStateRunning
-	isEnd := w.endPoints[next]
-	if isEnd {
-		runState = RunStateCompleted
-	}
-
-	update := &WireRecord{
-		ID:           record.ID,
-		WorkflowName: record.WorkflowName,
-		ForeignID:    record.ForeignID,
-		RunID:        record.RunID,
-		RunState:     runState,
-		Status:       int(next),
-		Object:       object,
-		CreatedAt:    record.CreatedAt,
-		UpdatedAt:    w.clock.Now(),
-	}
-
-	return updater(ctx, w.recordStore, w.graph, int(currentStatus), update)
+	return updater(ctx, currentStatus, next, record)
 }

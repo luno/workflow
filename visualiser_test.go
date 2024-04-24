@@ -15,10 +15,9 @@ func TestVisualiser(t *testing.T) {
 		return StatusMiddle, nil
 	}, StatusMiddle, StatusEnd)
 
-	b.AddStep(StatusMiddle,
-		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
-			return StatusEnd, nil
-		}, StatusEnd,
+	b.AddStep(StatusMiddle, func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+		return StatusEnd, nil
+	}, StatusEnd,
 	)
 
 	wf := b.Build(nil, nil, nil, nil)

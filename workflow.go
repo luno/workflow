@@ -11,6 +11,7 @@ import (
 	"github.com/luno/jettison/log"
 	"k8s.io/utils/clock"
 
+	"github.com/luno/workflow/internal/graph"
 	"github.com/luno/workflow/internal/metrics"
 )
 
@@ -84,11 +85,7 @@ type Workflow[Type any, Status StatusType] struct {
 	// as the key.
 	internalState map[string]State
 
-	graph      map[int][]int
-	graphOrder []int
-
-	endPoints     map[Status]bool
-	validStatuses map[Status]bool
+	statusGraph *graph.Graph
 
 	debugMode bool
 }
@@ -234,59 +231,4 @@ func (w *Workflow[Type, Status]) Stop() {
 			return
 		}
 	}
-}
-
-type safeUpdater func(ctx context.Context, store RecordStore, graph map[int][]int, currentStatus int, next *WireRecord) error
-
-func safeUpdate(ctx context.Context, store RecordStore, graph map[int][]int, currentStatus int, next *WireRecord) error {
-	latest, err := store.Lookup(ctx, next.ID)
-	if err != nil {
-		return err
-	}
-
-	// Ensure that the record is still has the intended status. If not then another consumer will be processing this
-	// record.
-	if latest.Status != currentStatus {
-		return nil
-	}
-
-	// Lookup all available transitions from the current status
-	nodes, ok := graph[currentStatus]
-	if !ok {
-		return errors.New("current status not predefined", j.MKV{
-			"current_status": currentStatus,
-		})
-	}
-
-	var found bool
-	// Attempt to find the next status amongst the list of valid transitions
-	for _, node := range nodes {
-		if node == next.Status {
-			found = true
-			break
-		}
-	}
-
-	// If no valid transition matches that of the next status then error.
-	if !found {
-		return errors.New("invalid transition attempted", j.MKV{
-			"current_status": currentStatus,
-			"next_status":    next.Status,
-		})
-	}
-
-	return storeAndEmit(ctx, store, next, latest.RunState)
-}
-
-type storeAndEmitFunc func(ctx context.Context, store RecordStore, wr *WireRecord, previousRunState RunState) error
-
-func storeAndEmit(ctx context.Context, store RecordStore, wr *WireRecord, previousRunState RunState) error {
-	// Push run state changes for observability
-	metrics.RunStateChanges.WithLabelValues(wr.WorkflowName, previousRunState.String(), wr.RunState.String()).Inc()
-
-	return store.Store(ctx, wr, func(recordID int64) (OutboxEventData, error) {
-		// Record ID would not have been set if it is a new record. Assign the recordID that the Store provides
-		wr.ID = recordID
-		return WireRecordToOutboxEventData(*wr, previousRunState)
-	})
 }

@@ -30,5 +30,5 @@ var (
 // skipConfig holds the skip values and descriptions as documentation as to what they mean.
 var skipConfig = map[SkipType]string{
 	SkipTypeDefault:        "Zero status with nil error value should result in a skip",
-	SkipTypeRunStateUpdate: "Internal run state update taken place. Skip normal update",
+	SkipTypeRunStateUpdate: "Internal run state update taken place. Skip normal newUpdater",
 }
