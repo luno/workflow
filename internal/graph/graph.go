@@ -1,6 +1,6 @@
 package graph
 
-func NewGraph() *Graph {
+func New() *Graph {
 	return &Graph{
 		graph:      make(map[int][]int),
 		starting:   make(map[int]bool),
