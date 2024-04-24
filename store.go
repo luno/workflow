@@ -9,7 +9,7 @@ import (
 // store must support transactions or the ability to commit the record and an outbox event in a single call as well as
 // being able to obtain an ID for the record before it is created.
 type RecordStore interface {
-	// Store should create or newUpdater a record depending on whether the underlying store is mutable or append only. Store
+	// Store should create or update a record depending on whether the underlying store is mutable or append only. Store
 	// must implement transactions and a separate outbox store to store the event that can be retrieved when calling
 	// ListOutboxEvents and can be deleted when DeleteOutboxEvent is called.
 	Store(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error
