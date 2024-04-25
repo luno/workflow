@@ -69,7 +69,15 @@ func (rs RunState) Stopped() bool {
 
 // RunStateController allows the interaction with a specific workflow record.
 type RunStateController interface {
-	stopper
+	// Pause will take the workflow record specified and move it into a temporary state where it will no longer be processed.
+	// A paused workflow record can be resumed by calling Resume. ErrUnableToPause is returned when a workflow is not in a
+	// state to be paused.
+	Pause(ctx context.Context) error
+
+	// Cancel can be called after Pause has been called. A paused run of the workflow can be indefinitely cancelled.
+	// Once cancelled, DeleteData can be called and will move the run into an indefinite state of DataDeleted.
+	// ErrUnableToCancel is returned when the workflow record is not in a state to be cancelled.
+	Cancel(ctx context.Context) error
 	// Resume can be called on a workflow record that has been paused. ErrUnableToResume is returned when the workflow
 	// run is not in a state to be resumed.
 	Resume(ctx context.Context) error
@@ -80,20 +88,6 @@ type RunStateController interface {
 
 	// markAsRunning is an internal controller that is used to update RunStateInitiated records to RunStateRunning
 	markAsRunning(ctx context.Context) error
-}
-
-// stopper defines the methods that either are a temporary stopping of processing or a permanent stopping such as
-// cancellation.
-type stopper interface {
-	// Pause will take the workflow record specified and move it into a temporary state where it will no longer be processed.
-	// A paused workflow record can be resumed by calling Resume. ErrUnableToPause is returned when a workflow is not in a
-	// state to be paused.
-	Pause(ctx context.Context) error
-
-	// Cancel can be called after Pause has been called. A paused run of the workflow can be indefinitely cancelled.
-	// Once cancelled, DeleteData can be called and will move the run into an indefinite state of DataDeleted.
-	// ErrUnableToCancel is returned when the workflow record is not in a state to be cancelled.
-	Cancel(ctx context.Context) error
 }
 
 func newRunStateController(wr *WireRecord, store storeFunc, customDelete customDelete) RunStateController {
