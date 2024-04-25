@@ -11,7 +11,7 @@ import (
 	"github.com/luno/workflow/internal/metrics"
 )
 
-type Timeout struct {
+type TimeoutRecord struct {
 	ID           int64
 	WorkflowName string
 	ForeignID    string
@@ -26,7 +26,6 @@ type Timeout struct {
 func pollTimeouts[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], status Status, timeouts timeouts[Type, Status], processName string) error {
 	updateFn := newUpdater[Type, Status](w.recordStore.Lookup, w.recordStore.Store, w.statusGraph, w.clock)
 	store := w.recordStore.Store
-	lookup := w.recordStore.Lookup
 
 	for {
 		if ctx.Err() != nil {
@@ -57,7 +56,7 @@ func pollTimeouts[Type any, Status StatusType](ctx context.Context, w *Workflow[
 
 			for _, config := range timeouts.transitions {
 				t0 := w.clock.Now()
-				err = processTimeout(ctx, w, config, r, expiredTimeout, lookup, store, updateFn, processName)
+				err = processTimeout(ctx, w, config, r, expiredTimeout, w.timeoutStore.Complete, store, updateFn, processName)
 				if err != nil {
 					metrics.ProcessLatency.WithLabelValues(w.Name, processName).Observe(w.clock.Since(t0).Seconds())
 					return err
@@ -74,13 +73,15 @@ func pollTimeouts[Type any, Status StatusType](ctx context.Context, w *Workflow[
 	}
 }
 
+type completeFunc func(ctx context.Context, id int64) error
+
 func processTimeout[Type any, Status StatusType](
 	ctx context.Context,
 	w *Workflow[Type, Status],
 	config timeout[Type, Status],
 	r *WireRecord,
-	timeout Timeout,
-	lookup lookupFunc,
+	timeout TimeoutRecord,
+	completeFn completeFunc,
 	store storeFunc,
 	updater updater[Type, Status],
 	processName string,
@@ -118,7 +119,7 @@ func processTimeout[Type any, Status StatusType](
 	}
 
 	// Mark timeout as having been executed (aka completed) only in the case that true is returned.
-	return w.timeoutStore.Complete(ctx, timeout.ID)
+	return completeFn(ctx, timeout.ID)
 }
 
 type timeouts[Type any, Status StatusType] struct {

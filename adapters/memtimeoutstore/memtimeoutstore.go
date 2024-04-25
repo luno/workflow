@@ -38,14 +38,14 @@ type Store struct {
 
 	mu                 sync.Mutex
 	timeoutIdIncrement int64
-	timeouts           []*workflow.Timeout
+	timeouts           []*workflow.TimeoutRecord
 }
 
-func (s *Store) List(ctx context.Context, workflowName string) ([]workflow.Timeout, error) {
+func (s *Store) List(ctx context.Context, workflowName string) ([]workflow.TimeoutRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	var ls []workflow.Timeout
+	var ls []workflow.TimeoutRecord
 	for _, timeout := range s.timeouts {
 		if timeout.WorkflowName != workflowName {
 			continue
@@ -61,7 +61,7 @@ func (s *Store) Create(ctx context.Context, workflowName, foreignID, runID strin
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.timeouts = append(s.timeouts, &workflow.Timeout{
+	s.timeouts = append(s.timeouts, &workflow.TimeoutRecord{
 		ID:           s.timeoutIdIncrement,
 		WorkflowName: workflowName,
 		ForeignID:    foreignID,
@@ -111,11 +111,11 @@ func (s *Store) Cancel(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (s *Store) ListValid(ctx context.Context, workflowName string, status int, now time.Time) ([]workflow.Timeout, error) {
+func (s *Store) ListValid(ctx context.Context, workflowName string, status int, now time.Time) ([]workflow.TimeoutRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	var valid []workflow.Timeout
+	var valid []workflow.TimeoutRecord
 	for _, timeout := range s.timeouts {
 		if timeout.WorkflowName != workflowName {
 			continue
