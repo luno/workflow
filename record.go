@@ -15,6 +15,9 @@ type Record[Type any, Status StatusType] struct {
 	controller RunStateController
 }
 
+// Pause is intended to be used inside a workflow process where (Status, error) are the return signature. This allows
+// the user to simply type "return r.Pause(ctx)" to pause a record from inside a workflow which results in the record
+// being temporarily left alone and will not be processed until it is resumed.
 func (r *Record[Type, Status]) Pause(ctx context.Context) (Status, error) {
 	err := r.controller.Pause(ctx)
 	if err != nil {
@@ -24,6 +27,9 @@ func (r *Record[Type, Status]) Pause(ctx context.Context) (Status, error) {
 	return Status(SkipTypeRunStateUpdate), nil
 }
 
+// Cancel is intended to be used inside a workflow process where (Status, error) are the return signature. This allows
+// the user to simply type "return r.Cancel(ctx)" to cancel a record from inside a workflow which results in the record
+// being permanently left alone and will not be processed.
 func (r *Record[Type, Status]) Cancel(ctx context.Context) (Status, error) {
 	err := r.controller.Cancel(ctx)
 	if err != nil {
