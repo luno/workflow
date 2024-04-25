@@ -9,8 +9,8 @@ const (
 	sentinelOrderType   OrderType = 3
 )
 
-func (ot *OrderType) String() string {
-	switch *ot {
+func (ot OrderType) String() string {
+	switch ot {
 	case OrderTypeAscending:
 		return "asc"
 
