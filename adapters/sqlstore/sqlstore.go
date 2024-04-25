@@ -118,3 +118,17 @@ func (s *SQLStore) DeleteOutboxEvent(ctx context.Context, id int64) error {
 
 	return nil
 }
+
+func (s *SQLStore) List(ctx context.Context, workflowName string, offsetID int64, limit int, order workflow.OrderType) ([]workflow.WireRecord, error) {
+	ls, err := s.listWhere(ctx, s.reader, "workflow_name=? and id>? order by id "+order.String()+" limit ?", workflowName, offsetID, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	var list []workflow.WireRecord
+	for _, l := range ls {
+		list = append(list, *l)
+	}
+
+	return list, nil
+}
