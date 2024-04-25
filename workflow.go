@@ -51,7 +51,7 @@ type API[Type any, Status StatusType] interface {
 
 	// RunStateController allows the interacting and controlling a workflow record such as Pause, Resume, Cancel, and
 	// DeleteData (e.g. right to be forgotten).
-	RunStateController(ctx context.Context, id int64) (RunStateController[Status], error)
+	RunStateController(ctx context.Context, id int64) (RunStateController, error)
 }
 
 type Workflow[Type any, Status StatusType] struct {
