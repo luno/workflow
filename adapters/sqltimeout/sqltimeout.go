@@ -77,14 +77,14 @@ func (s *Store) Cancel(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (s *Store) List(ctx context.Context, workflowName string) ([]workflow.Timeout, error) {
+func (s *Store) List(ctx context.Context, workflowName string) ([]workflow.TimeoutRecord, error) {
 	rows, err := s.reader.QueryContext(ctx, s.timeoutSelectPrefix+" workflow_name=? and completed=false", workflowName)
 	if err != nil {
 		return nil, errors.Wrap(err, "list timeouts")
 	}
 	defer rows.Close()
 
-	var res []workflow.Timeout
+	var res []workflow.TimeoutRecord
 	for rows.Next() {
 		r, err := timeoutScan(rows)
 		if err != nil {
@@ -100,14 +100,14 @@ func (s *Store) List(ctx context.Context, workflowName string) ([]workflow.Timeo
 	return res, nil
 }
 
-func (s *Store) ListValid(ctx context.Context, workflowName string, status int, now time.Time) ([]workflow.Timeout, error) {
+func (s *Store) ListValid(ctx context.Context, workflowName string, status int, now time.Time) ([]workflow.TimeoutRecord, error) {
 	rows, err := s.reader.QueryContext(ctx, s.timeoutSelectPrefix+" workflow_name=? and status=? and expire_at<? and completed=false", workflowName, status, now)
 	if err != nil {
 		return nil, errors.Wrap(err, "list valid timeouts")
 	}
 	defer rows.Close()
 
-	var res []workflow.Timeout
+	var res []workflow.TimeoutRecord
 	for rows.Next() {
 		r, err := timeoutScan(rows)
 		if err != nil {
@@ -125,8 +125,8 @@ func (s *Store) ListValid(ctx context.Context, workflowName string, status int, 
 
 var _ workflow.TimeoutStore = (*Store)(nil)
 
-func timeoutScan(row row) (*workflow.Timeout, error) {
-	var t workflow.Timeout
+func timeoutScan(row row) (*workflow.TimeoutRecord, error) {
+	var t workflow.TimeoutRecord
 	err := row.Scan(
 		&t.ID,
 		&t.WorkflowName,

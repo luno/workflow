@@ -41,7 +41,7 @@ func testCancelTimeout(t *testing.T, store workflow.TimeoutStore) {
 
 	require.Equal(t, 3, len(timeout))
 
-	// Timeout 1's expectations
+	// TimeoutRecord 1's expectations
 	require.Equal(t, "example", timeout[0].WorkflowName)
 	require.Equal(t, "andrew", timeout[0].ForeignID)
 	require.Equal(t, "1", timeout[0].RunID)
@@ -49,7 +49,7 @@ func testCancelTimeout(t *testing.T, store workflow.TimeoutStore) {
 	require.WithinDuration(t, time.Now().Add(-time.Hour), timeout[0].ExpireAt, time.Second)
 	require.WithinDuration(t, time.Now(), timeout[0].CreatedAt, time.Second)
 
-	// Timeout 2's expectations
+	// TimeoutRecord 2's expectations
 	require.Equal(t, "example", timeout[1].WorkflowName)
 	require.Equal(t, "andrew", timeout[1].ForeignID)
 	require.Equal(t, "2", timeout[1].RunID)
@@ -57,7 +57,7 @@ func testCancelTimeout(t *testing.T, store workflow.TimeoutStore) {
 	require.WithinDuration(t, time.Now().Add(-time.Hour), timeout[1].ExpireAt, time.Second)
 	require.WithinDuration(t, time.Now(), timeout[1].CreatedAt, time.Second)
 
-	// Timeout 3's expectations
+	// TimeoutRecord 3's expectations
 	require.Equal(t, "example", timeout[2].WorkflowName)
 	require.Equal(t, "andrew", timeout[2].ForeignID)
 	require.Equal(t, "3", timeout[2].RunID)
@@ -73,7 +73,7 @@ func testCancelTimeout(t *testing.T, store workflow.TimeoutStore) {
 
 	require.Equal(t, 2, len(timeout))
 
-	// Timeout 1's expectations
+	// TimeoutRecord 1's expectations
 	require.Equal(t, "example", timeout[0].WorkflowName)
 	require.Equal(t, "andrew", timeout[0].ForeignID)
 	require.Equal(t, "1", timeout[0].RunID)
@@ -81,7 +81,7 @@ func testCancelTimeout(t *testing.T, store workflow.TimeoutStore) {
 	require.WithinDuration(t, time.Now().Add(-time.Hour), timeout[0].ExpireAt, time.Second)
 	require.WithinDuration(t, time.Now(), timeout[0].CreatedAt, time.Second)
 
-	// Timeout 3's expectations
+	// TimeoutRecord 3's expectations
 	require.Equal(t, "example", timeout[1].WorkflowName)
 	require.Equal(t, "andrew", timeout[1].ForeignID)
 	require.Equal(t, "3", timeout[1].RunID)
@@ -107,7 +107,7 @@ func testCompleteTimeout(t *testing.T, store workflow.TimeoutStore) {
 
 	require.Equal(t, 3, len(timeout))
 
-	// Timeout 1's expectations
+	// TimeoutRecord 1's expectations
 	require.Equal(t, "example", timeout[0].WorkflowName)
 	require.Equal(t, "andrew", timeout[0].ForeignID)
 	require.Equal(t, "1", timeout[0].RunID)
@@ -115,7 +115,7 @@ func testCompleteTimeout(t *testing.T, store workflow.TimeoutStore) {
 	require.WithinDuration(t, time.Now().Add(-time.Hour), timeout[0].ExpireAt, time.Second)
 	require.WithinDuration(t, time.Now(), timeout[0].CreatedAt, time.Second)
 
-	// Timeout 2's expectations
+	// TimeoutRecord 2's expectations
 	require.Equal(t, "example", timeout[1].WorkflowName)
 	require.Equal(t, "andrew", timeout[1].ForeignID)
 	require.Equal(t, "2", timeout[1].RunID)
@@ -123,7 +123,7 @@ func testCompleteTimeout(t *testing.T, store workflow.TimeoutStore) {
 	require.WithinDuration(t, time.Now().Add(-time.Hour), timeout[1].ExpireAt, time.Second)
 	require.WithinDuration(t, time.Now(), timeout[1].CreatedAt, time.Second)
 
-	// Timeout 3's expectations
+	// TimeoutRecord 3's expectations
 	require.Equal(t, "example", timeout[2].WorkflowName)
 	require.Equal(t, "andrew", timeout[2].ForeignID)
 	require.Equal(t, "3", timeout[2].RunID)
@@ -139,7 +139,7 @@ func testCompleteTimeout(t *testing.T, store workflow.TimeoutStore) {
 
 	require.Equal(t, 2, len(timeout))
 
-	// Timeout 1's expectations
+	// TimeoutRecord 1's expectations
 	require.Equal(t, "example", timeout[0].WorkflowName)
 	require.Equal(t, "andrew", timeout[0].ForeignID)
 	require.Equal(t, "1", timeout[0].RunID)
@@ -147,7 +147,7 @@ func testCompleteTimeout(t *testing.T, store workflow.TimeoutStore) {
 	require.WithinDuration(t, time.Now().Add(-time.Hour), timeout[0].ExpireAt, time.Second)
 	require.WithinDuration(t, time.Now(), timeout[0].CreatedAt, time.Second)
 
-	// Timeout 3's expectations
+	// TimeoutRecord 3's expectations
 	require.Equal(t, "example", timeout[1].WorkflowName)
 	require.Equal(t, "andrew", timeout[1].ForeignID)
 	require.Equal(t, "3", timeout[1].RunID)
