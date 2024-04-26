@@ -8,8 +8,6 @@ stateDiagram-v2
 	[*]-->Initiated
 
     Initiated-->Running
-    Initiated-->Paused
-    Initiated-->Cancelled
     
     Running-->Completed
     Running-->Paused

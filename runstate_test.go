@@ -189,7 +189,7 @@ func TestWorkflowRunStateController(t *testing.T) {
 	rsc, err := w.RunStateController(ctx, 1)
 	jtest.RequireNil(t, err)
 
-	_, err = rsc.Pause(ctx)
+	err = rsc.Pause(ctx)
 	jtest.RequireNil(t, err)
 
 	record, err = recordStore.Latest(ctx, w.Name, foreignID)
@@ -197,7 +197,7 @@ func TestWorkflowRunStateController(t *testing.T) {
 
 	require.Equal(t, workflow.RunStatePaused, record.RunState)
 
-	_, err = rsc.Resume(ctx)
+	err = rsc.Resume(ctx)
 	jtest.RequireNil(t, err)
 
 	record, err = recordStore.Latest(ctx, w.Name, foreignID)
@@ -205,7 +205,7 @@ func TestWorkflowRunStateController(t *testing.T) {
 
 	require.Equal(t, workflow.RunStateRunning, record.RunState)
 
-	_, err = rsc.Cancel(ctx)
+	err = rsc.Cancel(ctx)
 	jtest.RequireNil(t, err)
 
 	record, err = recordStore.Latest(ctx, w.Name, foreignID)
@@ -213,7 +213,7 @@ func TestWorkflowRunStateController(t *testing.T) {
 
 	require.Equal(t, workflow.RunStateCancelled, record.RunState)
 
-	_, err = rsc.DeleteData(ctx)
+	err = rsc.DeleteData(ctx)
 	jtest.RequireNil(t, err)
 
 	record, err = recordStore.Latest(ctx, w.Name, foreignID)

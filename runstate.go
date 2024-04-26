@@ -68,36 +68,30 @@ func (rs RunState) Stopped() bool {
 }
 
 // RunStateController allows the interaction with a specific workflow record.
-type RunStateController[Status StatusType] interface {
-	stopper[Status]
-	// Resume can be called on a workflow record that has been paused. ErrUnableToResume is returned when the workflow
-	// run is not in a state to be resumed.
-	Resume(ctx context.Context) (Status, error)
-	// DeleteData can be called after a workflow record has been completed or cancelled. DeleteData should be used to
-	// comply with the right to be forgotten such as complying with GDPR. ErrUnableToDelete is returned when the
-	// workflow record is not in a state to be deleted.
-	DeleteData(ctx context.Context) (Status, error)
-
-	// markAsRunning is an internal controller that is used to update RunStateInitiated records to RunStateRunning
-	markAsRunning(ctx context.Context) (Status, error)
-}
-
-// stopper defines the methods that either are a temporary stopping of processing or a permanent stopping such as
-// cancellation.
-type stopper[Status StatusType] interface {
+type RunStateController interface {
 	// Pause will take the workflow record specified and move it into a temporary state where it will no longer be processed.
 	// A paused workflow record can be resumed by calling Resume. ErrUnableToPause is returned when a workflow is not in a
 	// state to be paused.
-	Pause(ctx context.Context) (Status, error)
+	Pause(ctx context.Context) error
 
 	// Cancel can be called after Pause has been called. A paused run of the workflow can be indefinitely cancelled.
 	// Once cancelled, DeleteData can be called and will move the run into an indefinite state of DataDeleted.
 	// ErrUnableToCancel is returned when the workflow record is not in a state to be cancelled.
-	Cancel(ctx context.Context) (Status, error)
+	Cancel(ctx context.Context) error
+	// Resume can be called on a workflow record that has been paused. ErrUnableToResume is returned when the workflow
+	// run is not in a state to be resumed.
+	Resume(ctx context.Context) error
+	// DeleteData can be called after a workflow record has been completed or cancelled. DeleteData should be used to
+	// comply with the right to be forgotten such as complying with GDPR. ErrUnableToDelete is returned when the
+	// workflow record is not in a state to be deleted.
+	DeleteData(ctx context.Context) error
+
+	// markAsRunning is an internal controller that is used to update RunStateInitiated records to RunStateRunning
+	markAsRunning(ctx context.Context) error
 }
 
-func newRunStateController[Status StatusType](wr *WireRecord, store storeFunc, customDelete customDelete) RunStateController[Status] {
-	return &runStateControllerImpl[Status]{
+func newRunStateController(wr *WireRecord, store storeFunc, customDelete customDelete) RunStateController {
+	return &runStateControllerImpl{
 		record:       wr,
 		customDelete: customDelete,
 		store:        store,
@@ -106,64 +100,64 @@ func newRunStateController[Status StatusType](wr *WireRecord, store storeFunc, c
 
 type customDelete func(wr *WireRecord) ([]byte, error)
 
-type runStateControllerImpl[Status StatusType] struct {
+type runStateControllerImpl struct {
 	record       *WireRecord
 	customDelete customDelete
 	store        storeFunc
 }
 
-func (rsc *runStateControllerImpl[Status]) markAsRunning(ctx context.Context) (Status, error) {
+func (rsc *runStateControllerImpl) markAsRunning(ctx context.Context) error {
 	err := validateRunStateTransition(rsc.record, RunStateRunning, ErrUnableToMarkAsRunning)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
 	currentRunState := rsc.record.RunState
 
 	rsc.record.RunState = RunStateRunning
-	return Status(SkipTypeRunStateUpdate), updateWireRecord(ctx, rsc.store, rsc.record, currentRunState)
+	return updateWireRecord(ctx, rsc.store, rsc.record, currentRunState)
 }
 
-func (rsc *runStateControllerImpl[Status]) Pause(ctx context.Context) (Status, error) {
+func (rsc *runStateControllerImpl) Pause(ctx context.Context) error {
 	err := validateRunStateTransition(rsc.record, RunStatePaused, ErrUnableToPause)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
 	currentRunState := rsc.record.RunState
 
 	rsc.record.RunState = RunStatePaused
-	return Status(SkipTypeRunStateUpdate), updateWireRecord(ctx, rsc.store, rsc.record, currentRunState)
+	return updateWireRecord(ctx, rsc.store, rsc.record, currentRunState)
 }
 
-func (rsc *runStateControllerImpl[Status]) Resume(ctx context.Context) (Status, error) {
+func (rsc *runStateControllerImpl) Resume(ctx context.Context) error {
 	err := validateRunStateTransition(rsc.record, RunStateRunning, ErrUnableToResume)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
 	currentRunState := rsc.record.RunState
 
 	rsc.record.RunState = RunStateRunning
-	return Status(SkipTypeRunStateUpdate), updateWireRecord(ctx, rsc.store, rsc.record, currentRunState)
+	return updateWireRecord(ctx, rsc.store, rsc.record, currentRunState)
 }
 
-func (rsc *runStateControllerImpl[Status]) Cancel(ctx context.Context) (Status, error) {
+func (rsc *runStateControllerImpl) Cancel(ctx context.Context) error {
 	err := validateRunStateTransition(rsc.record, RunStateCancelled, ErrUnableToCancel)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
 	currentRunState := rsc.record.RunState
 
 	rsc.record.RunState = RunStateCancelled
-	return Status(SkipTypeRunStateUpdate), updateWireRecord(ctx, rsc.store, rsc.record, currentRunState)
+	return updateWireRecord(ctx, rsc.store, rsc.record, currentRunState)
 }
 
-func (rsc *runStateControllerImpl[Status]) DeleteData(ctx context.Context) (Status, error) {
+func (rsc *runStateControllerImpl) DeleteData(ctx context.Context) error {
 	err := validateRunStateTransition(rsc.record, RunStateDataDeleted, ErrUnableToDelete)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
 	replacementData := []byte("Deleted")
@@ -172,7 +166,7 @@ func (rsc *runStateControllerImpl[Status]) DeleteData(ctx context.Context) (Stat
 	if rsc.customDelete != nil {
 		bytes, err := rsc.customDelete(rsc.record)
 		if err != nil {
-			return 0, err
+			return err
 		}
 
 		replacementData = bytes
@@ -182,7 +176,7 @@ func (rsc *runStateControllerImpl[Status]) DeleteData(ctx context.Context) (Stat
 
 	rsc.record.RunState = RunStateDataDeleted
 	rsc.record.Object = replacementData
-	return Status(SkipTypeRunStateUpdate), updateWireRecord(ctx, rsc.store, rsc.record, currentRunState)
+	return updateWireRecord(ctx, rsc.store, rsc.record, currentRunState)
 }
 
 func validateRunStateTransition(record *WireRecord, runState RunState, sentinelErr error) error {
@@ -233,11 +227,11 @@ var runStateTransitions = map[RunState]map[RunState]bool{
 	},
 }
 
-func (w *Workflow[Type, Status]) RunStateController(ctx context.Context, id int64) (RunStateController[Status], error) {
+func (w *Workflow[Type, Status]) RunStateController(ctx context.Context, id int64) (RunStateController, error) {
 	r, err := w.recordStore.Lookup(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	return newRunStateController[Status](r, w.recordStore.Store, w.customDelete), nil
+	return newRunStateController(r, w.recordStore.Store, w.customDelete), nil
 }
