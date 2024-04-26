@@ -173,7 +173,7 @@ func TestConsume(t *testing.T) {
 			"consumerFunc": 0,
 			"ack":          0,
 			"updater":      0,
-			"storeAndEmit": 0,
+			"store":        0,
 		}
 
 		testErr := errors.New("test error")
@@ -188,33 +188,30 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		updater := func(ctx context.Context, store RecordStore, graph map[int][]int, currentStatus int, next *WireRecord) error {
+		updater := func(ctx context.Context, current testStatus, next testStatus, record *Record[string, testStatus]) error {
 			calls["updater"] += 1
 			return nil
 		}
 
-		storeAndEmitter := func(ctx context.Context, store RecordStore, wr *WireRecord, previousRunState RunState) error {
-			calls["storeAndEmit"] += 1
-
-			// Ensure that the call is pausing the record
-			require.Equal(t, RunStatePaused, wr.RunState)
+		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+			calls["store"] += 1
 			return nil
 		}
 
-		err := consume(ctx, w, current, consumer, ack, updater, storeAndEmitter, "processName", 3)
+		err := consume(ctx, w, current, consumer, ack, store, updater, "processName", 3)
 		jtest.Require(t, testErr, err)
 
-		err = consume(ctx, w, current, consumer, ack, updater, storeAndEmitter, "processName", 3)
+		err = consume(ctx, w, current, consumer, ack, store, updater, "processName", 3)
 		jtest.Require(t, testErr, err)
 
-		err = consume(ctx, w, current, consumer, ack, updater, storeAndEmitter, "processName", 3)
+		err = consume(ctx, w, current, consumer, ack, store, updater, "processName", 3)
 		jtest.RequireNil(t, err)
 
 		expectedCalls := map[string]int{
 			"consumerFunc": 3,
 			"ack":          1,
 			"updater":      0,
-			"storeAndEmit": 1,
+			"store":        1,
 		}
 		require.Equal(t, expectedCalls, calls)
 	})
