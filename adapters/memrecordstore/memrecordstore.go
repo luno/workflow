@@ -184,11 +184,11 @@ func (s *Store) List(ctx context.Context, workflowName string, offsetID int64, l
 	var (
 		entries []workflow.WireRecord
 		length  = int64(len(s.store))
-		start   = offsetID
+		start   = offsetID + 1
 		end     = start + int64(limit)
 	)
 
-	for i := start + 1; i <= end; i++ {
+	for i := start; i <= end; i++ {
 		if i > length {
 			break
 		}
