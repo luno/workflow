@@ -20,7 +20,7 @@ import (
 )
 
 func TestStreamer(t *testing.T) {
-	eventsTable := rsql.NewEventsTableInt("my_events_table", rsql.WithEventMetadataField("metadata"))
+	eventsTable := rsql.NewEventsTableInt("workflow_events", rsql.WithEventMetadataField("metadata"))
 	dbc := ConnectForTesting(t)
 	cTable := rsql.NewCursorsTable("cursors")
 	constructor := reflexstreamer.New(dbc, dbc, eventsTable, cTable.ToStore(dbc))
@@ -29,7 +29,7 @@ func TestStreamer(t *testing.T) {
 
 func TestStreamFunc(t *testing.T) {
 	dbc := ConnectForTesting(t)
-	eventsTable := rsql.NewEventsTableInt("my_events_table", rsql.WithEventMetadataField("metadata"))
+	eventsTable := rsql.NewEventsTableInt("workflow_events", rsql.WithEventMetadataField("metadata"))
 
 	workflowName := "myWorkflow"
 	b := workflow.NewBuilder[string, status](workflowName)
@@ -97,6 +97,35 @@ func TestStreamFunc(t *testing.T) {
 
 	err = reflex.Run(ctx, spec)
 	jtest.Require(t, context.Canceled, err)
+}
+
+func TestConnector(t *testing.T) {
+	adaptertest.RunConnectorTest(t, func(seedEvents []workflow.ConnectorEvent) workflow.ConnectorConstructor {
+		eventsTable := rsql.NewEventsTable("external_events", rsql.WithEventMetadataField("metadata"))
+		dbc := ConnectForTesting(t)
+		cTable := rsql.NewCursorsTable("cursors")
+
+		ctx := context.Background()
+		tx, err := dbc.BeginTx(ctx, nil)
+		jtest.RequireNil(t, err)
+
+		for _, event := range seedEvents {
+			notify, err := eventsTable.Insert(ctx, tx, event.ForeignID, reflexstreamer.EventType(1))
+			if err != nil {
+				originalErr := err
+				err = tx.Rollback()
+				jtest.RequireNil(t, err)
+				t.Fatal("failed to insert event", event.ForeignID, originalErr.Error())
+			}
+
+			notify()
+		}
+
+		err = tx.Commit()
+		jtest.RequireNil(t, err)
+
+		return reflexstreamer.NewConnector(eventsTable.ToStream(dbc), cTable.ToStore(dbc))
+	})
 }
 
 type status int

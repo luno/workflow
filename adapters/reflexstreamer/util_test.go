@@ -9,7 +9,7 @@ import (
 
 var tables = []string{
 	`
-	create table my_events_table (
+	create table workflow_events (
 	  id bigint not null auto_increment,
 	  foreign_id bigint not null,
 	  timestamp datetime not null,
@@ -27,6 +27,17 @@ create table cursors (
 
     primary key (id)
 );
+`,
+	`
+	create table external_events (
+	  id bigint not null auto_increment,
+	  foreign_id varchar(255) not null,
+	  timestamp datetime not null,
+	  type int not null default 0,
+	  metadata blob,
+	  
+  	  primary key (id)
+	);
 `,
 }
 

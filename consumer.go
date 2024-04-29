@@ -38,11 +38,6 @@ func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentSta
 		fmt.Sprintf("%v", totalShards),
 	)
 
-	pollFrequency := w.defaultPollingFrequency
-	if p.pollingFrequency.Nanoseconds() != 0 {
-		pollFrequency = p.pollingFrequency
-	}
-
 	// processName can change in value if the string value of the status enum is changed. It should not be used for
 	// storing in the record store, event streamer, timeoutstore, or offset store.
 	processName := makeRole(
@@ -60,7 +55,7 @@ func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentSta
 			ctx,
 			topic,
 			role,
-			WithConsumerPollFrequency(pollFrequency),
+			WithConsumerPollFrequency(p.pollingFrequency),
 		)
 		if err != nil {
 			return err

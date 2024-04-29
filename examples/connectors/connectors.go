@@ -5,80 +5,25 @@ import (
 
 	"github.com/luno/workflow"
 	"github.com/luno/workflow/examples"
+	"github.com/luno/workflow/examples/gettingstarted"
 )
 
-type WorkflowADeps struct {
+type Deps struct {
 	EventStreamer workflow.EventStreamer
 	RecordStore   workflow.RecordStore
 	TimeoutStore  workflow.TimeoutStore
 	RoleScheduler workflow.RoleScheduler
+	Connector     workflow.ConnectorConstructor
 }
 
-type TypeA struct {
-	Value string
-}
-
-func WorkflowA(d WorkflowADeps) *workflow.Workflow[TypeA, examples.Status] {
-	builder := workflow.NewBuilder[TypeA, examples.Status]("workflow A")
-
-	builder.AddStep(examples.StatusStarted,
-		func(ctx context.Context, r *workflow.Record[TypeA, examples.Status]) (examples.Status, error) {
-			r.Object.Value = "Hello"
-			return examples.StatusFollowedTheExample, nil
-		},
-		examples.StatusFollowedTheExample,
-	)
-
-	builder.AddStep(examples.StatusFollowedTheExample,
-		func(ctx context.Context, r *workflow.Record[TypeA, examples.Status]) (examples.Status, error) {
-			r.Object.Value += " World"
-			return examples.StatusCreatedAFunExample, nil
-		},
-		examples.StatusCreatedAFunExample,
-	)
-
-	return builder.Build(
-		d.EventStreamer,
-		d.RecordStore,
-		d.TimeoutStore,
-		d.RoleScheduler,
-	)
-}
-
-type WorkflowBDeps struct {
-	EventStreamer workflow.EventStreamer
-	RecordStore   workflow.RecordStore
-	TimeoutStore  workflow.TimeoutStore
-	RoleScheduler workflow.RoleScheduler
-
-	WorkflowARecordStore    workflow.RecordStore
-	WorkflowAConsumerStream workflow.Consumer
-}
-
-type TypeB struct {
-	Value string
-}
-
-func WorkflowB(d WorkflowBDeps) *workflow.Workflow[TypeB, examples.Status] {
-	builder := workflow.NewBuilder[TypeB, examples.Status]("workflow B")
-
+func Workflow(d Deps) *workflow.Workflow[gettingstarted.GettingStarted, examples.Status] {
+	builder := workflow.NewBuilder[gettingstarted.GettingStarted, examples.Status]("workflow B")
 	builder.AddConnector(
 		"my-example-connector",
-		d.WorkflowAConsumerStream,
-		func(ctx context.Context, w *workflow.Workflow[TypeB, examples.Status], e *workflow.Event) error {
-			recordA, err := d.WorkflowARecordStore.Lookup(ctx, e.ForeignID)
-			if err != nil {
-				return err
-			}
-
-			var objectA TypeB
-			err = workflow.Unmarshal(recordA.Object, &objectA)
-			if err != nil {
-				return err
-			}
-
-			_, err = w.Trigger(ctx, recordA.ForeignID, examples.StatusStarted, workflow.WithInitialValue[TypeB, examples.Status](&TypeB{
-				Value: objectA.Value,
+		d.Connector,
+		func(ctx context.Context, w *workflow.Workflow[gettingstarted.GettingStarted, examples.Status], e *workflow.ConnectorEvent) error {
+			_, err := w.Trigger(ctx, e.ForeignID, examples.StatusStarted, workflow.WithInitialValue[gettingstarted.GettingStarted, examples.Status](&gettingstarted.GettingStarted{
+				ReadTheDocs: "✅",
 			}))
 			if err != nil {
 				return err
@@ -89,8 +34,8 @@ func WorkflowB(d WorkflowBDeps) *workflow.Workflow[TypeB, examples.Status] {
 	)
 
 	builder.AddStep(examples.StatusStarted,
-		func(ctx context.Context, r *workflow.Record[TypeB, examples.Status]) (examples.Status, error) {
-			r.Object.Value += ", I have been made from two workflows"
+		func(ctx context.Context, r *workflow.Record[gettingstarted.GettingStarted, examples.Status]) (examples.Status, error) {
+			r.Object.FollowAnExample = "✅"
 
 			return examples.StatusFollowedTheExample, nil
 		},
