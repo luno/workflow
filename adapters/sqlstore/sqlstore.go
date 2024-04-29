@@ -103,7 +103,7 @@ func (s *SQLStore) Latest(ctx context.Context, workflowName, foreignID string) (
 		return nil, errors.Wrap(workflow.ErrRecordNotFound, "")
 	}
 
-	return ls[0], nil
+	return &ls[0], nil
 }
 
 func (s *SQLStore) ListOutboxEvents(ctx context.Context, workflowName string, limit int64) ([]workflow.OutboxEvent, error) {
@@ -117,4 +117,8 @@ func (s *SQLStore) DeleteOutboxEvent(ctx context.Context, id int64) error {
 	}
 
 	return nil
+}
+
+func (s *SQLStore) List(ctx context.Context, workflowName string, offsetID int64, limit int, order workflow.OrderType) ([]workflow.WireRecord, error) {
+	return s.listWhere(ctx, s.reader, "workflow_name=? and id>? order by id "+order.String()+" limit ?", workflowName, offsetID, limit)
 }

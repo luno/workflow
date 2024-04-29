@@ -78,20 +78,20 @@ func (s *SQLStore) lookupWhere(ctx context.Context, dbc *sql.DB, where string, a
 
 // listWhere queries the table with the provided where clause, then scans
 // and returns all the rows.
-func (s *SQLStore) listWhere(ctx context.Context, dbc *sql.DB, where string, args ...any) ([]*workflow.WireRecord, error) {
+func (s *SQLStore) listWhere(ctx context.Context, dbc *sql.DB, where string, args ...any) ([]workflow.WireRecord, error) {
 	rows, err := dbc.QueryContext(ctx, s.recordSelectPrefix+where, args...)
 	if err != nil {
 		return nil, errors.Wrap(err, "listWhere")
 	}
 	defer rows.Close()
 
-	var res []*workflow.WireRecord
+	var res []workflow.WireRecord
 	for rows.Next() {
 		r, err := recordScan(rows)
 		if err != nil {
 			return nil, err
 		}
-		res = append(res, r)
+		res = append(res, *r)
 	}
 
 	if rows.Err() != nil {
