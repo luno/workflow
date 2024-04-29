@@ -20,12 +20,13 @@ import (
 type ConsumerFunc[Type any, Status StatusType] func(ctx context.Context, r *Record[Type, Status]) (Status, error)
 
 type consumerConfig[Type any, Status StatusType] struct {
-	pollingFrequency time.Duration
-	errBackOff       time.Duration
-	consumer         ConsumerFunc[Type, Status]
-	parallelCount    int
-	lag              time.Duration
-	lagAlert         time.Duration
+	pollingFrequency   time.Duration
+	errBackOff         time.Duration
+	consumer           ConsumerFunc[Type, Status]
+	parallelCount      int
+	lag                time.Duration
+	lagAlert           time.Duration
+	pauseAfterErrCount int
 }
 
 func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentStatus Status, p consumerConfig[Type, Status], shard, totalShards int) {
@@ -170,7 +171,7 @@ func consumeForever[Type any, Status StatusType](
 		}
 
 		t2 := w.clock.Now()
-		err = consume(ctx, w, record, p.consumer, ack, w.recordStore.Store, updater, processName)
+		err = consume(ctx, w, record, p.consumer, ack, w.recordStore.Store, updater, processName, p.pauseAfterErrCount)
 		if err != nil {
 			return err
 		}
@@ -202,6 +203,7 @@ func consume[Type any, Status StatusType](
 	store storeFunc,
 	updater updater[Type, Status],
 	processName string,
+	pauseAfterErrCount int,
 ) error {
 	record, err := buildConsumableRecord[Type, Status](ctx, store, current, w.customDelete)
 	if err != nil {
@@ -210,6 +212,27 @@ func consume[Type any, Status StatusType](
 
 	next, err := cf(ctx, record)
 	if err != nil {
+		// Only keep track of errors if we need to
+		if pauseAfterErrCount > 0 {
+			count := w.errorCounter.Add(err, processName, record.RunID)
+			if count >= pauseAfterErrCount {
+				originalErr := err
+				_, err := record.Pause(ctx)
+				if err != nil {
+					return errors.Wrap(err, "failed to pause record after exceeding allowed error count", j.MKV{
+						"workflow_name":      record.WorkflowName,
+						"foreign_id":         record.ForeignID,
+						"current_status":     record.Status.String(),
+						"current_status_int": record.Status,
+					})
+				}
+
+				// Record paused - now clear the error counter.
+				w.errorCounter.Clear(originalErr, processName, record.RunID)
+				return ack()
+			}
+		}
+
 		return errors.Wrap(err, "failed to consume", j.MKV{
 			"workflow_name":      record.WorkflowName,
 			"foreign_id":         record.ForeignID,
@@ -220,7 +243,7 @@ func consume[Type any, Status StatusType](
 
 	if skipUpdate(next) {
 		if w.debugMode {
-			log.Info(ctx, "skipping newUpdater", j.MKV{
+			log.Info(ctx, "skipping update", j.MKV{
 				"description":   skipUpdateDescription(next),
 				"record_id":     record.ID,
 				"workflow_name": w.Name,
