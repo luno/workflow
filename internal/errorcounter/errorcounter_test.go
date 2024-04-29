@@ -44,9 +44,11 @@ func TestErrorCounter(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			c := errorcounter.New()
 
+			var currentCount int
 			for i := 0; i < tc.iterationCount; i++ {
-				c.Add(tc.inputErr, tc.labels...)
+				currentCount = c.Add(tc.inputErr, tc.labels...)
 			}
+			require.Equal(t, tc.expectedCount, currentCount)
 
 			count := c.Count(tc.inputErr, tc.labels...)
 			require.Equal(t, tc.expectedCount, count)
