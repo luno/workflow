@@ -193,7 +193,7 @@ func (s *Store) List(ctx context.Context, workflowName string, offsetID int64, l
 			break
 		}
 
-		if len(entries)+1 > limit {
+		if len(entries) >= limit {
 			break
 		}
 
