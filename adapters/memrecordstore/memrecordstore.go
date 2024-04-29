@@ -197,7 +197,11 @@ func (s *Store) List(ctx context.Context, workflowName string, offsetID int64, l
 			break
 		}
 
-		entry := s.store[i]
+		entry, ok := s.store[i]
+		if !ok {
+			continue
+		}
+
 		entries = append(entries, *entry)
 	}
 
