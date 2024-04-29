@@ -6,7 +6,7 @@ import (
 )
 
 type ErrorCounter interface {
-	Add(err error, labels ...string)
+	Add(err error, labels ...string) int
 	Count(err error, labels ...string) int
 	Clear(err error, labels ...string)
 }
@@ -22,13 +22,14 @@ type counter struct {
 	store map[string]int
 }
 
-func (c *counter) Add(err error, labels ...string) {
+func (c *counter) Add(err error, labels ...string) int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	errMsg := err.Error()
 	errMsg += strings.Join(labels, "-")
 	c.store[errMsg] += 1
+	return c.store[errMsg]
 }
 
 func (c *counter) Count(err error, labels ...string) int {

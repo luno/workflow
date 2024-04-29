@@ -214,9 +214,8 @@ func consume[Type any, Status StatusType](
 	if err != nil {
 		// Only keep track of errors if we need to
 		if pauseAfterErrCount > 0 {
-			w.errorCounter.Add(err, processName, record.RunID)
-
-			if w.errorCounter.Count(err, processName, record.RunID) >= pauseAfterErrCount {
+			count := w.errorCounter.Add(err, processName, record.RunID)
+			if count >= pauseAfterErrCount {
 				originalErr := err
 				_, err := record.Pause(ctx)
 				if err != nil {

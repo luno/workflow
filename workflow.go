@@ -88,7 +88,7 @@ type Workflow[Type any, Status StatusType] struct {
 
 	statusGraph *graph.Graph
 	// errorCounter keeps a central in-mem state of errors from consumers and timeouts in order to implement
-	// PauseAfterErrCount. The tracking of errors is done ina  way where errors need to be unique per process
+	// PauseAfterErrCount. The tracking of errors is done in a way where errors need to be unique per process
 	// (consumer / timeout).
 	errorCounter errorcounter.ErrorCounter
 
