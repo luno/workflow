@@ -44,11 +44,27 @@ func pollTimeouts[Type any, Status StatusType](ctx context.Context, w *Workflow[
 				return err
 			}
 
-			if r.Status != int(status) {
+			if r.Status != int(status) || r.RunState.Finished() {
 				// Object has been updated already. Mark timeout as cancelled as it is no longer valid.
 				err = w.timeoutStore.Cancel(ctx, expiredTimeout.ID)
 				if err != nil {
 					return err
+				}
+
+				// Continue to next expired timeout
+				continue
+			}
+
+			if r.RunState.Stopped() {
+				if w.debugMode {
+					log.Info(ctx, "Skipping processing of timeout of stopped workflow record", j.MKV{
+						"workflow":       r.WorkflowName,
+						"run_id":         r.RunID,
+						"foreign_id":     r.ForeignID,
+						"process_name":   processName,
+						"current_status": r.Status,
+						"run_state":      r.RunState.String(),
+					})
 				}
 
 				// Continue to next expired timeout
