@@ -5,17 +5,21 @@ import (
 	"testing"
 	"time"
 
+	"github.com/luno/jettison/errors"
 	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 	clock_testing "k8s.io/utils/clock/testing"
+
+	"github.com/luno/workflow/internal/errorcounter"
 )
 
 func TestProcessTimeout(t *testing.T) {
 	ctx := context.Background()
 	w := &Workflow[string, testStatus]{
-		Name:  "example",
-		ctx:   ctx,
-		clock: clock_testing.NewFakeClock(time.Date(2024, time.April, 19, 0, 0, 0, 0, time.UTC)),
+		Name:         "example",
+		ctx:          ctx,
+		clock:        clock_testing.NewFakeClock(time.Date(2024, time.April, 19, 0, 0, 0, 0, time.UTC)),
+		errorCounter: errorcounter.New(),
 	}
 
 	value := "data"
@@ -37,6 +41,7 @@ func TestProcessTimeout(t *testing.T) {
 		timeout       timeout[string, testStatus]
 		record        *WireRecord
 		expectedCalls map[string]int
+		expectedError error
 	}{
 		{
 			name: "Golden path consume",
@@ -130,6 +135,36 @@ func TestProcessTimeout(t *testing.T) {
 				"store":               1,
 			},
 		},
+		{
+			name: "Pause record when meeting error count",
+			caller: func(call map[string]int) calls {
+				return calls{
+					timeoutFunc: func(ctx context.Context, r *Record[string, testStatus], now time.Time) (testStatus, error) {
+						call["timeout/TimeoutFunc"] += 1
+						return 0, errors.New("test error")
+					},
+					store: func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+						call["store"] += 1
+						require.Equal(t, record.RunState, RunStatePaused)
+						return nil
+					},
+				}
+			},
+			record: &WireRecord{
+				ID:           1,
+				WorkflowName: "example",
+				ForeignID:    "32948623984623",
+				RunID:        "JHFJDS-LSFKHJSLD-KSJDBLSL",
+				RunState:     RunStateRunning,
+				Status:       int(statusStart),
+				Object:       b,
+			},
+			expectedCalls: map[string]int{
+				"timeout/TimeoutFunc": 1,
+				"store":               1,
+			},
+			expectedError: errors.New("test error"),
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -147,7 +182,7 @@ func TestProcessTimeout(t *testing.T) {
 				Status:       tc.record.Status,
 			}
 
-			err := processTimeout(ctx, w, timeout, tc.record, tr, tc.caller(calls).completeFunc, tc.caller(calls).store, tc.caller(calls).updater, "processName")
+			err := processTimeout(ctx, w, timeout, tc.record, tr, tc.caller(calls).completeFunc, tc.caller(calls).store, tc.caller(calls).updater, "processName", 1)
 			jtest.RequireNil(t, err)
 
 			require.Equal(t, tc.expectedCalls, calls)
