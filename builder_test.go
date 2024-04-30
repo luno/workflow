@@ -146,43 +146,48 @@ func TestWithTimeoutPollingFrequency(t *testing.T) {
 }
 
 func TestConnectorConstruction(t *testing.T) {
-	stream := &mockConsumer{}
-
-	fn := func(ctx context.Context, w *Workflow[string, testStatus], e *Event) error {
+	fn := func(ctx context.Context, w *Workflow[string, testStatus], e *ConnectorEvent) error {
 		return nil
 	}
 
-	buidler := NewBuilder[string, testStatus]("workflow X")
+	connector := &mockConnector{}
 
-	buidler.AddConnector(
+	b := NewBuilder[string, testStatus]("workflow X")
+	b.AddConnector(
 		"my-test-connector",
-		stream,
+		connector,
 		fn,
-		WithConnectorParallelCount(2),
+	).WithOptions(
+		ParallelCount(2),
+		ErrBackOff(time.Hour*6),
 	)
 
-	workflowX := buidler.Build(nil, nil, nil, nil)
+	w := b.Build(nil, nil, nil, nil)
 
-	for _, config := range workflowX.connectorConfigs {
+	for _, config := range w.connectorConfigs {
 		require.Equal(t, "my-test-connector", config.name)
-		require.Equal(t, runtime.FuncForPC(reflect.ValueOf(stream).Pointer()).Name(), runtime.FuncForPC(reflect.ValueOf(config.consumerFn).Pointer()).Name())
+		require.NotEmpty(t, runtime.FuncForPC(reflect.ValueOf(config.connectorFn).Pointer()).Name())
 		require.Equal(t, runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name(), runtime.FuncForPC(reflect.ValueOf(config.connectorFn).Pointer()).Name())
-		require.Equal(t, defaultErrBackOff, config.errBackOff)
+		require.Equal(t, time.Hour*6, config.errBackOff)
 		require.Equal(t, 2, config.parallelCount)
 	}
 }
 
-type mockConsumer struct{}
+type mockConnector struct{}
 
-func (m mockConsumer) Recv(ctx context.Context) (*Event, Ack, error) {
+func (mc mockConnector) Make(ctx context.Context, consumerName string) (ConnectorConsumer, error) {
+	return &mockExternalConsumer{}, nil
+}
+
+type mockExternalConsumer struct{}
+
+func (m mockExternalConsumer) Recv(ctx context.Context) (*ConnectorEvent, Ack, error) {
 	return nil, nil, errors.New("not implemented")
 }
 
-func (m mockConsumer) Close() error {
+func (m mockExternalConsumer) Close() error {
 	return errors.New("not implemented")
 }
-
-var _ Consumer = (*mockConsumer)(nil)
 
 func TestWithStepLagAlert(t *testing.T) {
 	testCases := []struct {

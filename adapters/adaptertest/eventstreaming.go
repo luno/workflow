@@ -41,12 +41,6 @@ func (s SyncStatus) String() string {
 	}
 }
 
-type User struct {
-	UID         string
-	Email       string
-	CountryCode string
-}
-
 func RunEventStreamerTest(t *testing.T, constructor workflow.EventStreamer) {
 	b := workflow.NewBuilder[User, SyncStatus]("sync user 2")
 	b.AddStep(

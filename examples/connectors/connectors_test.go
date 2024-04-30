@@ -3,8 +3,7 @@ package connectors_test
 import (
 	"context"
 	"testing"
-
-	"github.com/luno/jettison/jtest"
+	"time"
 
 	"github.com/luno/workflow"
 	"github.com/luno/workflow/adapters/memrecordstore"
@@ -13,52 +12,35 @@ import (
 	"github.com/luno/workflow/adapters/memtimeoutstore"
 	"github.com/luno/workflow/examples"
 	"github.com/luno/workflow/examples/connectors"
+	"github.com/luno/workflow/examples/gettingstarted"
 )
 
 func TestConnectStreamParallelConsumer(t *testing.T) {
-	ctx := context.Background()
-	eventStreamerA := memstreamer.New()
-	recordStoreA := memrecordstore.New()
-
-	workflowA := connectors.WorkflowA(connectors.WorkflowADeps{
-		EventStreamer: eventStreamerA,
-		RecordStore:   recordStoreA,
-		TimeoutStore:  memtimeoutstore.New(),
-		RoleScheduler: memrolescheduler.New(),
-	})
-
-	workflowA.Run(ctx)
-	t.Cleanup(workflowA.Stop)
-
-	topic := workflow.Topic("workflow A", int(examples.StatusCreatedAFunExample))
-	consumerStream, err := eventStreamerA.NewConsumer(
-		ctx,
-		topic,
-		workflowA.Name,
-	)
-	jtest.RequireNil(t, err)
-	t.Cleanup(func() {
-		_ = consumerStream.Close()
-	})
-
-	workflowB := connectors.WorkflowB(connectors.WorkflowBDeps{
-		EventStreamer:           memstreamer.New(),
-		RecordStore:             memrecordstore.New(),
-		TimeoutStore:            memtimeoutstore.New(),
-		RoleScheduler:           memrolescheduler.New(),
-		WorkflowARecordStore:    recordStoreA,
-		WorkflowAConsumerStream: consumerStream,
-	})
-
-	workflowB.Run(ctx)
-	t.Cleanup(workflowB.Stop)
-
 	foreignID := "andrewwormald"
 
-	_, err = workflowA.Trigger(ctx, foreignID, examples.StatusStarted)
-	jtest.RequireNil(t, err)
+	now := time.Date(2024, time.April, 9, 0, 0, 0, 0, time.UTC)
+	events := []workflow.ConnectorEvent{
+		{
+			ID:        "1",
+			ForeignID: foreignID,
+			CreatedAt: now,
+		},
+	}
 
-	workflow.Require(t, workflowB, foreignID, examples.StatusFollowedTheExample, connectors.TypeB{
-		Value: "Hello World, I have been made from two workflows",
+	w := connectors.Workflow(connectors.Deps{
+		EventStreamer: memstreamer.New(),
+		RecordStore:   memrecordstore.New(),
+		TimeoutStore:  memtimeoutstore.New(),
+		RoleScheduler: memrolescheduler.New(),
+		Connector:     memstreamer.NewConnector(events),
+	})
+
+	ctx := context.Background()
+	w.Run(ctx)
+	t.Cleanup(w.Stop)
+
+	workflow.Require(t, w, foreignID, examples.StatusFollowedTheExample, gettingstarted.GettingStarted{
+		ReadTheDocs:     "✅",
+		FollowAnExample: "✅",
 	})
 }

@@ -1,6 +1,9 @@
 package workflow
 
-import "strconv"
+import (
+	"hash/fnv"
+	"strconv"
+)
 
 // EventFilter can be passed to the event streaming implementation to allow specific consumers to have an
 // earlier on filtering process. True is returned when the event should be skipped.
@@ -20,6 +23,38 @@ func shardFilter(shard, totalShards int) EventFilter {
 	return func(e *Event) bool {
 		if totalShards > 1 {
 			return e.ID%int64(totalShards) != int64(shard)-1
+		}
+
+		return false
+	}
+}
+
+// ConnectorEventFilter can be passed to the event streaming implementation to allow specific consumers to have an
+// earlier on filtering process. True is returned when the event should be skipped.
+type ConnectorEventFilter func(e *ConnectorEvent) bool
+
+func FilterConnectorEventUsing(e *ConnectorEvent, filters ...ConnectorEventFilter) bool {
+	for _, filter := range filters {
+		if mustFilterOut := filter(e); mustFilterOut {
+			return true
+		}
+	}
+
+	return false
+}
+
+func shardConnectorEventFilter(shard, totalShards int) ConnectorEventFilter {
+	hsh := fnv.New32()
+	return func(e *ConnectorEvent) bool {
+		if totalShards > 1 {
+			hsh.Reset()
+			_, err := hsh.Write([]byte(e.ID))
+			if err != nil {
+				return false
+			}
+
+			hash := hsh.Sum32()
+			return hash%uint32(totalShards) == uint32(shard)-1
 		}
 
 		return false

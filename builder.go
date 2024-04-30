@@ -174,29 +174,50 @@ func (s *timeoutUpdater[Type, Status]) WithOptions(opts ...Option) {
 	s.workflow.timeouts[s.from] = timeout
 }
 
-func (b *Builder[Type, Status]) AddConnector(name string, c Consumer, cf ConnectorFunc[Type, Status], opts ...ConnectorOption) {
-	var connectorOptions connectorOptions
-	for _, opt := range opts {
-		opt(&connectorOptions)
-	}
-
-	if connectorOptions.errBackOff.Nanoseconds() == 0 {
-		connectorOptions.errBackOff = defaultErrBackOff
-	}
-
+func (b *Builder[Type, Status]) AddConnector(name string, csc ConnectorConstructor, cf ConnectorFunc[Type, Status]) *connectorUpdater[Type, Status] {
 	for _, config := range b.workflow.connectorConfigs {
 		if config.name == name {
 			panic("connector names need to be unique")
 		}
 	}
 
-	b.workflow.connectorConfigs = append(b.workflow.connectorConfigs, connectorConfig[Type, Status]{
-		name:          name,
-		consumerFn:    c,
-		connectorFn:   cf,
-		errBackOff:    connectorOptions.errBackOff,
-		parallelCount: connectorOptions.parallelCount,
-	})
+	config := &connectorConfig[Type, Status]{
+		name:             name,
+		constructor:      csc,
+		connectorFn:      cf,
+		pollingFrequency: b.workflow.defaultPollingFrequency,
+		errBackOff:       b.workflow.defaultErrBackOff,
+		lagAlert:         b.workflow.defaultLagAlert,
+	}
+
+	b.workflow.connectorConfigs = append(b.workflow.connectorConfigs, config)
+	return &connectorUpdater[Type, Status]{
+		workflow: b.workflow,
+		config:   config,
+	}
+}
+
+type connectorUpdater[Type any, Status StatusType] struct {
+	workflow *Workflow[Type, Status]
+	config   *connectorConfig[Type, Status]
+}
+
+func (c *connectorUpdater[Type, Status]) WithOptions(opts ...Option) {
+	connectorOpts := options{
+		parallelCount:    c.config.parallelCount,
+		pollingFrequency: c.config.pollingFrequency,
+		errBackOff:       c.config.errBackOff,
+		lag:              c.config.lag,
+		lagAlert:         c.config.lagAlert,
+	}
+	for _, opt := range opts {
+		opt(&connectorOpts)
+	}
+	c.config.pollingFrequency = connectorOpts.pollingFrequency
+	c.config.parallelCount = connectorOpts.parallelCount
+	c.config.errBackOff = connectorOpts.errBackOff
+	c.config.lag = connectorOpts.lag
+	c.config.lagAlert = connectorOpts.lagAlert
 }
 
 func (b *Builder[Type, Status]) Build(eventStreamer EventStreamer, recordStore RecordStore, timeoutStore TimeoutStore, roleScheduler RoleScheduler, opts ...BuildOption) *Workflow[Type, Status] {

@@ -5,70 +5,35 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/luno/jettison/errors"
-	"github.com/luno/jettison/j"
+	"github.com/luno/workflow/internal/metrics"
 )
 
-// ConnectorFilter should return an empty string as the foreignID if the event should be filtered out / skipped, and
-// it should be non-empty if event should be processed. The value of foreignID should match the foreignID of your
-// workflow.
-type ConnectorFilter func(ctx context.Context, e *Event) (foreignID string, err error)
-
-type ConnectorConsumerFunc[Type any, Status StatusType] func(ctx context.Context, r *Record[Type, Status], e *Event) (bool, error)
-
-type ConnectorFunc[Type any, Status StatusType] func(ctx context.Context, w *Workflow[Type, Status], e *Event) error
-
-type WorkflowConnectionDetails struct {
-	WorkflowName string
-	Status       int
-	Stream       EventStreamer
+type ConnectorConstructor interface {
+	Make(ctx context.Context, consumerName string) (ConnectorConsumer, error)
 }
+
+type ConnectorConsumer interface {
+	Recv(ctx context.Context) (*ConnectorEvent, Ack, error)
+	Close() error
+}
+
+type ConnectorFunc[Type any, Status StatusType] func(ctx context.Context, w *Workflow[Type, Status], e *ConnectorEvent) error
 
 type connectorConfig[Type any, Status StatusType] struct {
 	name        string
-	consumerFn  Consumer
+	constructor ConnectorConstructor
 	connectorFn ConnectorFunc[Type, Status]
 
-	errBackOff    time.Duration
-	parallelCount int
-}
-
-type workflowConnectorConfig[Type any, Status StatusType] struct {
-	workflowName     string
-	status           int
-	stream           EventStreamer
-	filter           ConnectorFilter
-	consumer         ConnectorConsumerFunc[Type, Status]
-	from             Status
-	to               Status
 	pollingFrequency time.Duration
 	errBackOff       time.Duration
 	parallelCount    int
+	lag              time.Duration
+	lagAlert         time.Duration
 }
 
-type connectorOptions struct {
-	parallelCount    int
-	pollingFrequency time.Duration
-	errBackOff       time.Duration
-}
-
-type ConnectorOption func(co *connectorOptions)
-
-func WithConnectorParallelCount(instances int) ConnectorOption {
-	return func(co *connectorOptions) {
-		co.parallelCount = instances
-	}
-}
-
-func WithConnectorErrBackOff(d time.Duration) ConnectorOption {
-	return func(co *connectorOptions) {
-		co.errBackOff = d
-	}
-}
-
-func connectorConsumer[Type any, Status StatusType](w *Workflow[Type, Status], cc *connectorConfig[Type, Status], shard, totalShards int) {
+func connectorConsumer[Type any, Status StatusType](w *Workflow[Type, Status], config *connectorConfig[Type, Status], shard, totalShards int) {
 	role := makeRole(
-		cc.name,
+		config.name,
 		"connector",
 		"to",
 		w.Name,
@@ -81,30 +46,75 @@ func connectorConsumer[Type any, Status StatusType](w *Workflow[Type, Status], c
 	// processName can have the same name as the role. It is the same here due to the fact that there are no enums
 	// that can be converted to a meaningful string
 	processName := role
-
-	errBackOff := w.defaultErrBackOff
-	if cc.errBackOff.Nanoseconds() != 0 {
-		errBackOff = cc.errBackOff
-	}
-
-	defer cc.consumerFn.Close()
-
 	w.run(role, processName, func(ctx context.Context) error {
-		e, ack, err := cc.consumerFn.Recv(ctx)
+		consumer, err := config.constructor.Make(ctx, role)
+		if err != nil {
+			return err
+		}
+		defer consumer.Close()
+
+		return connectForever(ctx, w, config, consumer, processName, shard, totalShards)
+	}, config.errBackOff)
+}
+
+func connectForever[Type any, Status StatusType](
+	ctx context.Context,
+	w *Workflow[Type, Status],
+	config *connectorConfig[Type, Status],
+	consumer ConnectorConsumer,
+	processName string,
+	shard, totalShards int,
+) error {
+	for {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
+		e, ack, err := consumer.Recv(ctx)
 		if err != nil {
 			return err
 		}
 
-		err = cc.connectorFn(ctx, w, e)
-		if err != nil {
-			return errors.Wrap(err, "failed to consume - connector consumer", j.MKV{
-				"workflow_name":    w.Name,
-				"event_foreign_id": e.ForeignID,
-				"event_type":       e.Type,
-				"role":             cc.name,
-			})
+		var lag time.Duration
+		if config.lag.Nanoseconds() != 0 {
+			lag = config.lag
 		}
 
+		// Wait until the event's timestamp matches or is older than the specified lag.
+		delay := lag - w.clock.Since(e.CreatedAt)
+		if lag > 0 && delay > 0 {
+			t := w.clock.NewTimer(delay)
+			select {
+			case <-ctx.Done():
+				t.Stop()
+				return ctx.Err()
+			case <-t.C():
+				// Resume to consume the event now that it matches or is older than specified lag.
+			}
+		}
+
+		// Push metrics and alerting around the age of the event being processed.
+		pushLagMetricAndAlerting(w.Name, processName, e.CreatedAt, config.lagAlert, w.clock)
+
+		shouldFilter := FilterConnectorEventUsing(e,
+			shardConnectorEventFilter(shard, totalShards),
+		)
+		if shouldFilter {
+			err = ack()
+			if err != nil {
+				return err
+			}
+
+			continue
+		}
+
+		t2 := w.clock.Now()
+		err = config.connectorFn(ctx, w, e)
+		if err != nil {
+			return err
+		}
+
+		metrics.ProcessLatency.WithLabelValues(w.Name, processName).Observe(w.clock.Since(t2).Seconds())
 		return ack()
-	}, errBackOff)
+	}
 }

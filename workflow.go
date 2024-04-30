@@ -50,9 +50,9 @@ type API[Type any, Status StatusType] interface {
 	// Stop tells the workflow to shut down gracefully.
 	Stop()
 
-	// RunStateController allows the interacting and controlling a workflow record such as Pause, Resume, Cancel, and
+	// Controller allows the interacting and controlling a workflow record such as Pause, Resume, Cancel, and
 	// DeleteData (e.g. right to be forgotten).
-	RunStateController(ctx context.Context, id int64) (RunStateController, error)
+	Controller(ctx context.Context, id int64) (RunStateController, error)
 }
 
 type Workflow[Type any, Status StatusType] struct {
@@ -77,7 +77,7 @@ type Workflow[Type any, Status StatusType] struct {
 	consumers        map[Status]consumerConfig[Type, Status]
 	callback         map[Status][]callback[Type, Status]
 	timeouts         map[Status]timeouts[Type, Status]
-	connectorConfigs []connectorConfig[Type, Status]
+	connectorConfigs []*connectorConfig[Type, Status]
 	outboxConfig     outboxConfig
 	customDelete     customDelete
 
@@ -91,6 +91,8 @@ type Workflow[Type any, Status StatusType] struct {
 	// PauseAfterErrCount. The tracking of errors is done in a way where errors need to be unique per process
 	// (consumer / timeout).
 	errorCounter errorcounter.ErrorCounter
+
+	exporterConsumer Consumer
 
 	debugMode bool
 }
@@ -137,11 +139,11 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 		for _, config := range w.connectorConfigs {
 			if config.parallelCount < 2 {
 				// Launch all consumers in runners
-				go connectorConsumer(w, &config, 1, 1)
+				go connectorConsumer(w, config, 1, 1)
 			} else {
 				// Run as sharded parallel consumers
 				for i := 1; i <= config.parallelCount; i++ {
-					go connectorConsumer(w, &config, i, config.parallelCount)
+					go connectorConsumer(w, config, i, config.parallelCount)
 				}
 			}
 		}

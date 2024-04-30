@@ -448,23 +448,30 @@ func TestTimeTimerFunc(t *testing.T) {
 }
 
 func TestConnector(t *testing.T) {
-	ctx := context.Background()
-	streamerA := memstreamer.New()
-	streamATopic := "my-topic-a"
-
 	type typeX struct {
 		Val string
 	}
-	buidler := workflow.NewBuilder[typeX, status]("workflow X")
 
-	streamConnector, err := streamerA.NewConsumer(ctx, streamATopic, "stream-a-connector")
-	jtest.RequireNil(t, err)
+	events := []workflow.ConnectorEvent{
+		{
+			ID:        "1",
+			ForeignID: "SDFJKH-SDKFJHBSD-SDKFJBS",
+			Type:      "2",
+		},
+		{
+			ID:        "2",
+			ForeignID: "XCVXCM-EIXCASDBJ-SDFBJKZ",
+			Type:      "2",
+		},
+	}
+	connector := memstreamer.NewConnector(events)
 
+	buidler := workflow.NewBuilder[typeX, status]("workflow")
 	buidler.AddConnector(
 		"my-test-connector",
-		streamConnector,
-		func(ctx context.Context, w *workflow.Workflow[typeX, status], e *workflow.Event) error {
-			_, err := w.Trigger(ctx, fmt.Sprintf("%v", e.ForeignID), StatusStart, workflow.WithInitialValue[typeX, status](&typeX{
+		connector,
+		func(ctx context.Context, w *workflow.Workflow[typeX, status], e *workflow.ConnectorEvent) error {
+			_, err := w.Trigger(ctx, e.ForeignID, StatusStart, workflow.WithInitialValue[typeX, status](&typeX{
 				Val: "trigger set value",
 			}))
 			if err != nil {
@@ -480,31 +487,26 @@ func TestConnector(t *testing.T) {
 		return StatusEnd, nil
 	}, StatusEnd)
 
-	workflowX := buidler.Build(
+	w := buidler.Build(
 		memstreamer.New(),
 		memrecordstore.New(),
 		memtimeoutstore.New(),
 		memrolescheduler.New(),
 	)
 
-	workflowX.Run(ctx)
-	t.Cleanup(workflowX.Stop)
+	ctx := context.Background()
+	w.Run(ctx)
+	t.Cleanup(w.Stop)
 
-	p, err := streamerA.NewProducer(ctx, streamATopic)
-	jtest.RequireNil(t, err)
+	for _, event := range events {
+		workflow.Require(t, w, event.ForeignID, StatusStart, typeX{
+			Val: "trigger set value",
+		})
 
-	err = p.Send(ctx, 9, 1, map[workflow.Header]string{
-		workflow.HeaderTopic: streamATopic,
-	})
-	jtest.RequireNil(t, err)
-
-	workflow.Require(t, workflowX, "9", StatusStart, typeX{
-		Val: "trigger set value",
-	})
-
-	workflow.Require(t, workflowX, "9", StatusEnd, typeX{
-		Val: "workflow step set value",
-	})
+		workflow.Require(t, w, event.ForeignID, StatusEnd, typeX{
+			Val: "workflow step set value",
+		})
+	}
 }
 
 func TestStepConsumerLag(t *testing.T) {
