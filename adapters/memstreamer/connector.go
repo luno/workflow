@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/luno/jettison/errors"
+	"github.com/luno/jettison/j"
 	"k8s.io/utils/clock"
 
 	"github.com/luno/workflow"
@@ -57,26 +59,39 @@ type consumer struct {
 
 func (c *consumer) Recv(ctx context.Context) (*workflow.ConnectorEvent, workflow.Ack, error) {
 	for ctx.Err() == nil {
-		c.mu.Lock()
-		log := *c.log
-
 		cursorOffset := c.cursorStore.Get(c.cursorName)
-		if len(log)-1 < cursorOffset {
+		event, err := c.next()
+		if errors.Is(err, errReachedHeadOfStream) {
+			// NoReturnErr: Sleep and continue until a new event is added
 			time.Sleep(time.Millisecond * 10)
-			c.mu.Unlock()
 			continue
+		} else if err != nil {
+			return nil, nil, err
 		}
 
-		e := log[cursorOffset]
-
-		c.mu.Unlock()
-		return e, func() error {
+		return event, func() error {
 			c.cursorStore.Set(c.cursorName, cursorOffset+1)
 			return nil
 		}, nil
 	}
 
 	return nil, nil, ctx.Err()
+}
+
+var errReachedHeadOfStream = errors.New("reached head of stream", j.C("ERR_547682425078cf6d"))
+
+func (c *consumer) next() (*workflow.ConnectorEvent, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	log := *c.log
+
+	cursorOffset := c.cursorStore.Get(c.cursorName)
+	if len(log)-1 < cursorOffset {
+		return nil, errors.Wrap(errReachedHeadOfStream, "")
+	}
+
+	return log[cursorOffset], nil
 }
 
 func (c *consumer) Close() error {
