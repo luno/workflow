@@ -124,7 +124,7 @@ func TestConnector(t *testing.T) {
 		err = tx.Commit()
 		jtest.RequireNil(t, err)
 
-		return reflexstreamer.NewConnector(eventsTable.ToStream(dbc), cTable.ToStore(dbc))
+		return reflexstreamer.NewConnector(eventsTable.ToStream(dbc), cTable.ToStore(dbc), reflexstreamer.DefaultReflexTranslator)
 	})
 }
 
