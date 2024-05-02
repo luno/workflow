@@ -87,7 +87,7 @@ func TestMetricProcessLag(t *testing.T) {
 	expected := `
 # HELP workflow_process_lag_seconds lag between now and the current event timestamp in seconds
 # TYPE workflow_process_lag_seconds gauge
-workflow_process_lag_seconds{process_name="outbox-consumer-1-of-1",workflow_name="example"} 3600
+workflow_process_lag_seconds{process_name="outbox-consumer-2-of-2",workflow_name="example"} 3600
 workflow_process_lag_seconds{process_name="start-consumer-1-of-1",workflow_name="example"} 0
 `
 
@@ -108,7 +108,7 @@ func TestMetricProcessLagAlert(t *testing.T) {
 # HELP workflow_process_lag_alert Whether or not the consumer lag crosses its alert threshold
 # TYPE workflow_process_lag_alert gauge
 workflow_process_lag_alert{process_name="start-consumer-1-of-1",workflow_name="example"} 0
-workflow_process_lag_alert{process_name="outbox-consumer-1-of-1",workflow_name="example"} 1
+workflow_process_lag_alert{process_name="outbox-consumer-2-of-2",workflow_name="example"} 1
 `
 
 	err := testutil.CollectAndCompare(metrics.ConsumerLagAlert, strings.NewReader(expected))
@@ -127,10 +127,9 @@ func TestMetricProcessStates(t *testing.T) {
 	expected := `
 # HELP workflow_process_states The current states of all the processes
 # TYPE workflow_process_states gauge
-workflow_process_states{process_name="start-consumer-1-of-1", workflow_name="example"} 2
-workflow_process_states{process_name="middle-consumer-1-of-1", workflow_name="example"} 2
 workflow_process_states{process_name="outbox-consumer-1-of-2",workflow_name="example"} 2
 workflow_process_states{process_name="outbox-consumer-2-of-2",workflow_name="example"} 2
+workflow_process_states{process_name="start-consumer-1-of-1",workflow_name="example"} 2
 `
 
 	err := testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
@@ -142,7 +141,6 @@ workflow_process_states{process_name="outbox-consumer-2-of-2",workflow_name="exa
 	expected = `
 # HELP workflow_process_states The current states of all the processes
 # TYPE workflow_process_states gauge
-workflow_process_states{process_name="middle-consumer-1-of-1",workflow_name="example"} 1
 workflow_process_states{process_name="start-consumer-1-of-1",workflow_name="example"} 1
 workflow_process_states{process_name="outbox-consumer-1-of-2",workflow_name="example"} 1
 workflow_process_states{process_name="outbox-consumer-2-of-2",workflow_name="example"} 1
@@ -280,16 +278,16 @@ func TestMetricProcessLatency(t *testing.T) {
 	expected := `
 # HELP workflow_process_latency_seconds Event loop latency in seconds
 # TYPE workflow_process_latency_seconds histogram
-workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="0.01"} 1
-workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="0.1"} 1
-workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="1"} 1
-workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="5"} 1
-workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="10"} 1
-workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="60"} 1
-workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="300"} 1
-workflow_process_latency_seconds_bucket{process_name="outbox-consumer-1-of-1",workflow_name="example",le="+Inf"} 1
-workflow_process_latency_seconds_sum{process_name="outbox-consumer-1-of-1",workflow_name="example"} 0
-workflow_process_latency_seconds_count{process_name="outbox-consumer-1-of-1",workflow_name="example"} 1
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-2-of-2",workflow_name="example",le="0.01"} 1
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-2-of-2",workflow_name="example",le="0.1"} 1
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-2-of-2",workflow_name="example",le="1"} 1
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-2-of-2",workflow_name="example",le="5"} 1
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-2-of-2",workflow_name="example",le="10"} 1
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-2-of-2",workflow_name="example",le="60"} 1
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-2-of-2",workflow_name="example",le="300"} 1
+workflow_process_latency_seconds_bucket{process_name="outbox-consumer-2-of-2",workflow_name="example",le="+Inf"} 1
+workflow_process_latency_seconds_sum{process_name="outbox-consumer-2-of-2",workflow_name="example"} 0
+workflow_process_latency_seconds_count{process_name="outbox-consumer-2-of-2",workflow_name="example"} 1
 workflow_process_latency_seconds_bucket{process_name="start-consumer-1-of-1",workflow_name="example",le="0.01"} 1
 workflow_process_latency_seconds_bucket{process_name="start-consumer-1-of-1",workflow_name="example",le="0.1"} 1
 workflow_process_latency_seconds_bucket{process_name="start-consumer-1-of-1",workflow_name="example",le="1"} 1
