@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/luno/jettison/errors"
 	"github.com/luno/jettison/j"
 	"github.com/luno/jettison/log"
 
@@ -43,7 +44,7 @@ func pollTimeouts[Type any, Status StatusType](ctx context.Context, w *Workflow[
 				return err
 			}
 
-			if r.Status != int(status) {
+			if r.Status != int(status) || r.RunState.Finished() {
 				// Object has been updated already. Mark timeout as cancelled as it is no longer valid.
 				err = w.timeoutStore.Cancel(ctx, expiredTimeout.ID)
 				if err != nil {
@@ -54,9 +55,25 @@ func pollTimeouts[Type any, Status StatusType](ctx context.Context, w *Workflow[
 				continue
 			}
 
+			if r.RunState.Stopped() {
+				if w.debugMode {
+					log.Info(ctx, "Skipping processing of timeout of stopped workflow record", j.MKV{
+						"workflow":       r.WorkflowName,
+						"run_id":         r.RunID,
+						"foreign_id":     r.ForeignID,
+						"process_name":   processName,
+						"current_status": r.Status,
+						"run_state":      r.RunState.String(),
+					})
+				}
+
+				// Continue to next expired timeout
+				continue
+			}
+
 			for _, config := range timeouts.transitions {
 				t0 := w.clock.Now()
-				err = processTimeout(ctx, w, config, r, expiredTimeout, w.timeoutStore.Complete, store, updateFn, processName)
+				err = processTimeout(ctx, w, config, r, expiredTimeout, w.timeoutStore.Complete, store, updateFn, processName, timeouts.pauseAfterErrCount)
 				if err != nil {
 					metrics.ProcessLatency.WithLabelValues(w.Name, processName).Observe(w.clock.Since(t0).Seconds())
 					return err
@@ -85,21 +102,46 @@ func processTimeout[Type any, Status StatusType](
 	store storeFunc,
 	updater updater[Type, Status],
 	processName string,
+	pauseAfterErrCount int,
 ) error {
 	record, err := buildConsumableRecord[Type, Status](ctx, store, r, w.customDelete)
 	if err != nil {
 		return err
 	}
 
-	// TODO(andreww): Add pause after max error
 	next, err := config.TimeoutFunc(ctx, record, w.clock.Now())
 	if err != nil {
-		return err
+		// Only keep track of errors if we need to
+		if pauseAfterErrCount > 0 {
+			count := w.errorCounter.Add(err, processName, record.RunID)
+			if count >= pauseAfterErrCount {
+				originalErr := err
+				_, err := record.Pause(ctx)
+				if err != nil {
+					return errors.Wrap(err, "failed to pause record after exceeding allowed error count", j.MKV{
+						"workflow_name":      record.WorkflowName,
+						"foreign_id":         record.ForeignID,
+						"current_status":     record.Status.String(),
+						"current_status_int": record.Status,
+					})
+				}
+
+				// Record paused - now clear the error counter.
+				w.errorCounter.Clear(originalErr, processName, record.RunID)
+				return nil
+			}
+		}
+		return errors.Wrap(err, "failed to process timeout", j.MKV{
+			"workflow_name":      record.WorkflowName,
+			"foreign_id":         record.ForeignID,
+			"current_status":     record.Status.String(),
+			"current_status_int": record.Status,
+		})
 	}
 
 	if skipUpdate(next) {
 		if w.debugMode {
-			log.Info(ctx, "skipping newUpdater", j.MKV{
+			log.Info(ctx, "skipping update", j.MKV{
 				"description":   skipUpdateDescription(next),
 				"record_id":     record.ID,
 				"workflow_name": w.Name,
