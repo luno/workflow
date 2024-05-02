@@ -2,7 +2,6 @@ package reflexstreamer
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	"github.com/luno/jettison/errors"
@@ -12,14 +11,18 @@ import (
 	"github.com/luno/workflow"
 )
 
-func NewConnector(streamFn reflex.StreamFunc, cursorStore reflex.CursorStore) *connector {
+func NewConnector(streamFn reflex.StreamFunc, cursorStore reflex.CursorStore, t ReflexTranslator) *connector {
 	return &connector{
+		translator:  t,
 		streamFn:    streamFn,
 		cursorStore: cursorStore,
 	}
 }
 
+type ReflexTranslator func(e *reflex.Event) (*workflow.ConnectorEvent, error)
+
 type connector struct {
+	translator  ReflexTranslator
 	streamFn    reflex.StreamFunc
 	cursorStore reflex.CursorStore
 }
@@ -37,6 +40,7 @@ func (c *connector) Make(ctx context.Context, name string) (workflow.ConnectorCo
 
 	return &consumer{
 		cursorName:   name,
+		translator:   c.translator,
 		cursorStore:  c.cursorStore,
 		streamClient: streamClient,
 	}, nil
@@ -44,11 +48,10 @@ func (c *connector) Make(ctx context.Context, name string) (workflow.ConnectorCo
 
 type consumer struct {
 	cursorName   string
+	translator   ReflexTranslator
 	cursorStore  reflex.CursorStore
 	streamClient reflex.StreamClient
 }
-
-var HeaderMeta = "meta"
 
 func (c consumer) Recv(ctx context.Context) (*workflow.ConnectorEvent, workflow.Ack, error) {
 	for ctx.Err() == nil {
@@ -57,14 +60,9 @@ func (c consumer) Recv(ctx context.Context) (*workflow.ConnectorEvent, workflow.
 			return nil, nil, err
 		}
 
-		event := &workflow.ConnectorEvent{
-			ID:        reflexEvent.ID,
-			ForeignID: reflexEvent.ForeignID,
-			Type:      fmt.Sprintf("%v", reflexEvent.Type.ReflexType()),
-			Headers: map[string]string{
-				HeaderMeta: string(reflexEvent.MetaData),
-			},
-			CreatedAt: reflexEvent.Timestamp,
+		event, err := c.translator(reflexEvent)
+		if err != nil {
+			return nil, nil, err
 		}
 
 		return event, func() error {
