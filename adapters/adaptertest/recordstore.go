@@ -288,7 +288,7 @@ func testListOutboxEvents(t *testing.T, store workflow.RecordStore) {
 
 		require.Equal(t, int32(statusStarted), r.Type)
 		require.Equal(t, "my_workflow-1", r.Headers[string(workflow.HeaderTopic)])
-		require.Equal(t, "Andrew Wormald", r.Headers[string(workflow.HeaderWorkflowForeignID)])
+		require.Equal(t, "Andrew Wormald", r.Headers[string(workflow.HeaderForeignID)])
 		require.Equal(t, "my_workflow", r.Headers[string(workflow.HeaderWorkflowName)])
 	})
 }
