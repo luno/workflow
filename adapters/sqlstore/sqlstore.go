@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/luno/jettison/errors"
 
@@ -119,6 +120,21 @@ func (s *SQLStore) DeleteOutboxEvent(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (s *SQLStore) List(ctx context.Context, workflowName string, offsetID int64, limit int, order workflow.OrderType) ([]workflow.WireRecord, error) {
-	return s.listWhere(ctx, s.reader, "workflow_name=? and id>? order by id "+order.String()+" limit ?", workflowName, offsetID, limit)
+func (s *SQLStore) List(ctx context.Context, workflowName string, offsetID int64, limit int, order workflow.OrderType, filters ...workflow.RecordFilter) ([]workflow.WireRecord, error) {
+	filter := workflow.MakeFilter(filters...)
+
+	var filterStr string
+	if filter.ByForeignID().Enabled {
+		filterStr += fmt.Sprintf(" and foreign_id='%v' ", filter.ByForeignID().Value)
+	}
+
+	if filter.ByStatus().Enabled {
+		filterStr += fmt.Sprintf(" and status=%v ", filter.ByStatus().Value)
+	}
+
+	if filter.ByRunState().Enabled {
+		filterStr += fmt.Sprintf(" and run_state=%v ", filter.ByRunState().Value)
+	}
+
+	return s.listWhere(ctx, s.reader, "workflow_name=? and id>? "+filterStr+"order by id "+order.String()+" limit ?", workflowName, offsetID, limit)
 }

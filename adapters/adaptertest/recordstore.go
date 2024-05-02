@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -402,6 +403,150 @@ func testStore_List(t *testing.T, store workflow.RecordStore) {
 		jtest.RequireNil(t, err)
 		require.Equal(t, 50, len(lastPageDesc))
 		require.Equal(t, int64(1000), lastPageDesc[0].ID)
+	})
+
+	t.Run("List - FilterByForeignID", func(t *testing.T) {
+		ctx := context.Background()
+		workflowName := "my_workflow"
+		maker := func(recordID int64) (workflow.OutboxEventData, error) { return workflow.OutboxEventData{}, nil }
+
+		type example struct {
+			value string
+		}
+
+		e := example{value: "test"}
+		b, err := json.Marshal(e)
+		jtest.RequireNil(t, err)
+
+		foreignIDs := []string{"MSDVUI-OBEWF-BYUIOW", "FRELBJK-SRGIUE-RGTJDSF"}
+		for _, foreignID := range foreignIDs {
+			for i := 0; i < 20; i++ {
+				uid, err := uuid.NewUUID()
+				jtest.RequireNil(t, err)
+
+				newRecord := &workflow.WireRecord{
+					WorkflowName: workflowName,
+					Status:       int(statusMiddle),
+					ForeignID:    foreignID,
+					RunID:        uid.String(),
+					Object:       b,
+				}
+
+				err = store.Store(ctx, newRecord, maker)
+				jtest.RequireNil(t, err)
+			}
+		}
+
+		ls, err := store.List(ctx, workflowName, 0, 100, workflow.OrderTypeAscending, workflow.FilterByForeignID(foreignIDs[0]))
+		jtest.RequireNil(t, err)
+		require.Equal(t, 20, len(ls))
+
+		ls2, err := store.List(ctx, workflowName, 0, 100, workflow.OrderTypeAscending, workflow.FilterByForeignID(foreignIDs[1]))
+		jtest.RequireNil(t, err)
+		require.Equal(t, 20, len(ls2))
+
+		ls3, err := store.List(ctx, workflowName, 0, 100, workflow.OrderTypeAscending, workflow.FilterByForeignID("random"))
+		jtest.RequireNil(t, err)
+		require.Equal(t, 0, len(ls3))
+	})
+
+	t.Run("List - FilterByRunState", func(t *testing.T) {
+		ctx := context.Background()
+		workflowName := "my_workflow"
+		maker := func(recordID int64) (workflow.OutboxEventData, error) { return workflow.OutboxEventData{}, nil }
+
+		type example struct {
+			value string
+		}
+
+		e := example{value: "test"}
+		b, err := json.Marshal(e)
+		jtest.RequireNil(t, err)
+
+		config := map[workflow.RunState]int{
+			workflow.RunStateInitiated:   10,
+			workflow.RunStateRunning:     100,
+			workflow.RunStateCompleted:   20,
+			workflow.RunStatePaused:      3,
+			workflow.RunStateCancelled:   1,
+			workflow.RunStateDataDeleted: 15,
+		}
+		for runState, count := range config {
+			for i := 0; i < count; i++ {
+				uid, err := uuid.NewUUID()
+				jtest.RequireNil(t, err)
+
+				newRecord := &workflow.WireRecord{
+					WorkflowName: workflowName,
+					Status:       int(statusMiddle),
+					ForeignID:    "1",
+					RunState:     runState,
+					RunID:        uid.String(),
+					Object:       b,
+				}
+
+				err = store.Store(ctx, newRecord, maker)
+				jtest.RequireNil(t, err)
+			}
+		}
+
+		for runState, count := range config {
+			ls, err := store.List(ctx, workflowName, 0, 100, workflow.OrderTypeAscending, workflow.FilterByRunState(runState))
+			jtest.RequireNil(t, err)
+			require.Equal(t, count, len(ls))
+
+			for _, l := range ls {
+				require.Equal(t, l.RunState, runState)
+			}
+		}
+	})
+
+	t.Run("List - FilterByStatus", func(t *testing.T) {
+		ctx := context.Background()
+		workflowName := "my_workflow"
+		maker := func(recordID int64) (workflow.OutboxEventData, error) { return workflow.OutboxEventData{}, nil }
+
+		type example struct {
+			value string
+		}
+
+		e := example{value: "test"}
+		b, err := json.Marshal(e)
+		jtest.RequireNil(t, err)
+
+		config := map[status]int{
+			statusStarted: 10,
+			statusMiddle:  100,
+			statusEnd:     20,
+		}
+		for status, count := range config {
+			for i := 0; i < count; i++ {
+				uid, err := uuid.NewUUID()
+				jtest.RequireNil(t, err)
+
+				newRecord := &workflow.WireRecord{
+					WorkflowName: workflowName,
+					Status:       int(status),
+					ForeignID:    "1",
+					RunState:     workflow.RunStateCompleted,
+					RunID:        uid.String(),
+					Object:       b,
+				}
+
+				err = store.Store(ctx, newRecord, maker)
+				jtest.RequireNil(t, err)
+			}
+		}
+
+		for status, count := range config {
+			ls, err := store.List(ctx, workflowName, 0, 100, workflow.OrderTypeAscending, workflow.FilterByStatus(status))
+			jtest.RequireNil(t, err)
+			require.Equal(t, count, len(ls))
+
+			for _, l := range ls {
+				require.Equal(t, l.Status, int(status))
+			}
+		}
 	})
 }
 
