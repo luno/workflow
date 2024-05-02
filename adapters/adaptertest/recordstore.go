@@ -18,12 +18,12 @@ import (
 
 func RunRecordStoreTest(t *testing.T, factory func() workflow.RecordStore) {
 	tests := []func(t *testing.T, store workflow.RecordStore){
-		testStore_Latest,
-		testStore_Lookup,
-		testStore_Store,
-		testStore_ListOutboxEvents,
-		testStore_DeleteOutboxEvent,
-		testStore_List,
+		testLatest,
+		testLookup,
+		testStore,
+		testListOutboxEvents,
+		testDeleteOutboxEvent,
+		testList,
 	}
 
 	for _, test := range tests {
@@ -32,7 +32,7 @@ func RunRecordStoreTest(t *testing.T, factory func() workflow.RecordStore) {
 	}
 }
 
-func testStore_Latest(t *testing.T, store workflow.RecordStore) {
+func testLatest(t *testing.T, store workflow.RecordStore) {
 	t.Run("Latest", func(t *testing.T) {
 		ctx := context.Background()
 		workflowName := "my_workflow"
@@ -106,7 +106,7 @@ func testStore_Latest(t *testing.T, store workflow.RecordStore) {
 	})
 }
 
-func testStore_Lookup(t *testing.T, store workflow.RecordStore) {
+func testLookup(t *testing.T, store workflow.RecordStore) {
 	t.Run("Lookup", func(t *testing.T) {
 		ctx := context.Background()
 		workflowName := "my_workflow"
@@ -158,7 +158,7 @@ func testStore_Lookup(t *testing.T, store workflow.RecordStore) {
 	})
 }
 
-func testStore_Store(t *testing.T, store workflow.RecordStore) {
+func testStore(t *testing.T, store workflow.RecordStore) {
 	t.Run("RecordStore", func(t *testing.T) {
 		ctx := context.Background()
 		workflowName := "my_workflow"
@@ -237,7 +237,7 @@ func testStore_Store(t *testing.T, store workflow.RecordStore) {
 	})
 }
 
-func testStore_ListOutboxEvents(t *testing.T, store workflow.RecordStore) {
+func testListOutboxEvents(t *testing.T, store workflow.RecordStore) {
 	t.Run("ListOutboxEvents", func(t *testing.T) {
 		ctx := context.Background()
 		workflowName := "my_workflow"
@@ -293,7 +293,7 @@ func testStore_ListOutboxEvents(t *testing.T, store workflow.RecordStore) {
 	})
 }
 
-func testStore_DeleteOutboxEvent(t *testing.T, store workflow.RecordStore) {
+func testDeleteOutboxEvent(t *testing.T, store workflow.RecordStore) {
 	t.Run("DeleteOutboxEvent", func(t *testing.T) {
 		ctx := context.Background()
 		workflowName := "my_workflow"
@@ -348,7 +348,7 @@ func testStore_DeleteOutboxEvent(t *testing.T, store workflow.RecordStore) {
 	})
 }
 
-func testStore_List(t *testing.T, store workflow.RecordStore) {
+func testList(t *testing.T, store workflow.RecordStore) {
 	t.Run("List", func(t *testing.T) {
 		ctx := context.Background()
 		workflowName := "my_workflow"
