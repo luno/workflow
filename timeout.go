@@ -109,7 +109,6 @@ func processTimeout[Type any, Status StatusType](
 		return err
 	}
 
-	// TODO(andreww): Add pause after max error
 	next, err := config.TimeoutFunc(ctx, record, w.clock.Now())
 	if err != nil {
 		// Only keep track of errors if we need to
