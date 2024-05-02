@@ -18,7 +18,7 @@ type RecordStore interface {
 
 	// List provides a slice of WireRecord where the total items will be equal or less than the limit depending
 	// on the offset provided and how many records remain after that ID.
-	List(ctx context.Context, workflowName string, offsetID int64, limit int, order OrderType) ([]WireRecord, error)
+	List(ctx context.Context, workflowName string, offsetID int64, limit int, order OrderType, filters ...RecordFilter) ([]WireRecord, error)
 
 	// ListOutboxEvents lists all events that are yet to be published to the event streamer. A requirement for
 	// implementation of the RecordStore is to support a Transactional Outbox that has Event's written to it when

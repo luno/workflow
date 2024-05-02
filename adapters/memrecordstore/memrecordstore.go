@@ -3,6 +3,7 @@ package memrecordstore
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/luno/jettison/errors"
@@ -177,13 +178,40 @@ func (s *Store) DeleteOutboxEvent(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (s *Store) List(ctx context.Context, workflowName string, offsetID int64, limit int, order workflow.OrderType) ([]workflow.WireRecord, error) {
+func (s *Store) List(ctx context.Context, workflowName string, offsetID int64, limit int, order workflow.OrderType, filters ...workflow.RecordFilter) ([]workflow.WireRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	filter := workflow.MakeFilter(filters...)
+	filteredStore := make(map[int64]*workflow.WireRecord)
+	increment := int64(1)
+	if len(filters) > 0 {
+		for _, record := range s.store {
+			if filter.ByForeignID().Enabled && filter.ByForeignID().Value != record.ForeignID {
+				continue
+			}
+
+			status := strconv.FormatInt(int64(record.Status), 10)
+			if filter.ByStatus().Enabled && filter.ByStatus().Value != status {
+				continue
+			}
+
+			runState := strconv.FormatInt(int64(record.RunState), 10)
+			if filter.ByRunState().Enabled && filter.ByRunState().Value != runState {
+				continue
+			}
+
+			filteredStore[increment] = record
+			increment++
+		}
+	} else {
+		// If no filters are specified then assign the whole store
+		filteredStore = s.store
+	}
+
 	var (
 		entries []workflow.WireRecord
-		length  = int64(len(s.store))
+		length  = int64(len(filteredStore))
 		start   = offsetID + 1
 		end     = start + int64(limit)
 	)
@@ -197,8 +225,9 @@ func (s *Store) List(ctx context.Context, workflowName string, offsetID int64, l
 			break
 		}
 
-		entry, ok := s.store[i]
+		entry, ok := filteredStore[i]
 		if !ok {
+			fmt.Println("cannot find ", i)
 			continue
 		}
 
