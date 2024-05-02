@@ -14,14 +14,16 @@ import (
 	"github.com/luno/workflow/adapters/kafkastreamer"
 )
 
+const brokerAddress = "localhost:9092"
+
 func TestStreamer(t *testing.T) {
-	constructor := kafkastreamer.New([]string{"localhost:9092"})
+	constructor := kafkastreamer.New([]string{brokerAddress})
 	adaptertest.RunEventStreamerTest(t, constructor)
 }
 
 func TestConnector(t *testing.T) {
 	config := kafka.ReaderConfig{
-		Brokers:        []string{"localhost:9092"},
+		Brokers:        []string{brokerAddress},
 		Topic:          "test-connector-topic",
 		ReadBackoffMin: time.Millisecond * 100,
 		ReadBackoffMax: time.Second,
@@ -42,7 +44,7 @@ func TestConnector(t *testing.T) {
 	constructor := kafkastreamer.NewConnector(config, translator)
 	adaptertest.RunConnectorTest(t, func(seedEvents []workflow.ConnectorEvent) workflow.ConnectorConstructor {
 		writer := &kafka.Writer{
-			Addr:                   kafka.TCP("localhost:9092"),
+			Addr:                   kafka.TCP(brokerAddress),
 			Topic:                  "test-connector-topic",
 			AllowAutoTopicCreation: true,
 			RequiredAcks:           kafka.RequireOne,
