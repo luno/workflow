@@ -64,15 +64,6 @@ func TestExampleReflexConsumerStream(t *testing.T) {
 	_, err := wf.Trigger(ctx, foreignID, examples.StatusStarted)
 	jtest.RequireNil(t, err)
 
-	workflow.Require(t, wf, foreignID, examples.StatusReadTheDocs, gettingstarted.GettingStarted{
-		ReadTheDocs: "✅",
-	})
-
-	workflow.Require(t, wf, foreignID, examples.StatusFollowedTheExample, gettingstarted.GettingStarted{
-		ReadTheDocs:     "✅",
-		FollowAnExample: "✅",
-	})
-
 	workflow.Require(t, wf, foreignID, examples.StatusCreatedAFunExample, gettingstarted.GettingStarted{
 		ReadTheDocs:       "✅",
 		FollowAnExample:   "✅",

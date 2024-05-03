@@ -71,7 +71,7 @@ func WireRecordToOutboxEventData(record WireRecord, previousRunState RunState) (
 	topic := Topic(record.WorkflowName, record.Status)
 
 	headers := make(map[string]string)
-	headers[string(HeaderWorkflowForeignID)] = record.ForeignID
+	headers[string(HeaderForeignID)] = record.ForeignID
 	headers[string(HeaderWorkflowName)] = record.WorkflowName
 	headers[string(HeaderTopic)] = topic
 	headers[string(HeaderRunID)] = record.RunID
@@ -98,10 +98,10 @@ func WireRecordToOutboxEventData(record WireRecord, previousRunState RunState) (
 type Header string
 
 const (
-	HeaderWorkflowName      Header = "workflow_name"
-	HeaderWorkflowForeignID Header = "workflow_foreign_id"
-	HeaderTopic             Header = "topic"
-	HeaderRunID             Header = "run_id"
-	HeaderRunState          Header = "run_state"
-	HeaderPreviousRunState  Header = "previous_run_state"
+	HeaderWorkflowName     Header = "workflow_name"
+	HeaderForeignID        Header = "foreign_id"
+	HeaderTopic            Header = "topic"
+	HeaderRunID            Header = "run_id"
+	HeaderRunState         Header = "run_state"
+	HeaderPreviousRunState Header = "previous_run_state"
 )

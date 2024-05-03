@@ -98,7 +98,7 @@ func runStateUpdatesFilter() EventFilter {
 
 func filterByForeignID(foreignID string) EventFilter {
 	return func(e *Event) bool {
-		fid, ok := e.Headers[HeaderWorkflowForeignID]
+		fid, ok := e.Headers[HeaderForeignID]
 		if !ok {
 			return false
 		}

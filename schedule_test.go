@@ -17,8 +17,9 @@ import (
 	"github.com/luno/workflow/adapters/memtimeoutstore"
 )
 
-func TestWorkflow_Schedule(t *testing.T) {
-	b := workflow.NewBuilder[MyType, status]("sync users")
+func TestSchedule(t *testing.T) {
+	workflowName := "sync users"
+	b := workflow.NewBuilder[MyType, status](workflowName)
 	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Record[MyType, status]) (status, error) {
 		return StatusMiddle, nil
 	}, StatusMiddle)
@@ -55,7 +56,7 @@ func TestWorkflow_Schedule(t *testing.T) {
 	// Allow scheduling to take place
 	time.Sleep(200 * time.Millisecond)
 
-	_, err := recordStore.Latest(ctx, "sync users", "andrew")
+	_, err := recordStore.Latest(ctx, workflowName, "andrew")
 	// Expect there to be no entries yet
 	jtest.Require(t, workflow.ErrRecordNotFound, err)
 
@@ -66,7 +67,7 @@ func TestWorkflow_Schedule(t *testing.T) {
 	// Allow scheduling to take place
 	time.Sleep(200 * time.Millisecond)
 
-	firstScheduled, err := recordStore.Latest(ctx, "sync users", "andrew")
+	firstScheduled, err := recordStore.Latest(ctx, workflowName, "andrew")
 	jtest.RequireNil(t, err)
 
 	_, err = wf.Await(ctx, firstScheduled.ForeignID, firstScheduled.RunID, StatusEnd)
@@ -78,7 +79,7 @@ func TestWorkflow_Schedule(t *testing.T) {
 	// Allow scheduling to take place
 	time.Sleep(200 * time.Millisecond)
 
-	secondScheduled, err := recordStore.Latest(ctx, "sync users", "andrew")
+	secondScheduled, err := recordStore.Latest(ctx, workflowName, "andrew")
 	jtest.RequireNil(t, err)
 
 	require.NotEqual(t, firstScheduled.RunID, secondScheduled.RunID)
@@ -132,7 +133,8 @@ func TestWorkflow_ScheduleShutdown(t *testing.T) {
 }
 
 func TestWorkflow_ScheduleFilter(t *testing.T) {
-	b := workflow.NewBuilder[MyType, status]("sync users")
+	workflowName := "sync users"
+	b := workflow.NewBuilder[MyType, status](workflowName)
 	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Record[MyType, status]) (status, error) {
 		return StatusMiddle, nil
 	}, StatusMiddle)
@@ -176,7 +178,7 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	// Allow scheduling to take place
 	time.Sleep(200 * time.Millisecond)
 
-	_, err := recordStore.Latest(ctx, "sync users", "andrew")
+	_, err := recordStore.Latest(ctx, workflowName, "andrew")
 	// Expect there to be no entries yet
 	jtest.Require(t, workflow.ErrRecordNotFound, err)
 
@@ -187,7 +189,7 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	// Allow scheduling to take place
 	time.Sleep(200 * time.Millisecond)
 
-	_, err = recordStore.Latest(ctx, "sync users", "andrew")
+	_, err = recordStore.Latest(ctx, workflowName, "andrew")
 	// Expect there to be no entries yet
 	jtest.Require(t, workflow.ErrRecordNotFound, err)
 
@@ -200,7 +202,7 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	// Allow scheduling to take place
 	time.Sleep(200 * time.Millisecond)
 
-	latest, err := recordStore.Latest(ctx, "sync users", "andrew")
+	latest, err := recordStore.Latest(ctx, workflowName, "andrew")
 	jtest.RequireNil(t, err)
 
 	resp, err := wf.Await(ctx, latest.ForeignID, latest.RunID, StatusEnd)
