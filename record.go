@@ -40,6 +40,9 @@ func (r *Record[Type, Status]) Cancel(ctx context.Context) (Status, error) {
 	return Status(SkipTypeRunStateUpdate), nil
 }
 
+// NewTestingRecord should be used when testing logic that defines a workflow.Record as a parameter. This is usually the
+// case in unit tests and would not normally be found when doing an Acceptance test for the entire workflow as that will
+// construct a record correctly with the correct dependencies.
 func NewTestingRecord[Type any, Status StatusType](t *testing.T, wr WireRecord, object Type) Record[Type, Status] {
 	return Record[Type, Status]{
 		WireRecord: wr,
