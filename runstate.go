@@ -227,6 +227,30 @@ var runStateTransitions = map[RunState]map[RunState]bool{
 	},
 }
 
+type noopRunStateController struct{}
+
+func (c *noopRunStateController) Pause(ctx context.Context) error {
+	return nil
+}
+
+func (c *noopRunStateController) Cancel(ctx context.Context) error {
+	return nil
+}
+
+func (c *noopRunStateController) Resume(ctx context.Context) error {
+	return nil
+}
+
+func (c *noopRunStateController) DeleteData(ctx context.Context) error {
+	return nil
+}
+
+func (c *noopRunStateController) markAsRunning(ctx context.Context) error {
+	return nil
+}
+
+var _ RunStateController = (*noopRunStateController)(nil)
+
 func (w *Workflow[Type, Status]) RunStateController(ctx context.Context, id int64) (RunStateController, error) {
 	r, err := w.recordStore.Lookup(ctx, id)
 	if err != nil {

@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"testing"
 	"time"
 )
 
@@ -37,6 +38,15 @@ func (r *Record[Type, Status]) Cancel(ctx context.Context) (Status, error) {
 	}
 
 	return Status(SkipTypeRunStateUpdate), nil
+}
+
+func NewTestingRecord[Type any, Status StatusType](t *testing.T, wr WireRecord, object Type) Record[Type, Status] {
+	return Record[Type, Status]{
+		WireRecord: wr,
+		Status:     Status(wr.Status),
+		Object:     &object,
+		controller: &noopRunStateController{},
+	}
 }
 
 type WireRecord struct {
