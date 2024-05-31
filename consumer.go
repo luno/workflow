@@ -113,6 +113,7 @@ func consumeForever[Type any, Status StatusType](
 			runStateUpdatesFilter(),
 		)
 		if shouldFilter {
+			metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName, "filtered out").Inc()
 			err = ack()
 			if err != nil {
 				return err
@@ -123,6 +124,7 @@ func consumeForever[Type any, Status StatusType](
 
 		record, err := w.recordStore.Lookup(ctx, e.ForeignID)
 		if errors.Is(err, ErrRecordNotFound) {
+			metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName, "record not found").Inc()
 			err = ack()
 			if err != nil {
 				return err
@@ -136,6 +138,7 @@ func consumeForever[Type any, Status StatusType](
 		// Check to see if record is in expected state. If the status isn't in the expected state then skip for
 		// idempotency.
 		if record.Status != int(status) {
+			metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName, "record status not in expected state").Inc()
 			err = ack()
 			if err != nil {
 				return err
@@ -157,6 +160,7 @@ func consumeForever[Type any, Status StatusType](
 				})
 			}
 
+			metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName, "record stopped").Inc()
 			err = ack()
 			if err != nil {
 				return err
@@ -249,7 +253,7 @@ func consume[Type any, Status StatusType](
 			})
 		}
 
-		metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName).Inc()
+		metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName, "next value specified skip").Inc()
 		return ack()
 	}
 

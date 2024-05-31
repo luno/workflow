@@ -7,6 +7,7 @@ const (
 	processName      = "process_name"
 	previousRunState = "previous_run_state"
 	currentRunState  = "current_run_state"
+	reason           = "reason"
 )
 
 var (
@@ -46,7 +47,7 @@ var (
 	ProcessSkippedEvents = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "workflow_process_skipped_events_count",
 		Help: "Number of events skipped by consumer",
-	}, []string{workflowName, processName})
+	}, []string{workflowName, processName, reason})
 
 	// RunStateChanges reflects the states of all the runs for the workflow
 	RunStateChanges = prometheus.NewCounterVec(prometheus.CounterOpts{

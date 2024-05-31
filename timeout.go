@@ -152,7 +152,7 @@ func processTimeout[Type any, Status StatusType](
 			})
 		}
 
-		metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName).Inc()
+		metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName, "next value specified skip").Inc()
 		return nil
 	}
 
