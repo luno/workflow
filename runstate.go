@@ -43,7 +43,7 @@ func (rs RunState) String() string {
 }
 
 func (rs RunState) Valid() bool {
-	return RunStateUnknown > rs && rs < runStateSentinel
+	return rs > RunStateUnknown && rs < runStateSentinel
 }
 
 func (rs RunState) Finished() bool {

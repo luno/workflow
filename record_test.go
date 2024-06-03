@@ -22,3 +22,63 @@ func TestRecord(t *testing.T) {
 	jtest.RequireNil(t, err)
 	require.Equal(t, status(workflow.SkipTypeRunStateUpdate), cancelStatus)
 }
+
+func TestRunStateValid(t *testing.T) {
+	testCases := map[workflow.RunState]bool{
+		workflow.RunState(-1):            false,
+		workflow.RunStateUnknown:         false,
+		workflow.RunStateInitiated:       true,
+		workflow.RunStateRunning:         true,
+		workflow.RunStatePaused:          true,
+		workflow.RunStateCancelled:       true,
+		workflow.RunStateCompleted:       true,
+		workflow.RunStateDataDeleted:     true,
+		workflow.RunStateDataDeleted + 1: false,
+		workflow.RunStateDataDeleted + 2: false,
+		workflow.RunState(9999):          false,
+	}
+
+	for state, expected := range testCases {
+		require.Equal(t, expected, state.Valid())
+	}
+}
+
+func TestRunStateFinished(t *testing.T) {
+	testCases := map[workflow.RunState]bool{
+		workflow.RunState(-1):            false,
+		workflow.RunStateUnknown:         false,
+		workflow.RunStateInitiated:       false,
+		workflow.RunStateRunning:         false,
+		workflow.RunStatePaused:          false,
+		workflow.RunStateCancelled:       true,
+		workflow.RunStateCompleted:       true,
+		workflow.RunStateDataDeleted:     true,
+		workflow.RunStateDataDeleted + 1: false,
+		workflow.RunStateDataDeleted + 2: false,
+		workflow.RunState(9999):          false,
+	}
+
+	for state, expected := range testCases {
+		require.Equal(t, expected, state.Finished())
+	}
+}
+
+func TestRunStateStopped(t *testing.T) {
+	testCases := map[workflow.RunState]bool{
+		workflow.RunState(-1):            false,
+		workflow.RunStateUnknown:         false,
+		workflow.RunStateInitiated:       false,
+		workflow.RunStateRunning:         false,
+		workflow.RunStatePaused:          true,
+		workflow.RunStateCancelled:       true,
+		workflow.RunStateCompleted:       false,
+		workflow.RunStateDataDeleted:     true,
+		workflow.RunStateDataDeleted + 1: false,
+		workflow.RunStateDataDeleted + 2: false,
+		workflow.RunState(9999):          false,
+	}
+
+	for state, expected := range testCases {
+		require.Equal(t, expected, state.Stopped())
+	}
+}
