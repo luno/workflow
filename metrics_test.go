@@ -457,7 +457,8 @@ func TestMetricProcessSkippedEvents(t *testing.T) {
 	expected := `
 # HELP workflow_process_skipped_events_count Number of events skipped by consumer
 # TYPE workflow_process_skipped_events_count counter
-workflow_process_skipped_events_count{process_name="start-consumer-1-of-1",workflow_name="example"} 3
+workflow_process_skipped_events_count{process_name="start-consumer-1-of-1",reason="filtered out",workflow_name="example"} 3
+workflow_process_skipped_events_count{process_name="start-consumer-1-of-1",reason="next value specified skip",workflow_name="example"} 3
 `
 
 	err = testutil.CollectAndCompare(metrics.ProcessSkippedEvents, strings.NewReader(expected))
