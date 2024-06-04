@@ -9,10 +9,11 @@ require (
 	github.com/luno/fate v0.0.0-20191017091315-567fa9070f1c
 	github.com/luno/jettison v0.0.0-20230912135954-09d6084f5df9
 	github.com/luno/reflex v0.0.0-20231116123206-2371e7c89a55
+	github.com/prometheus/client_golang v1.15.0
 	github.com/robfig/cron/v3 v3.0.0
 	github.com/segmentio/kafka-go v0.4.43
 	github.com/stretchr/testify v1.8.3
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.33.0
 	k8s.io/utils v0.0.0-20230505201702-9f6742963106
 )
 
@@ -26,7 +27,6 @@ require (
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/pierrec/lz4/v4 v4.1.15 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/prometheus/client_golang v1.15.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.42.0 // indirect
 	github.com/prometheus/procfs v0.9.0 // indirect
