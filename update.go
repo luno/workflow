@@ -60,12 +60,12 @@ func newUpdater[Type any, Status StatusType](lookup lookupFunc, store storeFunc,
 		}
 
 		// Push run state changes for observability
-		metrics.RunStateChanges.WithLabelValues(latest.WorkflowName, latest.RunState.String(), updatedRecord.RunState.String()).Inc()
+		metrics.RunStateChanges.WithLabelValues(record.WorkflowName, record.RunState.String(), updatedRecord.RunState.String()).Inc()
 
 		return store(ctx, updatedRecord, func(recordID int64) (OutboxEventData, error) {
 			// Record ID would not have been set if it is a new record. Assign the recordID that the Store provides
 			updatedRecord.ID = recordID
-			return WireRecordToOutboxEventData(*updatedRecord, latest.RunState)
+			return WireRecordToOutboxEventData(*updatedRecord, record.RunState)
 		})
 	}
 }
