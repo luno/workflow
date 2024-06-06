@@ -49,7 +49,6 @@ func awaitWorkflowStatusByForeignID[Type any, Status StatusType](ctx context.Con
 		shouldFilter := FilterUsing(e,
 			filterByForeignID(foreignID),
 			filterByRunID(runID),
-			runStateUpdatesFilter(),
 		)
 		if shouldFilter {
 			err = ack()

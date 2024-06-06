@@ -110,7 +110,6 @@ func consumeForever[Type any, Status StatusType](
 
 		shouldFilter := FilterUsing(e,
 			shardFilter(shard, totalShards),
-			runStateUpdatesFilter(),
 		)
 		if shouldFilter {
 			metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName, "filtered out").Inc()

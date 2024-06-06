@@ -408,7 +408,6 @@ func TestRunStateChanges(t *testing.T) {
 # HELP workflow_run_state_changes The number of workflow run state changes going from state to a new state
 # TYPE workflow_run_state_changes counter
 workflow_run_state_changes{current_run_state="Initiated",previous_run_state="Unknown",workflow_name="example"} 1
-workflow_run_state_changes{current_run_state="Running",previous_run_state="Initiated",workflow_name="example"} 1
 workflow_run_state_changes{current_run_state="Running",previous_run_state="Running",workflow_name="example"} 1
 workflow_run_state_changes{current_run_state="Completed",previous_run_state="Running",workflow_name="example"} 1
 `
@@ -457,7 +456,6 @@ func TestMetricProcessSkippedEvents(t *testing.T) {
 	expected := `
 # HELP workflow_process_skipped_events_count Number of events skipped by consumer
 # TYPE workflow_process_skipped_events_count counter
-workflow_process_skipped_events_count{process_name="start-consumer-1-of-1",reason="filtered out",workflow_name="example"} 3
 workflow_process_skipped_events_count{process_name="start-consumer-1-of-1",reason="next value specified skip",workflow_name="example"} 3
 `
 

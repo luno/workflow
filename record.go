@@ -83,11 +83,6 @@ func buildConsumableRecord[Type any, Status StatusType](ctx context.Context, sto
 	// has begun being processed. Even if the consumer errors then this should update should remain in place and
 	// not be executed on the subsequent retries.
 	if record.RunState == RunStateInitiated {
-		err := controller.markAsRunning(ctx)
-		if err != nil {
-			return nil, err
-		}
-
 		record.RunState = RunStateRunning
 	}
 
