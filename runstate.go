@@ -85,9 +85,6 @@ type RunStateController interface {
 	// comply with the right to be forgotten such as complying with GDPR. ErrUnableToDelete is returned when the
 	// workflow record is not in a state to be deleted.
 	DeleteData(ctx context.Context) error
-
-	// markAsRunning is an internal controller that is used to update RunStateInitiated records to RunStateRunning
-	markAsRunning(ctx context.Context) error
 }
 
 func newRunStateController(wr *WireRecord, store storeFunc, customDelete customDelete) RunStateController {
@@ -104,18 +101,6 @@ type runStateControllerImpl struct {
 	record       *WireRecord
 	customDelete customDelete
 	store        storeFunc
-}
-
-func (rsc *runStateControllerImpl) markAsRunning(ctx context.Context) error {
-	err := validateRunStateTransition(rsc.record, RunStateRunning, ErrUnableToMarkAsRunning)
-	if err != nil {
-		return err
-	}
-
-	currentRunState := rsc.record.RunState
-
-	rsc.record.RunState = RunStateRunning
-	return updateWireRecord(ctx, rsc.store, rsc.record, currentRunState)
 }
 
 func (rsc *runStateControllerImpl) Pause(ctx context.Context) error {
@@ -206,6 +191,7 @@ func validateRunStateTransition(record *WireRecord, runState RunState, sentinelE
 var runStateTransitions = map[RunState]map[RunState]bool{
 	RunStateInitiated: {
 		RunStateRunning: true,
+		RunStatePaused:  true,
 	},
 	RunStateRunning: {
 		RunStateCompleted: true,

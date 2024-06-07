@@ -39,6 +39,56 @@ func TestProcessCallback(t *testing.T) {
 		Object:       b,
 	}
 
+	t.Run("Golden path callback - initiated", func(t *testing.T) {
+		calls := map[string]int{
+			"callbackFunc": 0,
+			"updater":      0,
+			"latestLookup": 0,
+		}
+
+		current := &WireRecord{
+			ID:           1,
+			WorkflowName: "example",
+			ForeignID:    "32948623984623",
+			RunID:        "JHFJDS-LSFKHJSLD-KSJDBLSL",
+			RunState:     RunStateInitiated,
+			Status:       int(statusStart),
+			Object:       b,
+		}
+
+		callbackFn := CallbackFunc[string, testStatus](func(ctx context.Context, r *Record[string, testStatus], reader io.Reader) (testStatus, error) {
+			calls["callbackFunc"] += 1
+			*r.Object = "new data"
+			return statusEnd, nil
+		})
+
+		updater := func(ctx context.Context, current testStatus, next testStatus, record *Record[string, testStatus]) error {
+			calls["updater"] += 1
+			require.Equal(t, "new data", *record.Object)
+			return nil
+		}
+
+		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*WireRecord, error) {
+			calls["latestLookup"] += 1
+			return current, nil
+		}
+
+		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+			calls["store"] += 1
+			return nil
+		}
+
+		err := processCallback(ctx, w, testStatus(current.Status), callbackFn, current.ForeignID, nil, latestLookup, store, updater)
+		jtest.RequireNil(t, err)
+
+		expectedCalls := map[string]int{
+			"callbackFunc": 1,
+			"latestLookup": 1,
+			"updater":      1,
+		}
+		require.Equal(t, expectedCalls, calls)
+	})
+
 	t.Run("Golden path callback", func(t *testing.T) {
 		calls := map[string]int{
 			"callbackFunc": 0,
@@ -117,56 +167,6 @@ func TestProcessCallback(t *testing.T) {
 		require.Equal(t, expectedCalls, calls)
 	})
 
-	t.Run("Mark record as Running", func(t *testing.T) {
-		currentRecord := &WireRecord{
-			ID:           1,
-			WorkflowName: "example",
-			ForeignID:    "32948623984623",
-			RunID:        "JHFJDS-LSFKHJSLD-KSJDBLSL",
-			RunState:     RunStateInitiated,
-			Status:       int(statusStart),
-			Object:       b,
-		}
-
-		calls := map[string]int{
-			"callbackFunc": 0,
-			"updater":      0,
-			"store":        0,
-			"latestLookup": 0,
-		}
-
-		callbackFn := CallbackFunc[string, testStatus](func(ctx context.Context, r *Record[string, testStatus], reader io.Reader) (testStatus, error) {
-			calls["callbackFunc"] += 1
-			return statusEnd, nil
-		})
-
-		updater := func(ctx context.Context, current testStatus, next testStatus, record *Record[string, testStatus]) error {
-			calls["updater"] += 1
-			return nil
-		}
-
-		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*WireRecord, error) {
-			calls["latestLookup"] += 1
-			return currentRecord, nil
-		}
-
-		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
-			calls["store"] += 1
-			return nil
-		}
-
-		err := processCallback(ctx, w, testStatus(current.Status), callbackFn, current.ForeignID, nil, latestLookup, store, updater)
-		jtest.RequireNil(t, err)
-
-		expectedCalls := map[string]int{
-			"callbackFunc": 1,
-			"updater":      1,
-			"store":        1,
-			"latestLookup": 1,
-		}
-		require.Equal(t, expectedCalls, calls)
-	})
-
 	t.Run("Return on lookup error", func(t *testing.T) {
 		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*WireRecord, error) {
 			return nil, errors.New("test error")
@@ -200,41 +200,5 @@ func TestProcessCallback(t *testing.T) {
 
 		err := processCallback(ctx, w, statusStart, nil, current.ForeignID, nil, latestLookup, nil, nil)
 		jtest.RequireNil(t, err)
-	})
-
-	t.Run("Return error if failed to update run state", func(t *testing.T) {
-		calls := map[string]int{
-			"store":        0,
-			"latestLookup": 0,
-		}
-
-		currentRecord := &WireRecord{
-			ID:           1,
-			WorkflowName: "example",
-			ForeignID:    "32948623984623",
-			RunID:        "JHFJDS-LSFKHJSLD-KSJDBLSL",
-			RunState:     RunStateInitiated,
-			Status:       int(statusStart),
-			Object:       b,
-		}
-
-		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*WireRecord, error) {
-			calls["latestLookup"] += 1
-			return currentRecord, nil
-		}
-
-		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
-			calls["store"] += 1
-			return errors.New("test error")
-		}
-
-		err := processCallback(ctx, w, statusStart, nil, current.ForeignID, nil, latestLookup, store, nil)
-		jtest.Require(t, errors.New("test error"), err)
-
-		expectedCalls := map[string]int{
-			"store":        1,
-			"latestLookup": 1,
-		}
-		require.Equal(t, expectedCalls, calls)
 	})
 }

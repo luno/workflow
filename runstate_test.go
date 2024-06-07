@@ -33,7 +33,6 @@ func TestRunState(t *testing.T) {
 			expected: []workflow.RunState{
 				workflow.RunStateInitiated,
 				workflow.RunStateRunning,
-				workflow.RunStateRunning,
 				workflow.RunStateCompleted,
 			},
 		},
@@ -45,7 +44,6 @@ func TestRunState(t *testing.T) {
 			expected: []workflow.RunState{
 				workflow.RunStateInitiated,
 				workflow.RunStateRunning,
-				workflow.RunStateRunning,
 				workflow.RunStatePaused,
 			},
 		},
@@ -56,7 +54,6 @@ func TestRunState(t *testing.T) {
 			}),
 			expected: []workflow.RunState{
 				workflow.RunStateInitiated,
-				workflow.RunStateRunning,
 				workflow.RunStateRunning,
 				workflow.RunStateCancelled,
 			},
@@ -180,7 +177,7 @@ func TestWorkflowRunStateController(t *testing.T) {
 	record, err = recordStore.Latest(ctx, w.Name, foreignID)
 	jtest.RequireNil(t, err)
 
-	require.Equal(t, workflow.RunStateRunning, record.RunState)
+	require.Equal(t, workflow.RunStateInitiated, record.RunState)
 
 	mu.Lock()
 	canRelease = true

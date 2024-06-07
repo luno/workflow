@@ -44,7 +44,46 @@ func TestProcessTimeout(t *testing.T) {
 		expectedError error
 	}{
 		{
-			name: "Golden path consume",
+			name: "Golden path consume - initiated",
+			caller: func(call map[string]int) calls {
+				return calls{
+					updater: func(ctx context.Context, current testStatus, next testStatus, record *Record[string, testStatus]) error {
+						call["updater"] += 1
+						require.Equal(t, "new data", *record.Object)
+						return nil
+					},
+					store: func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+						call["store"] += 1
+						return nil
+					},
+					timeoutFunc: func(ctx context.Context, r *Record[string, testStatus], now time.Time) (testStatus, error) {
+						call["timeout/TimeoutFunc"] += 1
+						*r.Object = "new data"
+						return statusEnd, nil
+					},
+					completeFunc: func(ctx context.Context, id int64) error {
+						call["complete"] += 1
+						return nil
+					},
+				}
+			},
+			record: &WireRecord{
+				ID:           1,
+				WorkflowName: "example",
+				ForeignID:    "32948623984623",
+				RunID:        "JHFJDS-LSFKHJSLD-KSJDBLSL",
+				RunState:     RunStateInitiated,
+				Status:       int(statusStart),
+				Object:       b,
+			},
+			expectedCalls: map[string]int{
+				"timeout/TimeoutFunc": 1,
+				"updater":             1,
+				"complete":            1,
+			},
+		},
+		{
+			name: "Golden path consume - running",
 			caller: func(call map[string]int) calls {
 				return calls{
 					updater: func(ctx context.Context, current testStatus, next testStatus, record *Record[string, testStatus]) error {
@@ -104,35 +143,6 @@ func TestProcessTimeout(t *testing.T) {
 			},
 			expectedCalls: map[string]int{
 				"timeout/TimeoutFunc": 1,
-			},
-		},
-		{
-			name: "Mark record as Running",
-			caller: func(call map[string]int) calls {
-				return calls{
-					timeoutFunc: func(ctx context.Context, r *Record[string, testStatus], now time.Time) (testStatus, error) {
-						call["timeout/TimeoutFunc"] += 1
-						return testStatus(SkipTypeDefault), nil
-					},
-					store: func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
-						call["store"] += 1
-						require.Equal(t, record.RunState, RunStateRunning)
-						return nil
-					},
-				}
-			},
-			record: &WireRecord{
-				ID:           1,
-				WorkflowName: "example",
-				ForeignID:    "32948623984623",
-				RunID:        "JHFJDS-LSFKHJSLD-KSJDBLSL",
-				RunState:     RunStateInitiated,
-				Status:       int(statusStart),
-				Object:       b,
-			},
-			expectedCalls: map[string]int{
-				"timeout/TimeoutFunc": 1,
-				"store":               1,
 			},
 		},
 		{

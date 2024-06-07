@@ -1,7 +1,6 @@
 package workflow
 
 import (
-	"strconv"
 	"testing"
 
 	"github.com/google/uuid"
@@ -134,82 +133,4 @@ func TestConnectorShardFilter(t *testing.T) {
 		"22": true,
 	}
 	require.Equal(t, expectedLeft, left)
-}
-
-func TestRunStateUpdatesFilter(t *testing.T) {
-	testCases := []struct {
-		name     string
-		previous RunState
-		current  RunState
-		expected bool
-	}{
-		{
-			name:     "Initiated -> Running",
-			previous: RunStateInitiated,
-			current:  RunStateRunning,
-			expected: true,
-		},
-		{
-			name:     "Running -> Running",
-			previous: RunStateRunning,
-			current:  RunStateRunning,
-			expected: false,
-		},
-		{
-			name:     "Running -> Completed",
-			previous: RunStateRunning,
-			current:  RunStateCompleted,
-			expected: false,
-		},
-		{
-			name:     "Completed -> DataDeleted",
-			previous: RunStateCompleted,
-			current:  RunStateDataDeleted,
-			expected: true,
-		},
-		{
-			name:     "Running -> Cancelled",
-			previous: RunStateRunning,
-			current:  RunStateCancelled,
-			expected: true,
-		},
-		{
-			name:     "Running -> Paused",
-			previous: RunStateRunning,
-			current:  RunStatePaused,
-			expected: true,
-		},
-		{
-			name:     "Paused -> Running",
-			previous: RunStatePaused,
-			current:  RunStateRunning,
-			expected: false,
-		},
-		{
-			name:     "Paused -> Cancelled",
-			previous: RunStatePaused,
-			current:  RunStateCancelled,
-			expected: true,
-		},
-		{
-			name:     "Cancelled -> DataDeleted",
-			previous: RunStateCancelled,
-			current:  RunStateDataDeleted,
-			expected: true,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			e := &Event{
-				Headers: map[Header]string{
-					HeaderRunState:         strconv.FormatInt(int64(tc.current), 10),
-					HeaderPreviousRunState: strconv.FormatInt(int64(tc.previous), 10),
-				},
-			}
-			filter := runStateUpdatesFilter()
-
-			require.Equal(t, tc.expected, filter(e))
-		})
-	}
 }
