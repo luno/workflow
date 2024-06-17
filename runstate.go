@@ -8,15 +8,6 @@ import (
 	"github.com/luno/jettison/j"
 )
 
-func NewRunStateController(ctx context.Context, store RecordStore, id int64) (RunStateController, error) {
-	r, err := store.Lookup(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	return newRunStateController(r, store.Store), nil
-}
-
 type RunState int
 
 const (
@@ -98,7 +89,7 @@ type RunStateController interface {
 	DeleteData(ctx context.Context) error
 }
 
-func newRunStateController(wr *WireRecord, store storeFunc) RunStateController {
+func NewRunStateController(store storeFunc, wr *WireRecord) RunStateController {
 	return &runStateControllerImpl{
 		record: wr,
 		store:  store,

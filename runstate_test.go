@@ -151,8 +151,10 @@ func TestWorkflowRunStateController(t *testing.T) {
 
 	require.Equal(t, workflow.RunStateInitiated, record.RunState)
 
-	rsc, err := workflow.NewRunStateController(ctx, recordStore, 1)
+	wr, err := recordStore.Lookup(ctx, 1)
 	jtest.RequireNil(t, err)
+
+	rsc := workflow.NewRunStateController(recordStore.Store, wr)
 
 	err = rsc.Pause(ctx)
 	jtest.RequireNil(t, err)
