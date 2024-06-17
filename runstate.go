@@ -8,17 +8,27 @@ import (
 	"github.com/luno/jettison/j"
 )
 
+func NewRunStateController(ctx context.Context, store RecordStore, id int64) (RunStateController, error) {
+	r, err := store.Lookup(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return newRunStateController(r, store.Store), nil
+}
+
 type RunState int
 
 const (
-	RunStateUnknown     RunState = 0
-	RunStateInitiated   RunState = 1
-	RunStateRunning     RunState = 2
-	RunStatePaused      RunState = 3
-	RunStateCancelled   RunState = 4
-	RunStateCompleted   RunState = 5
-	RunStateDataDeleted RunState = 6
-	runStateSentinel    RunState = 7
+	RunStateUnknown              RunState = 0
+	RunStateInitiated            RunState = 1
+	RunStateRunning              RunState = 2
+	RunStatePaused               RunState = 3
+	RunStateCancelled            RunState = 4
+	RunStateCompleted            RunState = 5
+	RunStateDataDeleted          RunState = 6
+	RunStateRequestedDataDeleted RunState = 7
+	runStateSentinel             RunState = 8
 )
 
 func (rs RunState) String() string {
@@ -37,6 +47,8 @@ func (rs RunState) String() string {
 		return "Completed"
 	case RunStateDataDeleted:
 		return "DataDeleted"
+	case RunStateRequestedDataDeleted:
+		return "RequestedDataDeleted"
 	default:
 		return fmt.Sprintf("RunState(%d)", rs)
 	}
@@ -48,7 +60,7 @@ func (rs RunState) Valid() bool {
 
 func (rs RunState) Finished() bool {
 	switch rs {
-	case RunStateCompleted, RunStateCancelled, RunStateDataDeleted:
+	case RunStateCompleted, RunStateCancelled, RunStateRequestedDataDeleted, RunStateDataDeleted:
 		return true
 	default:
 		return false
@@ -60,7 +72,7 @@ func (rs RunState) Finished() bool {
 // workflow records are cancelled permanently and cannot be undone whereas Pausing can be resumed.
 func (rs RunState) Stopped() bool {
 	switch rs {
-	case RunStatePaused, RunStateCancelled, RunStateDataDeleted:
+	case RunStatePaused, RunStateCancelled, RunStateRequestedDataDeleted, RunStateDataDeleted:
 		return true
 	default:
 		return false
@@ -73,7 +85,6 @@ type RunStateController interface {
 	// A paused workflow record can be resumed by calling Resume. ErrUnableToPause is returned when a workflow is not in a
 	// state to be paused.
 	Pause(ctx context.Context) error
-
 	// Cancel can be called after Pause has been called. A paused run of the workflow can be indefinitely cancelled.
 	// Once cancelled, DeleteData can be called and will move the run into an indefinite state of DataDeleted.
 	// ErrUnableToCancel is returned when the workflow record is not in a state to be cancelled.
@@ -87,81 +98,45 @@ type RunStateController interface {
 	DeleteData(ctx context.Context) error
 }
 
-func newRunStateController(wr *WireRecord, store storeFunc, customDelete customDelete) RunStateController {
+func newRunStateController(wr *WireRecord, store storeFunc) RunStateController {
 	return &runStateControllerImpl{
-		record:       wr,
-		customDelete: customDelete,
-		store:        store,
+		record: wr,
+		store:  store,
 	}
 }
 
 type customDelete func(wr *WireRecord) ([]byte, error)
 
 type runStateControllerImpl struct {
-	record       *WireRecord
-	customDelete customDelete
-	store        storeFunc
+	record *WireRecord
+	store  storeFunc
 }
 
 func (rsc *runStateControllerImpl) Pause(ctx context.Context) error {
-	err := validateRunStateTransition(rsc.record, RunStatePaused, ErrUnableToPause)
-	if err != nil {
-		return err
-	}
-
-	currentRunState := rsc.record.RunState
-
-	rsc.record.RunState = RunStatePaused
-	return updateWireRecord(ctx, rsc.store, rsc.record, currentRunState)
+	return rsc.update(ctx, RunStatePaused, ErrUnableToPause)
 }
 
 func (rsc *runStateControllerImpl) Resume(ctx context.Context) error {
-	err := validateRunStateTransition(rsc.record, RunStateRunning, ErrUnableToResume)
-	if err != nil {
-		return err
-	}
-
-	currentRunState := rsc.record.RunState
-
-	rsc.record.RunState = RunStateRunning
-	return updateWireRecord(ctx, rsc.store, rsc.record, currentRunState)
+	return rsc.update(ctx, RunStateRunning, ErrUnableToResume)
 }
 
 func (rsc *runStateControllerImpl) Cancel(ctx context.Context) error {
-	err := validateRunStateTransition(rsc.record, RunStateCancelled, ErrUnableToCancel)
-	if err != nil {
-		return err
-	}
-
-	currentRunState := rsc.record.RunState
-
-	rsc.record.RunState = RunStateCancelled
-	return updateWireRecord(ctx, rsc.store, rsc.record, currentRunState)
+	return rsc.update(ctx, RunStateCancelled, ErrUnableToCancel)
 }
 
 func (rsc *runStateControllerImpl) DeleteData(ctx context.Context) error {
-	err := validateRunStateTransition(rsc.record, RunStateDataDeleted, ErrUnableToDelete)
+	return rsc.update(ctx, RunStateRequestedDataDeleted, ErrUnableToDelete)
+}
+
+func (rsc *runStateControllerImpl) update(ctx context.Context, rs RunState, invalidTransitionErr error) error {
+	err := validateRunStateTransition(rsc.record, rs, invalidTransitionErr)
 	if err != nil {
 		return err
 	}
 
-	replacementData := []byte("Deleted")
-
-	// If a custom delete has been configured then use the custom delete
-	if rsc.customDelete != nil {
-		bytes, err := rsc.customDelete(rsc.record)
-		if err != nil {
-			return err
-		}
-
-		replacementData = bytes
-	}
-
-	currentRunState := rsc.record.RunState
-
-	rsc.record.RunState = RunStateDataDeleted
-	rsc.record.Object = replacementData
-	return updateWireRecord(ctx, rsc.store, rsc.record, currentRunState)
+	previousRunState := rsc.record.RunState
+	rsc.record.RunState = rs
+	return updateWireRecord(ctx, rsc.store, rsc.record, previousRunState)
 }
 
 func validateRunStateTransition(record *WireRecord, runState RunState, sentinelErr error) error {
@@ -203,13 +178,16 @@ var runStateTransitions = map[RunState]map[RunState]bool{
 		RunStateCancelled: true,
 	},
 	RunStateCompleted: {
-		RunStateDataDeleted: true,
+		RunStateRequestedDataDeleted: true,
 	},
 	RunStateCancelled: {
+		RunStateRequestedDataDeleted: true,
+	},
+	RunStateRequestedDataDeleted: {
 		RunStateDataDeleted: true,
 	},
 	RunStateDataDeleted: {
-		RunStateDataDeleted: true,
+		RunStateRequestedDataDeleted: true,
 	},
 }
 
@@ -231,17 +209,4 @@ func (c *noopRunStateController) DeleteData(ctx context.Context) error {
 	return nil
 }
 
-func (c *noopRunStateController) markAsRunning(ctx context.Context) error {
-	return nil
-}
-
 var _ RunStateController = (*noopRunStateController)(nil)
-
-func (w *Workflow[Type, Status]) RunStateController(ctx context.Context, id int64) (RunStateController, error) {
-	r, err := w.recordStore.Lookup(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	return newRunStateController(r, w.recordStore.Store, w.customDelete), nil
-}

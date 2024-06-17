@@ -22,7 +22,4 @@ func TestNoopRunStateController(t *testing.T) {
 
 	err = ctrl.DeleteData(ctx)
 	jtest.RequireNil(t, err)
-
-	err = ctrl.markAsRunning(ctx)
-	jtest.RequireNil(t, err)
 }

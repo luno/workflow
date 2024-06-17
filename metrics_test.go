@@ -127,6 +127,7 @@ func TestMetricProcessStates(t *testing.T) {
 	expected := `
 # HELP workflow_process_states The current states of all the processes
 # TYPE workflow_process_states gauge
+workflow_process_states{process_name="example-delete-consumer",workflow_name="example"} 2
 workflow_process_states{process_name="outbox-consumer-1-of-2",workflow_name="example"} 2
 workflow_process_states{process_name="outbox-consumer-2-of-2",workflow_name="example"} 2
 workflow_process_states{process_name="start-consumer-1-of-1",workflow_name="example"} 2
@@ -141,6 +142,7 @@ workflow_process_states{process_name="start-consumer-1-of-1",workflow_name="exam
 	expected = `
 # HELP workflow_process_states The current states of all the processes
 # TYPE workflow_process_states gauge
+workflow_process_states{process_name="example-delete-consumer",workflow_name="example"} 1
 workflow_process_states{process_name="start-consumer-1-of-1",workflow_name="example"} 1
 workflow_process_states{process_name="outbox-consumer-1-of-2",workflow_name="example"} 1
 workflow_process_states{process_name="outbox-consumer-2-of-2",workflow_name="example"} 1
@@ -225,6 +227,7 @@ func TestMetricProcessIdleState(t *testing.T) {
 	expected := `
 # HELP workflow_process_states The current states of all the processes
 # TYPE workflow_process_states gauge
+workflow_process_states{process_name="example-delete-consumer",workflow_name="example"} 3
 workflow_process_states{process_name="start-consumer-1-of-1", workflow_name="example"} 3
 workflow_process_states{process_name="middle-consumer-1-of-1", workflow_name="example"} 3
 workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="example"} 3
@@ -243,6 +246,7 @@ workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="exa
 	expected = `
 # HELP workflow_process_states The current states of all the processes
 # TYPE workflow_process_states gauge
+workflow_process_states{process_name="example-delete-consumer",workflow_name="example"} 2
 workflow_process_states{process_name="middle-consumer-1-of-1",workflow_name="example"} 2
 workflow_process_states{process_name="start-consumer-1-of-1",workflow_name="example"} 2
 workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="example"} 2
@@ -257,6 +261,7 @@ workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="exa
 	expected = `
 # HELP workflow_process_states The current states of all the processes
 # TYPE workflow_process_states gauge
+workflow_process_states{process_name="example-delete-consumer",workflow_name="example"} 1
 workflow_process_states{process_name="middle-consumer-1-of-1",workflow_name="example"} 1
 workflow_process_states{process_name="start-consumer-1-of-1",workflow_name="example"} 1
 workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="example"} 1

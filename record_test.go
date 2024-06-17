@@ -25,17 +25,18 @@ func TestRecord(t *testing.T) {
 
 func TestRunStateValid(t *testing.T) {
 	testCases := map[workflow.RunState]bool{
-		workflow.RunState(-1):            false,
-		workflow.RunStateUnknown:         false,
-		workflow.RunStateInitiated:       true,
-		workflow.RunStateRunning:         true,
-		workflow.RunStatePaused:          true,
-		workflow.RunStateCancelled:       true,
-		workflow.RunStateCompleted:       true,
-		workflow.RunStateDataDeleted:     true,
-		workflow.RunStateDataDeleted + 1: false,
-		workflow.RunStateDataDeleted + 2: false,
-		workflow.RunState(9999):          false,
+		workflow.RunState(-1):                     false,
+		workflow.RunStateUnknown:                  false,
+		workflow.RunStateInitiated:                true,
+		workflow.RunStateRunning:                  true,
+		workflow.RunStatePaused:                   true,
+		workflow.RunStateCancelled:                true,
+		workflow.RunStateCompleted:                true,
+		workflow.RunStateDataDeleted:              true,
+		workflow.RunStateRequestedDataDeleted:     true,
+		workflow.RunStateRequestedDataDeleted + 1: false,
+		workflow.RunStateRequestedDataDeleted + 2: false,
+		workflow.RunState(9999):                   false,
 	}
 
 	for state, expected := range testCases {
@@ -45,17 +46,18 @@ func TestRunStateValid(t *testing.T) {
 
 func TestRunStateFinished(t *testing.T) {
 	testCases := map[workflow.RunState]bool{
-		workflow.RunState(-1):            false,
-		workflow.RunStateUnknown:         false,
-		workflow.RunStateInitiated:       false,
-		workflow.RunStateRunning:         false,
-		workflow.RunStatePaused:          false,
-		workflow.RunStateCancelled:       true,
-		workflow.RunStateCompleted:       true,
-		workflow.RunStateDataDeleted:     true,
-		workflow.RunStateDataDeleted + 1: false,
-		workflow.RunStateDataDeleted + 2: false,
-		workflow.RunState(9999):          false,
+		workflow.RunState(-1):                     false,
+		workflow.RunStateUnknown:                  false,
+		workflow.RunStateInitiated:                false,
+		workflow.RunStateRunning:                  false,
+		workflow.RunStatePaused:                   false,
+		workflow.RunStateCancelled:                true,
+		workflow.RunStateCompleted:                true,
+		workflow.RunStateDataDeleted:              true,
+		workflow.RunStateRequestedDataDeleted:     true,
+		workflow.RunStateRequestedDataDeleted + 1: false,
+		workflow.RunStateRequestedDataDeleted + 2: false,
+		workflow.RunState(9999):                   false,
 	}
 
 	for state, expected := range testCases {
@@ -65,17 +67,18 @@ func TestRunStateFinished(t *testing.T) {
 
 func TestRunStateStopped(t *testing.T) {
 	testCases := map[workflow.RunState]bool{
-		workflow.RunState(-1):            false,
-		workflow.RunStateUnknown:         false,
-		workflow.RunStateInitiated:       false,
-		workflow.RunStateRunning:         false,
-		workflow.RunStatePaused:          true,
-		workflow.RunStateCancelled:       true,
-		workflow.RunStateCompleted:       false,
-		workflow.RunStateDataDeleted:     true,
-		workflow.RunStateDataDeleted + 1: false,
-		workflow.RunStateDataDeleted + 2: false,
-		workflow.RunState(9999):          false,
+		workflow.RunState(-1):                     false,
+		workflow.RunStateUnknown:                  false,
+		workflow.RunStateInitiated:                false,
+		workflow.RunStateRunning:                  false,
+		workflow.RunStatePaused:                   true,
+		workflow.RunStateCancelled:                true,
+		workflow.RunStateCompleted:                false,
+		workflow.RunStateDataDeleted:              true,
+		workflow.RunStateRequestedDataDeleted:     true,
+		workflow.RunStateRequestedDataDeleted + 1: false,
+		workflow.RunStateRequestedDataDeleted + 2: false,
+		workflow.RunState(9999):                   false,
 	}
 
 	for state, expected := range testCases {

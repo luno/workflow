@@ -11,14 +11,23 @@ stateDiagram-v2
     
     Running-->Completed
     Running-->Paused
-    Running-->Cancelled
 
     Paused-->Running
-    Paused-->Cancelled
     
-    Completed-->DataDeleted
-    Cancelled-->DataDeleted
+    state join_state_1 <<join>>
+    Running --> join_state_1
+    Paused --> join_state_1
+    join_state_1 --> Cancelled
+    
+    state Finished {
+        state join_state_2 <<join>>
+        Completed --> join_state_2
+        Cancelled --> join_state_2
+        join_state_2 --> RequestedDataDeleted
+            
 
-    DataDeleted-->DataDeleted
-    DataDeleted-->[*]
+        DataDeleted-->RequestedDataDeleted
+        RequestedDataDeleted-->DataDeleted
+        DataDeleted-->[*]
+    }
 ```
