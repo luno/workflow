@@ -203,7 +203,7 @@ func consume[Type any, Status StatusType](
 	processName string,
 	pauseAfterErrCount int,
 ) error {
-	record, err := buildConsumableRecord[Type, Status](ctx, store, current, w.customDelete)
+	record, err := buildConsumableRecord[Type, Status](store, current)
 	if err != nil {
 		return err
 	}

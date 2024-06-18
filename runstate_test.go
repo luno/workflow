@@ -2,7 +2,6 @@ package workflow_test
 
 import (
 	"context"
-	"sync"
 	"testing"
 	"time"
 
@@ -117,79 +116,48 @@ func buildWorkflow(fn workflow.ConsumerFunc[string, status]) func(recordStore wo
 }
 
 func TestWorkflowRunStateController(t *testing.T) {
-	mu := sync.Mutex{}
-	canRelease := false
-
 	type myObject struct {
 		Name string
 		Car  string
 	}
 
-	b := workflow.NewBuilder[myObject, status]("example")
-	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Record[myObject, status]) (status, error) {
-		// This consumer should block until it's released
-		for {
-			mu.Lock()
-			if !canRelease {
-				mu.Unlock()
-				time.Sleep(time.Millisecond * 10)
-				continue
-			}
-			mu.Unlock()
-
-			// Once released, break loop to finish
-			break
-		}
-
-		return StatusEnd, nil
-	}, StatusEnd).WithOptions(
-		workflow.PollingFrequency(time.Millisecond * 10),
-	)
-
 	recordStore := memrecordstore.New()
-	w := b.Build(
-		memstreamer.New(),
-		recordStore,
-		memtimeoutstore.New(),
-		memrolescheduler.New(),
-		workflow.WithCustomDelete(func(object *myObject) error {
-			object.Name = "Right to be forgotten"
-			return nil
-		}),
-	)
 
-	ctx := context.Background()
-	w.Run(ctx)
-	t.Cleanup(w.Stop)
-
-	foreignID := "foreignID"
-	_, err := w.Trigger(ctx, foreignID, StatusStart, workflow.WithInitialValue[myObject, status](&myObject{
+	b, err := workflow.Marshal(&myObject{
 		Name: "Andrew Wormald",
 		Car:  "Audi",
-	}))
+	})
 	jtest.RequireNil(t, err)
 
-	record, err := recordStore.Latest(ctx, w.Name, foreignID)
+	ctx := context.Background()
+	workflowName := "test-workflow"
+	foreignID := "foreignID"
+	err = recordStore.Store(ctx, &workflow.WireRecord{
+		WorkflowName: workflowName,
+		ForeignID:    foreignID,
+		RunState:     workflow.RunStateInitiated,
+		Object:       b,
+	}, func(recordID int64) (workflow.OutboxEventData, error) {
+		return workflow.OutboxEventData{}, nil
+	})
+
+	record, err := recordStore.Latest(ctx, workflowName, foreignID)
 	jtest.RequireNil(t, err)
 
 	time.Sleep(time.Millisecond * 500)
 
-	record, err = recordStore.Latest(ctx, w.Name, foreignID)
+	record, err = recordStore.Latest(ctx, workflowName, foreignID)
 	jtest.RequireNil(t, err)
 
 	require.Equal(t, workflow.RunStateInitiated, record.RunState)
 
-	mu.Lock()
-	canRelease = true
-	mu.Unlock()
-
-	rsc, err := w.RunStateController(ctx, 1)
+	rsc, err := workflow.NewRunStateController(ctx, recordStore, 1)
 	jtest.RequireNil(t, err)
 
 	err = rsc.Pause(ctx)
 	jtest.RequireNil(t, err)
 
-	record, err = recordStore.Latest(ctx, w.Name, foreignID)
+	record, err = recordStore.Latest(ctx, workflowName, foreignID)
 	jtest.RequireNil(t, err)
 
 	require.Equal(t, workflow.RunStatePaused, record.RunState)
@@ -197,7 +165,7 @@ func TestWorkflowRunStateController(t *testing.T) {
 	err = rsc.Resume(ctx)
 	jtest.RequireNil(t, err)
 
-	record, err = recordStore.Latest(ctx, w.Name, foreignID)
+	record, err = recordStore.Latest(ctx, workflowName, foreignID)
 	jtest.RequireNil(t, err)
 
 	require.Equal(t, workflow.RunStateRunning, record.RunState)
@@ -205,7 +173,7 @@ func TestWorkflowRunStateController(t *testing.T) {
 	err = rsc.Cancel(ctx)
 	jtest.RequireNil(t, err)
 
-	record, err = recordStore.Latest(ctx, w.Name, foreignID)
+	record, err = recordStore.Latest(ctx, workflowName, foreignID)
 	jtest.RequireNil(t, err)
 
 	require.Equal(t, workflow.RunStateCancelled, record.RunState)
@@ -213,19 +181,10 @@ func TestWorkflowRunStateController(t *testing.T) {
 	err = rsc.DeleteData(ctx)
 	jtest.RequireNil(t, err)
 
-	record, err = recordStore.Latest(ctx, w.Name, foreignID)
+	record, err = recordStore.Latest(ctx, workflowName, foreignID)
 	jtest.RequireNil(t, err)
 
-	require.Equal(t, workflow.RunStateDataDeleted, record.RunState)
-
-	var object myObject
-	err = workflow.Unmarshal(record.Object, &object)
-	jtest.RequireNil(t, err)
-
-	require.Equal(t, "Right to be forgotten", object.Name)
-	require.Equal(t, "Audi", object.Car)
-
-	w.Stop()
+	require.Equal(t, workflow.RunStateRequestedDataDeleted, record.RunState)
 }
 
 func TestIsFinished(t *testing.T) {

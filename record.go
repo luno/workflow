@@ -64,14 +64,14 @@ type WireRecord struct {
 	UpdatedAt    time.Time
 }
 
-func buildConsumableRecord[Type any, Status StatusType](ctx context.Context, store storeFunc, wr *WireRecord, cd customDelete) (*Record[Type, Status], error) {
+func buildConsumableRecord[Type any, Status StatusType](store storeFunc, wr *WireRecord) (*Record[Type, Status], error) {
 	var t Type
 	err := Unmarshal(wr.Object, &t)
 	if err != nil {
 		return nil, err
 	}
 
-	controller := newRunStateController(wr, store, cd)
+	controller := newRunStateController(wr, store)
 	record := Record[Type, Status]{
 		WireRecord: *wr,
 		Status:     Status(wr.Status),

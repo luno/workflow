@@ -104,7 +104,7 @@ func processTimeout[Type any, Status StatusType](
 	processName string,
 	pauseAfterErrCount int,
 ) error {
-	record, err := buildConsumableRecord[Type, Status](ctx, store, r, w.customDelete)
+	record, err := buildConsumableRecord[Type, Status](store, r)
 	if err != nil {
 		return err
 	}

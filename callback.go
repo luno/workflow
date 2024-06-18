@@ -54,7 +54,7 @@ func processCallback[Type any, Status StatusType](
 		return nil
 	}
 
-	record, err := buildConsumableRecord[Type, Status](ctx, store, wr, w.customDelete)
+	record, err := buildConsumableRecord[Type, Status](store, wr)
 	if err != nil {
 		return err
 	}

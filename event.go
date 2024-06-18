@@ -70,6 +70,13 @@ type OutboxEventData struct {
 func WireRecordToOutboxEventData(record WireRecord, previousRunState RunState) (OutboxEventData, error) {
 	topic := Topic(record.WorkflowName, record.Status)
 
+	// Any record that is updated with a RunState of RunStateRequestedDataDeleted has it's events pushed into
+	// the "delete" topic so that the event can be processed async and not be spread across the workflow's status
+	// topics as it usually is
+	if record.RunState == RunStateRequestedDataDeleted {
+		topic = DeleteTopic(record.WorkflowName)
+	}
+
 	headers := make(map[string]string)
 	headers[string(HeaderForeignID)] = record.ForeignID
 	headers[string(HeaderWorkflowName)] = record.WorkflowName

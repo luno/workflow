@@ -49,10 +49,6 @@ type API[Type any, Status StatusType] interface {
 
 	// Stop tells the workflow to shut down gracefully.
 	Stop()
-
-	// Controller allows the interacting and controlling a workflow record such as Pause, Resume, Cancel, and
-	// DeleteData (e.g. right to be forgotten).
-	Controller(ctx context.Context, id int64) (RunStateController, error)
 }
 
 type Workflow[Type any, Status StatusType] struct {
@@ -147,6 +143,9 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 				}
 			}
 		}
+
+		// Launch the delete consumer which will manage all data deletion requests.
+		go deleteConsumer(w)
 	})
 }
 
