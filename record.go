@@ -71,7 +71,7 @@ func buildConsumableRecord[Type any, Status StatusType](store storeFunc, wr *Wir
 		return nil, err
 	}
 
-	controller := newRunStateController(wr, store)
+	controller := NewRunStateController(store, wr)
 	record := Record[Type, Status]{
 		WireRecord: *wr,
 		Status:     Status(wr.Status),

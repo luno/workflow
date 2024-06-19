@@ -81,7 +81,7 @@ func awaitWorkflowStatusByForeignID[Type any, Status StatusType](ctx context.Con
 			WireRecord: *r,
 			Status:     Status(r.Status),
 			Object:     &t,
-			controller: newRunStateController(r, w.recordStore.Store),
+			controller: NewRunStateController(w.recordStore.Store, r),
 		}, ack()
 	}
 }
