@@ -3,15 +3,10 @@ module github.com/luno/workflow
 go 1.20
 
 require (
-	github.com/corverroos/truss v0.0.0-20210514115035-9e5e1b0851a9
-	github.com/go-sql-driver/mysql v1.7.1
 	github.com/google/uuid v1.3.0
-	github.com/luno/fate v0.0.0-20191017091315-567fa9070f1c
 	github.com/luno/jettison v0.0.0-20230912135954-09d6084f5df9
-	github.com/luno/reflex v0.0.0-20231116123206-2371e7c89a55
 	github.com/prometheus/client_golang v1.15.0
 	github.com/robfig/cron/v3 v3.0.0
-	github.com/segmentio/kafka-go v0.4.43
 	github.com/stretchr/testify v1.8.3
 	google.golang.org/protobuf v1.33.0
 	k8s.io/utils v0.0.0-20230505201702-9f6742963106
