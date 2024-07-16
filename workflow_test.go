@@ -20,6 +20,9 @@ import (
 	"github.com/luno/workflow/adapters/memtimeoutstore"
 )
 
+// Ensures that workflow.Workflow always implements workflow.API
+var _ workflow.API[MyType, status] = (*workflow.Workflow[MyType, status])(nil)
+
 type MyType struct {
 	UserID      int64
 	Profile     string
