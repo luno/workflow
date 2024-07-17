@@ -2,6 +2,8 @@ module github.com/luno/workflow/adapters/sqlstore
 
 go 1.22.3
 
+replace github.com/luno/workflow => ../..
+
 require (
 	github.com/corverroos/truss v0.0.0-20210514115035-9e5e1b0851a9
 	github.com/go-sql-driver/mysql v1.8.1

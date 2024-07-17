@@ -2,6 +2,8 @@ module github.com/luno/workflow/adapters/kafkastreamer
 
 go 1.22.3
 
+replace github.com/luno/workflow => ../..
+
 require (
 	github.com/luno/jettison v0.0.0-20240625085333-8727b580c646
 	github.com/luno/workflow v0.0.0-20240716150028-e4650a2adf6a
