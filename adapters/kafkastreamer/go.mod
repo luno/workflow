@@ -1,10 +1,10 @@
-module github.com/luno/workflow/kafkastreamer
+module github.com/luno/workflow/adapters/kafkastreamer
 
 go 1.22.3
 
 require (
 	github.com/luno/jettison v0.0.0-20240625085333-8727b580c646
-	github.com/luno/workflow v0.1.1
+	github.com/luno/workflow v0.0.0-20240716150028-e4650a2adf6a
 	github.com/segmentio/kafka-go v0.4.47
 )
 
@@ -28,7 +28,7 @@ require (
 	github.com/stretchr/testify v1.9.0 // indirect
 	golang.org/x/sys v0.19.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
-	google.golang.org/protobuf v1.33.0 // indirect
+	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/utils v0.0.0-20230505201702-9f6742963106 // indirect
