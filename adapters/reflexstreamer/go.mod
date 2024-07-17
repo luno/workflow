@@ -2,6 +2,8 @@ module github.com/luno/workflow/adapters/reflexstreamer
 
 go 1.22.3
 
+replace github.com/luno/workflow => ../..
+
 require (
 	github.com/corverroos/truss v0.0.0-20210514115035-9e5e1b0851a9
 	github.com/luno/fate v0.0.0-20240704124432-6dabca7dee1e
