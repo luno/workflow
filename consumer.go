@@ -51,27 +51,55 @@ func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentSta
 
 	topic := Topic(w.Name, int(currentStatus))
 
+	errBackOff := w.defaultOpts.errBackOff
+	if p.errBackOff.Nanoseconds() != 0 {
+		errBackOff = p.errBackOff
+	}
+
+	pollingFrequency := w.defaultOpts.pollingFrequency
+	if p.pollingFrequency.Nanoseconds() != 0 {
+		pollingFrequency = p.pollingFrequency
+	}
+
+	lagAlert := w.defaultOpts.lagAlert
+	if p.lagAlert.Nanoseconds() != 0 {
+		lagAlert = p.lagAlert
+	}
+
+	pauseAfterErrCount := w.defaultOpts.pauseAfterErrCount
+	if p.pauseAfterErrCount != 0 {
+		pauseAfterErrCount = p.pauseAfterErrCount
+	}
+
+	lag := w.defaultOpts.lag
+	if p.lag.Nanoseconds() != 0 {
+		lag = p.lag
+	}
+
 	w.run(role, processName, func(ctx context.Context) error {
-		consumerStream, err := w.eventStreamer.NewConsumer(
+		streamConsumer, err := w.eventStreamer.NewConsumer(
 			ctx,
 			topic,
 			role,
-			WithConsumerPollFrequency(p.pollingFrequency),
+			WithConsumerPollFrequency(pollingFrequency),
 		)
 		if err != nil {
 			return err
 		}
-		defer consumerStream.Close()
+		defer streamConsumer.Close()
 
-		return consumeForever[Type, Status](ctx, w, p, consumerStream, currentStatus, processName, shard, totalShards)
-	}, p.errBackOff)
+		return consumeForever[Type, Status](ctx, w, p.consumer, lag, lagAlert, pauseAfterErrCount, streamConsumer, currentStatus, processName, shard, totalShards)
+	}, errBackOff)
 }
 
 func consumeForever[Type any, Status StatusType](
 	ctx context.Context,
 	w *Workflow[Type, Status],
-	p consumerConfig[Type, Status],
-	c Consumer,
+	consumerFunc ConsumerFunc[Type, Status],
+	lag time.Duration,
+	lagAlert time.Duration,
+	pauseAfterErrCount int,
+	streamConsumer Consumer,
 	status Status,
 	processName string,
 	shard, totalShards int,
@@ -82,14 +110,9 @@ func consumeForever[Type any, Status StatusType](
 			return ctx.Err()
 		}
 
-		e, ack, err := c.Recv(ctx)
+		e, ack, err := streamConsumer.Recv(ctx)
 		if err != nil {
 			return err
-		}
-
-		var lag time.Duration
-		if p.lag.Nanoseconds() != 0 {
-			lag = p.lag
 		}
 
 		// Wait until the event's timestamp matches or is older than the specified lag.
@@ -106,7 +129,7 @@ func consumeForever[Type any, Status StatusType](
 		}
 
 		// Push metrics and alerting around the age of the event being processed.
-		pushLagMetricAndAlerting(w.Name, processName, e.CreatedAt, p.lagAlert, w.clock)
+		pushLagMetricAndAlerting(w.Name, processName, e.CreatedAt, lagAlert, w.clock)
 
 		shouldFilter := FilterUsing(e,
 			shardFilter(shard, totalShards),
@@ -169,7 +192,7 @@ func consumeForever[Type any, Status StatusType](
 		}
 
 		t2 := w.clock.Now()
-		err = consume(ctx, w, record, p.consumer, ack, w.recordStore.Store, updater, processName, p.pauseAfterErrCount)
+		err = consume(ctx, w, record, consumerFunc, ack, w.recordStore.Store, updater, processName, pauseAfterErrCount)
 		if err != nil {
 			return err
 		}

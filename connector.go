@@ -24,11 +24,10 @@ type connectorConfig[Type any, Status StatusType] struct {
 	constructor ConnectorConstructor
 	connectorFn ConnectorFunc[Type, Status]
 
-	pollingFrequency time.Duration
-	errBackOff       time.Duration
-	parallelCount    int
-	lag              time.Duration
-	lagAlert         time.Duration
+	errBackOff    time.Duration
+	parallelCount int
+	lag           time.Duration
+	lagAlert      time.Duration
 }
 
 func connectorConsumer[Type any, Status StatusType](w *Workflow[Type, Status], config *connectorConfig[Type, Status], shard, totalShards int) {
@@ -43,6 +42,21 @@ func connectorConsumer[Type any, Status StatusType](w *Workflow[Type, Status], c
 		fmt.Sprintf("%v", totalShards),
 	)
 
+	errBackOff := w.defaultOpts.errBackOff
+	if config.errBackOff.Nanoseconds() != 0 {
+		errBackOff = config.errBackOff
+	}
+
+	lagAlert := w.defaultOpts.lagAlert
+	if config.lagAlert.Nanoseconds() != 0 {
+		lagAlert = config.lagAlert
+	}
+
+	lag := w.defaultOpts.lag
+	if config.lag.Nanoseconds() != 0 {
+		lag = config.lag
+	}
+
 	// processName can have the same name as the role. It is the same here due to the fact that there are no enums
 	// that can be converted to a meaningful string
 	processName := role
@@ -53,14 +67,16 @@ func connectorConsumer[Type any, Status StatusType](w *Workflow[Type, Status], c
 		}
 		defer consumer.Close()
 
-		return connectForever(ctx, w, config, consumer, processName, shard, totalShards)
-	}, config.errBackOff)
+		return connectForever(ctx, w, config.connectorFn, lag, lagAlert, consumer, processName, shard, totalShards)
+	}, errBackOff)
 }
 
 func connectForever[Type any, Status StatusType](
 	ctx context.Context,
 	w *Workflow[Type, Status],
-	config *connectorConfig[Type, Status],
+	connectorFn ConnectorFunc[Type, Status],
+	lag time.Duration,
+	lagAlert time.Duration,
 	consumer ConnectorConsumer,
 	processName string,
 	shard, totalShards int,
@@ -73,11 +89,6 @@ func connectForever[Type any, Status StatusType](
 		e, ack, err := consumer.Recv(ctx)
 		if err != nil {
 			return err
-		}
-
-		var lag time.Duration
-		if config.lag.Nanoseconds() != 0 {
-			lag = config.lag
 		}
 
 		// Wait until the event's timestamp matches or is older than the specified lag.
@@ -94,7 +105,7 @@ func connectForever[Type any, Status StatusType](
 		}
 
 		// Push metrics and alerting around the age of the event being processed.
-		pushLagMetricAndAlerting(w.Name, processName, e.CreatedAt, config.lagAlert, w.clock)
+		pushLagMetricAndAlerting(w.Name, processName, e.CreatedAt, lagAlert, w.clock)
 
 		shouldFilter := FilterConnectorEventUsing(e,
 			shardConnectorEventFilter(shard, totalShards),
@@ -109,7 +120,7 @@ func connectForever[Type any, Status StatusType](
 		}
 
 		t2 := w.clock.Now()
-		err = config.connectorFn(ctx, w, e)
+		err = connectorFn(ctx, w, e)
 		if err != nil {
 			return err
 		}

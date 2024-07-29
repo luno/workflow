@@ -110,13 +110,18 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 
 		// Start the state transition consumers
 		for currentStatus, config := range w.consumers {
-			if config.parallelCount < 2 {
+			parallelCount := w.defaultOpts.parallelCount
+			if config.parallelCount != 0 {
+				parallelCount = config.parallelCount
+			}
+
+			if parallelCount < 2 {
 				// Launch all consumers in runners
 				go consumer(w, currentStatus, config, 1, 1)
 			} else {
 				// Run as sharded parallel consumers
-				for i := 1; i <= config.parallelCount; i++ {
-					go consumer(w, currentStatus, config, i, config.parallelCount)
+				for i := 1; i <= parallelCount; i++ {
+					go consumer(w, currentStatus, config, i, parallelCount)
 				}
 			}
 		}
@@ -129,7 +134,12 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 
 		// Start the connected stream consumers
 		for _, config := range w.connectorConfigs {
-			if config.parallelCount < 2 {
+			parallelCount := w.defaultOpts.parallelCount
+			if config.parallelCount != 0 {
+				parallelCount = config.parallelCount
+			}
+
+			if parallelCount < 2 {
 				// Launch all consumers in runners
 				go connectorConsumer(w, config, 1, 1)
 			} else {
