@@ -72,10 +72,18 @@ func TestStatusGraph(t *testing.T) {
 	require.Equal(t, expectedTerminal, info.TerminalNodes)
 }
 
+func TestWithStepPollingFrequency(t *testing.T) {
+	b := NewBuilder[string, testStatus]("determine starting points")
+	b.AddStep(statusStart, nil, statusMiddle).WithOptions(PollingFrequency(time.Minute))
+	wf := b.Build(nil, nil, nil, nil, WithDefaultOptions(PollingFrequency(time.Hour)))
+
+	require.Equal(t, time.Minute, wf.consumers[statusStart].pollingFrequency)
+}
+
 func TestWithStepErrBackOff(t *testing.T) {
 	b := NewBuilder[string, testStatus]("determine starting points")
 	b.AddStep(statusStart, nil, statusMiddle).WithOptions(ErrBackOff(time.Minute))
-	wf := b.Build(nil, nil, nil, nil)
+	wf := b.Build(nil, nil, nil, nil, WithDefaultOptions(ErrBackOff(time.Hour)))
 
 	require.Equal(t, time.Minute, wf.consumers[statusStart].errBackOff)
 }
@@ -83,7 +91,7 @@ func TestWithStepErrBackOff(t *testing.T) {
 func TestWithParallelCount(t *testing.T) {
 	b := NewBuilder[string, testStatus]("determine starting points")
 	b.AddStep(statusStart, nil, statusMiddle).WithOptions(ParallelCount(100))
-	wf := b.Build(nil, nil, nil, nil)
+	wf := b.Build(nil, nil, nil, nil, WithDefaultOptions(ParallelCount(1)))
 
 	require.Equal(t, int(100), wf.consumers[statusStart].parallelCount)
 }
@@ -123,7 +131,7 @@ func TestWithTimeoutErrBackOff(t *testing.T) {
 	).WithOptions(
 		ErrBackOff(time.Minute),
 	)
-	wf := b.Build(nil, nil, nil, nil)
+	wf := b.Build(nil, nil, nil, nil, WithDefaultOptions(ConsumeLag(time.Hour)))
 
 	require.Equal(t, time.Minute, wf.timeouts[statusStart].errBackOff)
 }
@@ -140,7 +148,7 @@ func TestWithTimeoutPollingFrequency(t *testing.T) {
 	).WithOptions(
 		PollingFrequency(time.Minute),
 	)
-	wf := b.Build(nil, nil, nil, nil)
+	wf := b.Build(nil, nil, nil, nil, WithDefaultOptions(PollingFrequency(time.Hour)))
 
 	require.Equal(t, time.Minute, wf.timeouts[statusStart].pollingFrequency)
 }
@@ -196,8 +204,8 @@ func TestWithStepLagAlert(t *testing.T) {
 		expectedLagAlert time.Duration
 	}{
 		{
-			name:             "Ensure default lag alert is set by default",
-			expectedLagAlert: defaultLagAlert,
+			name:             "No lag alert",
+			expectedLagAlert: 0,
 		},
 		{
 			name: "Ensure lag alert value is assigned",
@@ -287,7 +295,39 @@ func TestWithStepConsumerLag(t *testing.T) {
 	).WithOptions(
 		ConsumeLag(specifiedLag),
 	)
-	wf := b.Build(nil, nil, nil, nil)
+	wf := b.Build(nil, nil, nil, nil, WithDefaultOptions(ConsumeLag(time.Minute)))
 
 	require.Equal(t, specifiedLag, wf.consumers[statusStart].lag)
+}
+
+func TestWithDefaultOptions(t *testing.T) {
+	b := NewBuilder[string, testStatus]("consumer lag")
+	b.AddStep(
+		statusStart,
+		func(ctx context.Context, r *Record[string, testStatus]) (testStatus, error) {
+			return statusEnd, nil
+		},
+		statusEnd,
+	)
+	wf := b.Build(
+		nil,
+		nil,
+		nil,
+		nil,
+		WithDefaultOptions(
+			PollingFrequency(time.Hour),
+			ErrBackOff(3*time.Hour),
+			LagAlert(4*time.Hour),
+			ParallelCount(5),
+			ConsumeLag(6*time.Hour),
+			PauseAfterErrCount(700),
+		),
+	)
+
+	require.Equal(t, time.Hour, wf.defaultOpts.pollingFrequency)
+	require.Equal(t, 3*time.Hour, wf.defaultOpts.errBackOff)
+	require.Equal(t, 4*time.Hour, wf.defaultOpts.lagAlert)
+	require.Equal(t, 5, wf.defaultOpts.parallelCount)
+	require.Equal(t, 6*time.Hour, wf.defaultOpts.lag)
+	require.Equal(t, 700, wf.defaultOpts.pauseAfterErrCount)
 }

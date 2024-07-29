@@ -24,17 +24,14 @@ const (
 func NewBuilder[Type any, Status StatusType](name string) *Builder[Type, Status] {
 	return &Builder[Type, Status]{
 		workflow: &Workflow[Type, Status]{
-			Name:                    name,
-			clock:                   clock.RealClock{},
-			defaultPollingFrequency: defaultPollingFrequency,
-			defaultErrBackOff:       defaultErrBackOff,
-			defaultLagAlert:         defaultLagAlert,
-			consumers:               make(map[Status]consumerConfig[Type, Status]),
-			callback:                make(map[Status][]callback[Type, Status]),
-			timeouts:                make(map[Status]timeouts[Type, Status]),
-			statusGraph:             graph.New(),
-			errorCounter:            errorcounter.New(),
-			internalState:           make(map[string]State),
+			Name:          name,
+			clock:         clock.RealClock{},
+			consumers:     make(map[Status]consumerConfig[Type, Status]),
+			callback:      make(map[Status][]callback[Type, Status]),
+			timeouts:      make(map[Status]timeouts[Type, Status]),
+			statusGraph:   graph.New(),
+			errorCounter:  errorcounter.New(),
+			internalState: make(map[string]State),
 		},
 	}
 }
@@ -53,10 +50,7 @@ func (b *Builder[Type, Status]) AddStep(from Status, c ConsumerFunc[Type, Status
 	}
 
 	p := consumerConfig[Type, Status]{
-		consumer:         c,
-		pollingFrequency: b.workflow.defaultPollingFrequency,
-		errBackOff:       b.workflow.defaultErrBackOff,
-		lagAlert:         b.workflow.defaultLagAlert,
+		consumer: c,
 	}
 
 	b.workflow.consumers[from] = p
@@ -75,14 +69,7 @@ type stepUpdater[Type any, Status StatusType] struct {
 func (s *stepUpdater[Type, Status]) WithOptions(opts ...Option) {
 	consumer := s.workflow.consumers[s.from]
 
-	consumerOpts := options{
-		parallelCount:      consumer.parallelCount,
-		pollingFrequency:   consumer.pollingFrequency,
-		errBackOff:         consumer.errBackOff,
-		lag:                consumer.lag,
-		lagAlert:           consumer.lagAlert,
-		pauseAfterErrCount: consumer.pauseAfterErrCount,
-	}
+	var consumerOpts options
 	for _, opt := range opts {
 		opt(&consumerOpts)
 	}
@@ -116,18 +103,6 @@ func (b *Builder[Type, Status]) AddTimeout(from Status, timer TimerFunc[Type, St
 		TimeoutFunc: tf,
 	}
 
-	if timeouts.pollingFrequency.Nanoseconds() == 0 {
-		timeouts.pollingFrequency = b.workflow.defaultPollingFrequency
-	}
-
-	if timeouts.errBackOff.Nanoseconds() == 0 {
-		timeouts.errBackOff = b.workflow.defaultErrBackOff
-	}
-
-	if timeouts.lagAlert.Nanoseconds() == 0 {
-		timeouts.lagAlert = b.workflow.defaultLagAlert
-	}
-
 	for _, to := range allowedDestinations {
 		b.workflow.statusGraph.AddTransition(int(from), int(to))
 	}
@@ -149,12 +124,7 @@ type timeoutUpdater[Type any, Status StatusType] struct {
 func (s *timeoutUpdater[Type, Status]) WithOptions(opts ...Option) {
 	timeout := s.workflow.timeouts[s.from]
 
-	timeoutOpts := options{
-		pollingFrequency:   timeout.pollingFrequency,
-		errBackOff:         timeout.errBackOff,
-		lagAlert:           timeout.lagAlert,
-		pauseAfterErrCount: timeout.pauseAfterErrCount,
-	}
+	var timeoutOpts options
 	for _, opt := range opts {
 		opt(&timeoutOpts)
 	}
@@ -182,12 +152,9 @@ func (b *Builder[Type, Status]) AddConnector(name string, csc ConnectorConstruct
 	}
 
 	config := &connectorConfig[Type, Status]{
-		name:             name,
-		constructor:      csc,
-		connectorFn:      cf,
-		pollingFrequency: b.workflow.defaultPollingFrequency,
-		errBackOff:       b.workflow.defaultErrBackOff,
-		lagAlert:         b.workflow.defaultLagAlert,
+		name:        name,
+		constructor: csc,
+		connectorFn: cf,
 	}
 
 	b.workflow.connectorConfigs = append(b.workflow.connectorConfigs, config)
@@ -203,13 +170,7 @@ type connectorUpdater[Type any, Status StatusType] struct {
 }
 
 func (c *connectorUpdater[Type, Status]) WithOptions(opts ...Option) {
-	connectorOpts := options{
-		parallelCount:    c.config.parallelCount,
-		pollingFrequency: c.config.pollingFrequency,
-		errBackOff:       c.config.errBackOff,
-		lag:              c.config.lag,
-		lagAlert:         c.config.lagAlert,
-	}
+	var connectorOpts options
 	for _, opt := range opts {
 		opt(&connectorOpts)
 	}
@@ -226,7 +187,7 @@ func (b *Builder[Type, Status]) Build(eventStreamer EventStreamer, recordStore R
 	b.workflow.timeoutStore = timeoutStore
 	b.workflow.scheduler = roleScheduler
 
-	var bo buildOptions
+	bo := defaultBuildOptions()
 	for _, opt := range opts {
 		opt(&bo)
 	}
@@ -235,29 +196,30 @@ func (b *Builder[Type, Status]) Build(eventStreamer EventStreamer, recordStore R
 		b.workflow.clock = bo.clock
 	}
 
-	b.workflow.outboxConfig = defaultOutboxConfig()
-	if bo.outboxConfig != nil {
-		b.workflow.outboxConfig = *bo.outboxConfig
-	}
-
-	if b.workflow.defaultPollingFrequency.Milliseconds() == 0 {
-		b.workflow.defaultPollingFrequency = time.Second
-	}
-
 	if bo.customDelete != nil {
 		b.workflow.customDelete = bo.customDelete
 	}
 
+	b.workflow.defaultOpts = bo.defaultOptions
+	b.workflow.outboxConfig = bo.outboxConfig
 	b.workflow.debugMode = bo.debugMode
 
 	return b.workflow
 }
 
 type buildOptions struct {
-	clock        clock.Clock
-	debugMode    bool
-	outboxConfig *outboxConfig
-	customDelete customDelete
+	clock          clock.Clock
+	debugMode      bool
+	customDelete   customDelete
+	outboxConfig   outboxConfig
+	defaultOptions options
+}
+
+func defaultBuildOptions() buildOptions {
+	return buildOptions{
+		outboxConfig:   defaultOutboxConfig(),
+		defaultOptions: defaultOptions(),
+	}
 }
 
 type BuildOption func(w *buildOptions)
@@ -268,21 +230,20 @@ func WithClock(c clock.Clock) BuildOption {
 	}
 }
 
-func WithOutboxConfig(opts ...OutboxOption) BuildOption {
-	return func(bo *buildOptions) {
-		config := defaultOutboxConfig()
-
-		for _, opt := range opts {
-			opt(&config)
-		}
-
-		bo.outboxConfig = &config
-	}
-}
-
 func WithDebugMode() BuildOption {
 	return func(bo *buildOptions) {
 		bo.debugMode = true
+	}
+}
+
+func WithDefaultOptions(opts ...Option) BuildOption {
+	return func(bo *buildOptions) {
+		var o options
+		for _, opt := range opts {
+			opt(&o)
+		}
+
+		bo.defaultOptions = o
 	}
 }
 

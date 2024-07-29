@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TriggerCallbackOn[Type any, Status StatusType, Payload any](t *testing.T, w *Workflow[Type, Status], foreignID, runID string, waitFor Status, p Payload) {
+func TriggerCallbackOn[Type any, Status StatusType, Payload any](t testing.TB, w *Workflow[Type, Status], foreignID, runID string, waitFor Status, p Payload) {
 	if t == nil {
 		panic("TriggerCallbackOn can only be used for testing")
 	}
@@ -29,7 +29,7 @@ func TriggerCallbackOn[Type any, Status StatusType, Payload any](t *testing.T, w
 	jtest.RequireNil(t, err)
 }
 
-func AwaitTimeoutInsert[Type any, Status StatusType](t *testing.T, w *Workflow[Type, Status], foreignID, runID string, waitFor Status) {
+func AwaitTimeoutInsert[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status], foreignID, runID string, waitFor Status) {
 	if t == nil {
 		panic("AwaitTimeout can only be used for testing")
 	}
@@ -62,7 +62,7 @@ func AwaitTimeoutInsert[Type any, Status StatusType](t *testing.T, w *Workflow[T
 	}
 }
 
-func Require[Type any, Status StatusType](t *testing.T, w *Workflow[Type, Status], foreignID string, waitFor Status, expected Type) {
+func Require[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status], foreignID string, waitFor Status, expected Type) {
 	if t == nil {
 		panic("Require can only be used for testing")
 	}

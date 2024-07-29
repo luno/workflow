@@ -176,6 +176,69 @@ func TestWorkflowAcceptanceTest(t *testing.T) {
 	require.Equal(t, expectedOTPVerified, actual.OTPVerified)
 }
 
+func BenchmarkWorkflow(b *testing.B) {
+	b.Run("1", func(b *testing.B) {
+		benchmarkWorkflow(b, 1)
+	})
+	//b.Run("2", func(b *testing.B) {
+	//	benchmarkWorkflow(b, 2)
+	//})
+	//b.Run("5", func(b *testing.B) {
+	//	benchmarkWorkflow(b, 5)
+	//})
+	//b.Run("10", func(b *testing.B) {
+	//	benchmarkWorkflow(b, 10)
+	//})
+	//b.Run("20", func(b *testing.B) {
+	//	benchmarkWorkflow(b, 20)
+	//})
+}
+
+func benchmarkWorkflow(b *testing.B, numberOfSteps int) {
+	ctx, cancel := context.WithCancel(context.Background())
+	b.Cleanup(func() {
+		cancel()
+	})
+
+	bldr := workflow.NewBuilder[MyType, status]("user sign up")
+
+	for i := range numberOfSteps {
+		bldr.AddStep(status(i), func(ctx context.Context, r *workflow.Record[MyType, status]) (status, error) {
+			return status(i + 1), nil
+		}, status(i+1)).WithOptions(workflow.PollingFrequency(100 * time.Nanosecond))
+	}
+
+	recordStore := memrecordstore.New()
+	timeoutStore := memtimeoutstore.New()
+	clock := clock_testing.NewFakeClock(time.Now())
+	wf := bldr.Build(
+		memstreamer.New(),
+		recordStore,
+		timeoutStore,
+		memrolescheduler.New(),
+		workflow.WithClock(clock),
+		workflow.WithOutboxPollingFrequency(100*time.Nanosecond),
+	)
+
+	wf.Run(ctx)
+	b.Cleanup(wf.Stop)
+
+	for range b.N {
+		fid := strconv.FormatInt(expectedUserID, 10)
+
+		mt := MyType{
+			UserID: expectedUserID,
+		}
+
+		_, err := wf.Trigger(ctx, fid, 0, workflow.WithInitialValue[MyType, status](&mt))
+		jtest.RequireNil(b, err)
+
+		workflow.Require(b, wf, fid, status(numberOfSteps), MyType{
+			UserID: expectedUserID,
+		})
+	}
+}
+
 func TestTimeout(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(func() {
@@ -238,18 +301,14 @@ var (
 
 func createProfile(ctx context.Context, mt *workflow.Record[MyType, status]) (status, error) {
 	mt.Object.Profile = "Andrew Wormald"
-	fmt.Println("creating profile", *mt)
 	return StatusProfileCreated, nil
 }
 
 func sendEmailConfirmation(ctx context.Context, mt *workflow.Record[MyType, status]) (status, error) {
-	fmt.Println("sending email confirmation", *mt)
 	return StatusEmailConfirmationSent, nil
 }
 
 func emailVerifiedCallback(ctx context.Context, mt *workflow.Record[MyType, status], r io.Reader) (status, error) {
-	fmt.Println("email verification callback", *mt)
-
 	b, err := io.ReadAll(r)
 	if err != nil {
 		return 0, err
@@ -271,7 +330,6 @@ func emailVerifiedCallback(ctx context.Context, mt *workflow.Record[MyType, stat
 }
 
 func cellphoneNumberCallback(ctx context.Context, mt *workflow.Record[MyType, status], r io.Reader) (status, error) {
-	fmt.Println("cell phone number callback", *mt)
 	b, err := io.ReadAll(r)
 	if err != nil {
 		return 0, err
@@ -291,13 +349,11 @@ func cellphoneNumberCallback(ctx context.Context, mt *workflow.Record[MyType, st
 }
 
 func sendOTP(ctx context.Context, mt *workflow.Record[MyType, status]) (status, error) {
-	fmt.Println("send otp", *mt)
 	mt.Object.OTP = expectedOTP
 	return StatusOTPSent, nil
 }
 
 func otpCallback(ctx context.Context, mt *workflow.Record[MyType, status], r io.Reader) (status, error) {
-	fmt.Println("otp callback", *mt)
 	b, err := io.ReadAll(r)
 	if err != nil {
 		return 0, err
@@ -317,7 +373,6 @@ func otpCallback(ctx context.Context, mt *workflow.Record[MyType, status], r io.
 }
 
 func waitForAccountCoolDown(ctx context.Context, mt *workflow.Record[MyType, status], now time.Time) (status, error) {
-	fmt.Println(fmt.Sprintf("completed waiting for account cool down %v at %v", *mt, now.String()))
 	return StatusCompleted, nil
 }
 

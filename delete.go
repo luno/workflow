@@ -30,8 +30,8 @@ func deleteConsumer[Type any, Status StatusType](w *Workflow[Type, Status]) {
 		}
 		defer consumerStream.Close()
 
-		return DeleteForever(ctx, w.Name, processName, consumerStream, w.recordStore.Store, w.recordStore.Lookup, w.customDelete, w.defaultLagAlert, w.clock)
-	}, w.defaultErrBackOff)
+		return DeleteForever(ctx, w.Name, processName, consumerStream, w.recordStore.Store, w.recordStore.Lookup, w.customDelete, w.defaultOpts.lagAlert, w.clock)
+	}, w.defaultOpts.errBackOff)
 }
 
 func DeleteForever(
