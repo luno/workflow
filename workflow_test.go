@@ -180,18 +180,12 @@ func BenchmarkWorkflow(b *testing.B) {
 	b.Run("1", func(b *testing.B) {
 		benchmarkWorkflow(b, 1)
 	})
-	//b.Run("2", func(b *testing.B) {
-	//	benchmarkWorkflow(b, 2)
-	//})
-	//b.Run("5", func(b *testing.B) {
-	//	benchmarkWorkflow(b, 5)
-	//})
-	//b.Run("10", func(b *testing.B) {
-	//	benchmarkWorkflow(b, 10)
-	//})
-	//b.Run("20", func(b *testing.B) {
-	//	benchmarkWorkflow(b, 20)
-	//})
+	b.Run("5", func(b *testing.B) {
+		benchmarkWorkflow(b, 5)
+	})
+	b.Run("10", func(b *testing.B) {
+		benchmarkWorkflow(b, 10)
+	})
 }
 
 func benchmarkWorkflow(b *testing.B, numberOfSteps int) {
@@ -205,7 +199,7 @@ func benchmarkWorkflow(b *testing.B, numberOfSteps int) {
 	for i := range numberOfSteps {
 		bldr.AddStep(status(i), func(ctx context.Context, r *workflow.Record[MyType, status]) (status, error) {
 			return status(i + 1), nil
-		}, status(i+1)).WithOptions(workflow.PollingFrequency(100 * time.Nanosecond))
+		}, status(i+1))
 	}
 
 	recordStore := memrecordstore.New()
@@ -217,7 +211,10 @@ func benchmarkWorkflow(b *testing.B, numberOfSteps int) {
 		timeoutStore,
 		memrolescheduler.New(),
 		workflow.WithClock(clock),
-		workflow.WithOutboxPollingFrequency(100*time.Nanosecond),
+		workflow.WithOutboxPollingFrequency(1*time.Nanosecond),
+		workflow.WithDefaultOptions(
+			workflow.PollingFrequency(1*time.Nanosecond),
+		),
 	)
 
 	wf.Run(ctx)
