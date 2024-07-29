@@ -24,6 +24,7 @@ func deleteConsumer[Type any, Status StatusType](w *Workflow[Type, Status]) {
 			ctx,
 			topic,
 			role,
+			WithConsumerPollFrequency(w.defaultOpts.pollingFrequency),
 		)
 		if err != nil {
 			return err

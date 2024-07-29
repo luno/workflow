@@ -24,7 +24,15 @@ type TimeoutRecord struct {
 }
 
 // pollTimeouts attempts to find the very next
-func pollTimeouts[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], status Status, timeouts timeouts[Type, Status], processName string) error {
+func pollTimeouts[Type any, Status StatusType](
+	ctx context.Context,
+	w *Workflow[Type, Status],
+	status Status,
+	timeouts timeouts[Type, Status],
+	processName string,
+	pollingFrequency time.Duration,
+	pauseAfterErrCount int,
+) error {
 	updateFn := newUpdater[Type, Status](w.recordStore.Lookup, w.recordStore.Store, w.statusGraph, w.clock)
 	store := w.recordStore.Store
 
@@ -73,7 +81,7 @@ func pollTimeouts[Type any, Status StatusType](ctx context.Context, w *Workflow[
 
 			for _, config := range timeouts.transitions {
 				t0 := w.clock.Now()
-				err = processTimeout(ctx, w, config, r, expiredTimeout, w.timeoutStore.Complete, store, updateFn, processName, timeouts.pauseAfterErrCount)
+				err = processTimeout(ctx, w, config, r, expiredTimeout, w.timeoutStore.Complete, store, updateFn, processName, pauseAfterErrCount)
 				if err != nil {
 					metrics.ProcessLatency.WithLabelValues(w.Name, processName).Observe(w.clock.Since(t0).Seconds())
 					return err
@@ -83,7 +91,7 @@ func pollTimeouts[Type any, Status StatusType](ctx context.Context, w *Workflow[
 			}
 		}
 
-		err = wait(ctx, timeouts.pollingFrequency)
+		err = wait(ctx, pollingFrequency)
 		if err != nil {
 			return err
 		}
@@ -184,19 +192,58 @@ func timeoutPoller[Type any, Status StatusType](w *Workflow[Type, Status], statu
 	// storing in the record store, event streamer, timeout store, or offset store.
 	processName := makeRole(status.String(), "timeout-consumer")
 
+	errBackOff := w.defaultOpts.errBackOff
+	if timeouts.errBackOff.Nanoseconds() != 0 {
+		errBackOff = timeouts.errBackOff
+	}
+
+	pollingFrequency := w.defaultOpts.pollingFrequency
+	if timeouts.pollingFrequency.Nanoseconds() != 0 {
+		pollingFrequency = timeouts.pollingFrequency
+	}
+
+	pauseAfterErrCount := w.defaultOpts.pauseAfterErrCount
+	if timeouts.pauseAfterErrCount != 0 {
+		pauseAfterErrCount = timeouts.pauseAfterErrCount
+	}
+
 	w.run(role, processName, func(ctx context.Context) error {
-		err := pollTimeouts(ctx, w, status, timeouts, processName)
+		err := pollTimeouts(ctx, w, status, timeouts, processName, pollingFrequency, pauseAfterErrCount)
 		if err != nil {
 			return err
 		}
 
 		return nil
-	}, timeouts.errBackOff)
+	}, errBackOff)
 }
 
-func timeoutAutoInserterConsumer[Type any, Status StatusType](w *Workflow[Type, Status], status Status, timeouts timeouts[Type, Status]) {
+func timeoutAutoInserterConsumer[Type any, Status StatusType](
+	w *Workflow[Type, Status],
+	status Status,
+	timeouts timeouts[Type, Status],
+) {
 	role := makeRole(w.Name, fmt.Sprintf("%v", int(status)), "timeout-auto-inserter-consumer")
 	processName := makeRole(status.String(), "timeout-auto-inserter-consumer")
+
+	pauseAfterErrCount := w.defaultOpts.pauseAfterErrCount
+	if timeouts.pauseAfterErrCount != 0 {
+		pauseAfterErrCount = timeouts.pauseAfterErrCount
+	}
+
+	errBackOff := w.defaultOpts.errBackOff
+	if timeouts.errBackOff.Nanoseconds() != 0 {
+		errBackOff = timeouts.errBackOff
+	}
+
+	pollingFrequency := w.defaultOpts.pollingFrequency
+	if timeouts.pollingFrequency.Nanoseconds() != 0 {
+		pollingFrequency = timeouts.pollingFrequency
+	}
+
+	lagAlert := w.defaultOpts.lagAlert
+	if timeouts.lagAlert.Nanoseconds() != 0 {
+		lagAlert = timeouts.lagAlert
+	}
 
 	w.run(role, processName, func(ctx context.Context) error {
 		consumerFunc := func(ctx context.Context, r *Record[Type, Status]) (Status, error) {
@@ -226,23 +273,15 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](w *Workflow[Type, 
 			ctx,
 			topic,
 			role,
-			WithConsumerPollFrequency(timeouts.pollingFrequency),
+			WithConsumerPollFrequency(pollingFrequency),
 		)
 		if err != nil {
 			return err
 		}
 		defer consumerStream.Close()
 
-		cc := consumerConfig[Type, Status]{
-			pollingFrequency: timeouts.pollingFrequency,
-			errBackOff:       timeouts.errBackOff,
-			consumer:         consumerFunc,
-			parallelCount:    1,
-			lagAlert:         timeouts.lagAlert,
-		}
-
-		return consumeForever(ctx, w, cc, consumerStream, status, processName, 1, 1)
-	}, timeouts.errBackOff)
+		return consumeForever(ctx, w, consumerFunc, 0, lagAlert, pauseAfterErrCount, consumerStream, status, processName, 1, 1)
+	}, errBackOff)
 }
 
 // TimerFunc exists to allow the specification of when the timeout should expire dynamically. If not time is set then a

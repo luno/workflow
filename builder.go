@@ -174,7 +174,7 @@ func (c *connectorUpdater[Type, Status]) WithOptions(opts ...Option) {
 	for _, opt := range opts {
 		opt(&connectorOpts)
 	}
-	c.config.pollingFrequency = connectorOpts.pollingFrequency
+
 	c.config.parallelCount = connectorOpts.parallelCount
 	c.config.errBackOff = connectorOpts.errBackOff
 	c.config.lag = connectorOpts.lag

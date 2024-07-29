@@ -33,9 +33,24 @@ func outboxConsumer[Type any, Status StatusType](w *Workflow[Type, Status], conf
 		fmt.Sprintf("%v", totalShards),
 	)
 
+	errBackOff := w.outboxConfig.errBackOff
+	if config.errBackOff.Nanoseconds() != 0 {
+		errBackOff = config.errBackOff
+	}
+
+	pollingFrequency := w.outboxConfig.pollingFrequency
+	if config.pollingFrequency.Nanoseconds() != 0 {
+		pollingFrequency = config.pollingFrequency
+	}
+
+	lagAlert := w.outboxConfig.lagAlert
+	if config.lagAlert.Nanoseconds() != 0 {
+		lagAlert = config.lagAlert
+	}
+
 	w.run(role, processName, func(ctx context.Context) error {
-		return purgeOutbox[Type, Status](ctx, w.Name, processName, w.recordStore, w.eventStreamer, w.clock, config.pollingFrequency, config.lagAlert, config.limit, shard, totalShards)
-	}, config.errBackOff)
+		return purgeOutbox[Type, Status](ctx, w.Name, processName, w.recordStore, w.eventStreamer, w.clock, pollingFrequency, lagAlert, config.limit, shard, totalShards)
+	}, errBackOff)
 }
 
 func defaultOutboxConfig() outboxConfig {
