@@ -18,7 +18,6 @@ import (
 	"github.com/luno/workflow/adapters/memrecordstore"
 	"github.com/luno/workflow/adapters/memrolescheduler"
 	"github.com/luno/workflow/adapters/memstreamer"
-	"github.com/luno/workflow/adapters/memtimeoutstore"
 	"github.com/luno/workflow/internal/metrics"
 )
 
@@ -39,7 +38,6 @@ func runWorkflow(t *testing.T) *workflow.Workflow[string, status] {
 	w := b.Build(
 		streamer,
 		recordStore,
-		memtimeoutstore.New(),
 		memrolescheduler.New(),
 		workflow.WithClock(clock),
 		workflow.WithOutboxParallelCount(2),
@@ -202,7 +200,6 @@ func TestMetricProcessIdleState(t *testing.T) {
 	wf := b.Build(
 		streamer,
 		recordStore,
-		memtimeoutstore.New(),
 		scheduler,
 		workflow.WithClock(clock),
 	)
@@ -294,7 +291,6 @@ func TestMetricProcessErrors(t *testing.T) {
 	wf := b.Build(
 		streamer,
 		recordStore,
-		memtimeoutstore.New(),
 		memrolescheduler.New(),
 		workflow.WithClock(clock),
 	)
@@ -353,7 +349,6 @@ func TestRunStateChanges(t *testing.T) {
 	w := b.Build(
 		memstreamer.New(),
 		memrecordstore.New(),
-		memtimeoutstore.New(),
 		memrolescheduler.New(),
 		workflow.WithOutboxPollingFrequency(time.Millisecond),
 	)
@@ -387,7 +382,6 @@ func TestMetricProcessSkippedEvents(t *testing.T) {
 	w := b.Build(
 		memstreamer.New(),
 		memrecordstore.New(),
-		memtimeoutstore.New(),
 		memrolescheduler.New(),
 		workflow.WithOutboxPollingFrequency(time.Millisecond),
 	)

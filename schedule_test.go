@@ -14,7 +14,6 @@ import (
 	"github.com/luno/workflow/adapters/memrecordstore"
 	"github.com/luno/workflow/adapters/memrolescheduler"
 	"github.com/luno/workflow/adapters/memstreamer"
-	"github.com/luno/workflow/adapters/memtimeoutstore"
 )
 
 func TestSchedule(t *testing.T) {
@@ -31,11 +30,9 @@ func TestSchedule(t *testing.T) {
 	now := time.Date(2023, time.April, 9, 8, 30, 0, 0, time.UTC)
 	clock := clock_testing.NewFakeClock(now)
 	recordStore := memrecordstore.New()
-	timeoutStore := memtimeoutstore.New()
 	wf := b.Build(
 		memstreamer.New(),
 		recordStore,
-		timeoutStore,
 		memrolescheduler.New(),
 		workflow.WithClock(clock),
 		workflow.WithDebugMode(),
@@ -94,7 +91,6 @@ func TestWorkflow_ScheduleShutdown(t *testing.T) {
 	wf := b.Build(
 		memstreamer.New(),
 		memrecordstore.New(),
-		memtimeoutstore.New(),
 		memrolescheduler.New(),
 		workflow.WithDebugMode(),
 	)
@@ -148,11 +144,9 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	now := time.Date(2023, time.April, 9, 8, 30, 0, 0, time.UTC)
 	clock := clock_testing.NewFakeClock(now)
 	recordStore := memrecordstore.New()
-	timeoutStore := memtimeoutstore.New()
 	wf := b.Build(
 		memstreamer.New(),
 		recordStore,
-		timeoutStore,
 		memrolescheduler.New(),
 		workflow.WithClock(clock),
 		workflow.WithDebugMode(),

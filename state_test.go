@@ -46,12 +46,11 @@ func TestInternalState(t *testing.T) {
 	)
 
 	recordStore := memrecordstore.New()
-	timeoutStore := memtimeoutstore.New()
 	wf := b.Build(
 		memstreamer.New(),
 		recordStore,
-		timeoutStore,
 		memrolescheduler.New(),
+		workflow.WithTimeoutStore(memtimeoutstore.New()),
 	)
 
 	require.Equal(t, map[string]workflow.State{}, wf.States())

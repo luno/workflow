@@ -126,10 +126,13 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 			}
 		}
 
-		// Start the timeout poller and inserter consumer
-		for status, timeouts := range w.timeouts {
-			go timeoutPoller(w, status, timeouts)
-			go timeoutAutoInserterConsumer(w, status, timeouts)
+		// Only start timeout consumers if the timeout store is provided. This allows for the timeout store to
+		// be optional for workflows where the timeout feature is not needed.
+		if w.timeoutStore != nil {
+			for status, timeouts := range w.timeouts {
+				go timeoutPoller(w, status, timeouts)
+				go timeoutAutoInserterConsumer(w, status, timeouts)
+			}
 		}
 
 		// Start the connected stream consumers

@@ -43,7 +43,7 @@ func TestStatusGraph(t *testing.T) {
 	b.AddStep(statusStart, nil, statusMiddle)
 	b.AddCallback(statusMiddle, nil, statusEnd)
 
-	w := b.Build(nil, nil, nil, nil)
+	w := b.Build(nil, nil, nil)
 
 	info := w.statusGraph.Info()
 	expectedTransitions := []graph.Transition{
@@ -75,7 +75,7 @@ func TestStatusGraph(t *testing.T) {
 func TestWithStepPollingFrequency(t *testing.T) {
 	b := NewBuilder[string, testStatus]("determine starting points")
 	b.AddStep(statusStart, nil, statusMiddle).WithOptions(PollingFrequency(time.Minute))
-	wf := b.Build(nil, nil, nil, nil, WithDefaultOptions(PollingFrequency(time.Hour)))
+	wf := b.Build(nil, nil, nil, WithDefaultOptions(PollingFrequency(time.Hour)))
 
 	require.Equal(t, time.Minute, wf.consumers[statusStart].pollingFrequency)
 }
@@ -83,7 +83,7 @@ func TestWithStepPollingFrequency(t *testing.T) {
 func TestWithStepErrBackOff(t *testing.T) {
 	b := NewBuilder[string, testStatus]("determine starting points")
 	b.AddStep(statusStart, nil, statusMiddle).WithOptions(ErrBackOff(time.Minute))
-	wf := b.Build(nil, nil, nil, nil, WithDefaultOptions(ErrBackOff(time.Hour)))
+	wf := b.Build(nil, nil, nil, WithDefaultOptions(ErrBackOff(time.Hour)))
 
 	require.Equal(t, time.Minute, wf.consumers[statusStart].errBackOff)
 }
@@ -91,7 +91,7 @@ func TestWithStepErrBackOff(t *testing.T) {
 func TestWithParallelCount(t *testing.T) {
 	b := NewBuilder[string, testStatus]("determine starting points")
 	b.AddStep(statusStart, nil, statusMiddle).WithOptions(ParallelCount(100))
-	wf := b.Build(nil, nil, nil, nil, WithDefaultOptions(ParallelCount(1)))
+	wf := b.Build(nil, nil, nil, WithDefaultOptions(ParallelCount(1)))
 
 	require.Equal(t, int(100), wf.consumers[statusStart].parallelCount)
 }
@@ -100,7 +100,7 @@ func TestWithClock(t *testing.T) {
 	now := time.Now()
 	clock := clock_testing.NewFakeClock(now)
 	b := NewBuilder[string, testStatus]("determine starting points")
-	wf := b.Build(nil, nil, nil, nil, WithClock(clock))
+	wf := b.Build(nil, nil, nil, WithClock(clock))
 
 	clock.Step(time.Hour)
 
@@ -114,7 +114,7 @@ func TestAddingCallbacks(t *testing.T) {
 
 	b := NewBuilder[string, testStatus]("determine starting points")
 	b.AddCallback(statusStart, exampleFn, statusEnd)
-	wf := b.Build(nil, nil, nil, nil)
+	wf := b.Build(nil, nil, nil)
 
 	require.NotNil(t, wf.callback[statusStart][0].CallbackFunc)
 }
@@ -131,9 +131,8 @@ func TestWithTimeoutErrBackOff(t *testing.T) {
 	).WithOptions(
 		ErrBackOff(time.Minute),
 	)
-	wf := b.Build(nil, nil, nil, nil, WithDefaultOptions(ConsumeLag(time.Hour)))
 
-	require.Equal(t, time.Minute, wf.timeouts[statusStart].errBackOff)
+	require.Equal(t, time.Minute, b.workflow.timeouts[statusStart].errBackOff)
 }
 
 func TestWithTimeoutPollingFrequency(t *testing.T) {
@@ -148,9 +147,8 @@ func TestWithTimeoutPollingFrequency(t *testing.T) {
 	).WithOptions(
 		PollingFrequency(time.Minute),
 	)
-	wf := b.Build(nil, nil, nil, nil, WithDefaultOptions(PollingFrequency(time.Hour)))
 
-	require.Equal(t, time.Minute, wf.timeouts[statusStart].pollingFrequency)
+	require.Equal(t, time.Minute, b.workflow.timeouts[statusStart].pollingFrequency)
 }
 
 func TestConnectorConstruction(t *testing.T) {
@@ -170,7 +168,7 @@ func TestConnectorConstruction(t *testing.T) {
 		ErrBackOff(time.Hour*6),
 	)
 
-	w := b.Build(nil, nil, nil, nil)
+	w := b.Build(nil, nil, nil)
 
 	for _, config := range w.connectorConfigs {
 		require.Equal(t, "my-test-connector", config.name)
@@ -252,7 +250,7 @@ func TestWithStepLagAlert(t *testing.T) {
 				tc.opts...,
 			)
 
-			wf := b.Build(nil, nil, nil, nil)
+			wf := b.Build(nil, nil, nil)
 
 			require.Equal(t, tc.expectedLagAlert, wf.consumers[statusStart].lagAlert)
 		})
@@ -283,6 +281,29 @@ func TestAddStepSingleUseValidation(t *testing.T) {
 		}, "Adding duplicate step should panic")
 }
 
+func TestConfigureTimeoutWithoutTimeoutStore(t *testing.T) {
+	b := NewBuilder[string, testStatus]("consumer lag")
+	b.AddTimeout(
+		statusStart,
+		DurationTimerFunc[string, testStatus](time.Hour),
+		func(ctx context.Context, r *Record[string, testStatus], now time.Time) (testStatus, error) {
+			return statusEnd, nil
+		},
+		statusEnd,
+	)
+
+	// Should panic as setting a second config of statusStart
+	require.PanicsWithValue(t,
+		"cannot configure timeouts without providing TimeoutStore for workflow",
+		func() {
+			b.Build(
+				nil,
+				nil,
+				nil,
+			)
+		}, "Adding a timout step without providing a timeout store should panic")
+}
+
 func TestWithStepConsumerLag(t *testing.T) {
 	specifiedLag := time.Hour * 9
 	b := NewBuilder[string, testStatus]("consumer lag")
@@ -295,7 +316,7 @@ func TestWithStepConsumerLag(t *testing.T) {
 	).WithOptions(
 		ConsumeLag(specifiedLag),
 	)
-	wf := b.Build(nil, nil, nil, nil, WithDefaultOptions(ConsumeLag(time.Minute)))
+	wf := b.Build(nil, nil, nil, WithDefaultOptions(ConsumeLag(time.Minute)))
 
 	require.Equal(t, specifiedLag, wf.consumers[statusStart].lag)
 }
@@ -310,7 +331,6 @@ func TestWithDefaultOptions(t *testing.T) {
 		statusEnd,
 	)
 	wf := b.Build(
-		nil,
 		nil,
 		nil,
 		nil,

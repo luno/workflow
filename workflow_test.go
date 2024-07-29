@@ -114,13 +114,12 @@ func TestWorkflowAcceptanceTest(t *testing.T) {
 	b.AddTimeout(StatusOTPVerified, workflow.DurationTimerFunc[MyType, status](time.Hour), waitForAccountCoolDown, StatusCompleted)
 
 	recordStore := memrecordstore.New()
-	timeoutStore := memtimeoutstore.New()
 	clock := clock_testing.NewFakeClock(time.Now())
 	wf := b.Build(
 		memstreamer.New(),
 		recordStore,
-		timeoutStore,
 		memrolescheduler.New(),
+		workflow.WithTimeoutStore(memtimeoutstore.New()),
 		workflow.WithClock(clock),
 		workflow.WithDebugMode(),
 	)
@@ -203,12 +202,10 @@ func benchmarkWorkflow(b *testing.B, numberOfSteps int) {
 	}
 
 	recordStore := memrecordstore.New()
-	timeoutStore := memtimeoutstore.New()
 	clock := clock_testing.NewFakeClock(time.Now())
 	wf := bldr.Build(
 		memstreamer.New(),
 		recordStore,
-		timeoutStore,
 		memrolescheduler.New(),
 		workflow.WithClock(clock),
 		workflow.WithOutboxPollingFrequency(1*time.Nanosecond),
@@ -255,13 +252,12 @@ func TestTimeout(t *testing.T) {
 	)
 
 	recordStore := memrecordstore.New()
-	timeoutStore := memtimeoutstore.New()
 	clock := clock_testing.NewFakeClock(time.Now())
 	wf := b.Build(
 		memstreamer.New(),
 		recordStore,
-		timeoutStore,
 		memrolescheduler.New(),
+		workflow.WithTimeoutStore(memtimeoutstore.New()),
 		workflow.WithClock(clock),
 	)
 
@@ -385,11 +381,9 @@ func TestWorkflow_ErrWorkflowNotRunning(t *testing.T) {
 	}, StatusEnd)
 
 	recordStore := memrecordstore.New()
-	timeoutStore := memtimeoutstore.New()
 	wf := b.Build(
 		memstreamer.New(),
 		recordStore,
-		timeoutStore,
 		memrolescheduler.New(),
 	)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -418,11 +412,9 @@ func TestWorkflow_TestingRequire(t *testing.T) {
 	}, StatusEnd)
 
 	recordStore := memrecordstore.New()
-	timeoutStore := memtimeoutstore.New()
 	wf := b.Build(
 		memstreamer.New(),
 		recordStore,
-		timeoutStore,
 		memrolescheduler.New(),
 	)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -472,12 +464,11 @@ func TestTimeTimerFunc(t *testing.T) {
 	clock := clock_testing.NewFakeClock(now)
 
 	recordStore := memrecordstore.New()
-	timeoutStore := memtimeoutstore.New()
 	wf := b.Build(
 		memstreamer.New(),
 		recordStore,
-		timeoutStore,
 		memrolescheduler.New(),
+		workflow.WithTimeoutStore(memtimeoutstore.New()),
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -545,7 +536,6 @@ func TestConnector(t *testing.T) {
 	w := buidler.Build(
 		memstreamer.New(),
 		memrecordstore.New(),
-		memtimeoutstore.New(),
 		memrolescheduler.New(),
 	)
 
@@ -591,7 +581,6 @@ func TestStepConsumerLag(t *testing.T) {
 	wf := b.Build(
 		memstreamer.New(memstreamer.WithClock(clock)),
 		recordStore,
-		memtimeoutstore.New(),
 		memrolescheduler.New(),
 		workflow.WithClock(clock),
 		workflow.WithDebugMode(),

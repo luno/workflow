@@ -181,10 +181,9 @@ func (c *connectorUpdater[Type, Status]) WithOptions(opts ...Option) {
 	c.config.lagAlert = connectorOpts.lagAlert
 }
 
-func (b *Builder[Type, Status]) Build(eventStreamer EventStreamer, recordStore RecordStore, timeoutStore TimeoutStore, roleScheduler RoleScheduler, opts ...BuildOption) *Workflow[Type, Status] {
+func (b *Builder[Type, Status]) Build(eventStreamer EventStreamer, recordStore RecordStore, roleScheduler RoleScheduler, opts ...BuildOption) *Workflow[Type, Status] {
 	b.workflow.eventStreamer = eventStreamer
 	b.workflow.recordStore = recordStore
-	b.workflow.timeoutStore = timeoutStore
 	b.workflow.scheduler = roleScheduler
 
 	bo := defaultBuildOptions()
@@ -200,19 +199,25 @@ func (b *Builder[Type, Status]) Build(eventStreamer EventStreamer, recordStore R
 		b.workflow.customDelete = bo.customDelete
 	}
 
+	b.workflow.timeoutStore = bo.timeoutStore
 	b.workflow.defaultOpts = bo.defaultOptions
 	b.workflow.outboxConfig = bo.outboxConfig
 	b.workflow.debugMode = bo.debugMode
+
+	if len(b.workflow.timeouts) > 0 && b.workflow.timeoutStore == nil {
+		panic("cannot configure timeouts without providing TimeoutStore for workflow")
+	}
 
 	return b.workflow
 }
 
 type buildOptions struct {
 	clock          clock.Clock
-	debugMode      bool
 	customDelete   customDelete
-	outboxConfig   outboxConfig
+	debugMode      bool
 	defaultOptions options
+	outboxConfig   outboxConfig
+	timeoutStore   TimeoutStore
 }
 
 func defaultBuildOptions() buildOptions {
@@ -223,6 +228,12 @@ func defaultBuildOptions() buildOptions {
 }
 
 type BuildOption func(w *buildOptions)
+
+func WithTimeoutStore(s TimeoutStore) BuildOption {
+	return func(w *buildOptions) {
+		w.timeoutStore = s
+	}
+}
 
 func WithClock(c clock.Clock) BuildOption {
 	return func(bo *buildOptions) {
