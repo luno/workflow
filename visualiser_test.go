@@ -20,7 +20,7 @@ func TestVisualiser(t *testing.T) {
 	}, StatusEnd,
 	)
 
-	wf := b.Build(nil, nil, nil, nil)
+	wf := b.Build(nil, nil, nil)
 
 	err := workflow.MermaidDiagram(wf, "./testfiles/testgraph.md", workflow.LeftToRightDirection)
 	jtest.RequireNil(t, err)

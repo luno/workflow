@@ -12,7 +12,6 @@ import (
 	"github.com/luno/workflow/adapters/memrecordstore"
 	"github.com/luno/workflow/adapters/memrolescheduler"
 	"github.com/luno/workflow/adapters/memstreamer"
-	"github.com/luno/workflow/adapters/memtimeoutstore"
 )
 
 func TestRunState(t *testing.T) {
@@ -105,7 +104,6 @@ func buildWorkflow(fn workflow.ConsumerFunc[string, status]) func(recordStore wo
 		w := b.Build(
 			memstreamer.New(),
 			recordStore,
-			memtimeoutstore.New(),
 			memrolescheduler.New(),
 			workflow.WithDebugMode(),
 			workflow.WithOutboxPollingFrequency(time.Millisecond*5),

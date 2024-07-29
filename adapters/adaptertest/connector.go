@@ -8,7 +8,6 @@ import (
 	"github.com/luno/workflow/adapters/memrecordstore"
 	"github.com/luno/workflow/adapters/memrolescheduler"
 	"github.com/luno/workflow/adapters/memstreamer"
-	"github.com/luno/workflow/adapters/memtimeoutstore"
 )
 
 type User struct {
@@ -59,7 +58,6 @@ func RunConnectorTest(t *testing.T, maker func(seedEvents []workflow.ConnectorEv
 	w := builder.Build(
 		memstreamer.New(),
 		rs,
-		memtimeoutstore.New(),
 		memrolescheduler.New(),
 	)
 

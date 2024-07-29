@@ -74,9 +74,9 @@ func RunEventStreamerTest(t *testing.T, constructor workflow.EventStreamer) {
 	wf := b.Build(
 		constructor,
 		memrecordstore.New(),
-		memtimeoutstore.New(),
 		memrolescheduler.New(),
 		workflow.WithClock(clock),
+		workflow.WithTimeoutStore(memtimeoutstore.New()),
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())

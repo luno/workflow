@@ -10,7 +10,6 @@ import (
 	"github.com/luno/workflow/adapters/memrecordstore"
 	"github.com/luno/workflow/adapters/memrolescheduler"
 	"github.com/luno/workflow/adapters/memstreamer"
-	"github.com/luno/workflow/adapters/memtimeoutstore"
 )
 
 func TestRequireForCircularStatus(t *testing.T) {
@@ -35,7 +34,6 @@ func TestRequireForCircularStatus(t *testing.T) {
 	wf := b.Build(
 		memstreamer.New(),
 		memrecordstore.New(),
-		memtimeoutstore.New(),
 		memrolescheduler.New(),
 	)
 
