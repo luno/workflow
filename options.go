@@ -17,6 +17,14 @@ type options struct {
 	pauseAfterErrCount int
 }
 
+func defaultOptions() options {
+	return options{
+		pollingFrequency: defaultPollingFrequency,
+		errBackOff:       defaultErrBackOff,
+		lagAlert:         defaultLagAlert,
+	}
+}
+
 type Option func(so *options)
 
 // ParallelCount defines the number of instances of the workflow process. The processes are shareded consistently
@@ -60,7 +68,7 @@ func ConsumeLag(d time.Duration) Option {
 
 		if !opt.customLagAlertSet {
 			// Ensure that the lag alert is offset by the added lag.
-			opt.lagAlert = opt.lagAlert + d
+			opt.lagAlert = defaultLagAlert + d
 		}
 	}
 }

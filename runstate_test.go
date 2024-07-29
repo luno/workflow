@@ -108,7 +108,7 @@ func buildWorkflow(fn workflow.ConsumerFunc[string, status]) func(recordStore wo
 			memtimeoutstore.New(),
 			memrolescheduler.New(),
 			workflow.WithDebugMode(),
-			workflow.WithOutboxConfig(workflow.WithOutboxPollingFrequency(time.Millisecond*5)),
+			workflow.WithOutboxPollingFrequency(time.Millisecond*5),
 		)
 
 		return w

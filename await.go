@@ -14,7 +14,7 @@ func (w *Workflow[Type, Status]) Await(ctx context.Context, foreignID, runID str
 		option(&opt)
 	}
 
-	pollFrequency := w.defaultPollingFrequency
+	pollFrequency := w.defaultOpts.pollingFrequency
 	if opt.pollFrequency.Nanoseconds() != 0 {
 		pollFrequency = opt.pollFrequency
 	}
@@ -92,7 +92,7 @@ type awaitOpts struct {
 
 type AwaitOption func(o *awaitOpts)
 
-func WithPollingFrequency(d time.Duration) AwaitOption {
+func WithAwaitPollingFrequency(d time.Duration) AwaitOption {
 	return func(o *awaitOpts) {
 		o.pollFrequency = d
 	}

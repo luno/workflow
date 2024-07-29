@@ -52,16 +52,10 @@ type API[Type any, Status StatusType] interface {
 }
 
 type Workflow[Type any, Status StatusType] struct {
-	Name string
-
-	ctx    context.Context
-	cancel context.CancelFunc
-
-	clock                   clock.Clock
-	defaultPollingFrequency time.Duration
-	defaultErrBackOff       time.Duration
-	defaultLagAlert         time.Duration
-
+	Name      string
+	ctx       context.Context
+	cancel    context.CancelFunc
+	clock     clock.Clock
 	calledRun bool
 	once      sync.Once
 
@@ -74,8 +68,10 @@ type Workflow[Type any, Status StatusType] struct {
 	callback         map[Status][]callback[Type, Status]
 	timeouts         map[Status]timeouts[Type, Status]
 	connectorConfigs []*connectorConfig[Type, Status]
-	outboxConfig     outboxConfig
-	customDelete     customDelete
+
+	defaultOpts  options
+	outboxConfig outboxConfig
+	customDelete customDelete
 
 	internalStateMu sync.Mutex
 	// internalState holds the State of all expected consumers and timeout go routines using their role names

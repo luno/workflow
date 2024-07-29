@@ -89,7 +89,7 @@ func (w *Workflow[Type, Status]) Schedule(foreignID string, startingStatus Statu
 		}
 
 		return nil
-	}, w.defaultErrBackOff)
+	}, w.defaultOpts.errBackOff)
 
 	return nil
 }

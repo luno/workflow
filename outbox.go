@@ -56,35 +56,33 @@ type outboxConfig struct {
 	limit            int64
 }
 
-type OutboxOption func(o *outboxConfig)
-
-func WithOutboxParallelCount(count int) func(o *outboxConfig) {
-	return func(o *outboxConfig) {
-		o.parallelCount = count
+func WithOutboxParallelCount(count int) BuildOption {
+	return func(bo *buildOptions) {
+		bo.outboxConfig.parallelCount = count
 	}
 }
 
-func WithOutboxPollingFrequency(d time.Duration) func(o *outboxConfig) {
-	return func(o *outboxConfig) {
-		o.pollingFrequency = d
+func WithOutboxPollingFrequency(d time.Duration) BuildOption {
+	return func(bo *buildOptions) {
+		bo.outboxConfig.pollingFrequency = d
 	}
 }
 
-func WithOutboxErrBackoff(d time.Duration) func(o *outboxConfig) {
-	return func(o *outboxConfig) {
-		o.errBackOff = d
+func WithOutboxErrBackoff(d time.Duration) BuildOption {
+	return func(bo *buildOptions) {
+		bo.outboxConfig.errBackOff = d
 	}
 }
 
-func WithOutboxLookupLimit(limit int64) func(o *outboxConfig) {
-	return func(o *outboxConfig) {
-		o.limit = limit
+func WithOutboxLookupLimit(limit int64) BuildOption {
+	return func(bo *buildOptions) {
+		bo.outboxConfig.limit = limit
 	}
 }
 
-func WithOutboxLagAlert(d time.Duration) func(o *outboxConfig) {
-	return func(o *outboxConfig) {
-		o.lagAlert = d
+func WithOutboxLagAlert(d time.Duration) BuildOption {
+	return func(bo *buildOptions) {
+		bo.outboxConfig.lagAlert = d
 	}
 }
 
