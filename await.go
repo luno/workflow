@@ -15,7 +15,7 @@ func (w *Workflow[Type, Status]) Await(ctx context.Context, foreignID, runID str
 	}
 
 	pollFrequency := w.defaultOpts.pollingFrequency
-	if opt.pollFrequency.Nanoseconds() != 0 {
+	if opt.pollFrequency > 0 {
 		pollFrequency = opt.pollFrequency
 	}
 
