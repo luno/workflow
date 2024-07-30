@@ -222,7 +222,6 @@ func benchmarkWorkflow(b *testing.B, numberOfSteps int) {
 		UserID: expectedUserID,
 	}
 	for range b.N {
-
 		_, err := wf.Trigger(ctx, fid, 0, workflow.WithInitialValue[MyType, status](&mt))
 		jtest.RequireNil(b, err)
 
