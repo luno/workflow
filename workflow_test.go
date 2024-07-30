@@ -193,7 +193,7 @@ func benchmarkWorkflow(b *testing.B, numberOfSteps int) {
 		cancel()
 	})
 
-	bldr := workflow.NewBuilder[MyType, status]("user sign up")
+	bldr := workflow.NewBuilder[MyType, status]("benchmark")
 
 	for i := range numberOfSteps {
 		bldr.AddStep(status(i), func(ctx context.Context, r *workflow.Record[MyType, status]) (status, error) {
