@@ -193,12 +193,12 @@ func timeoutPoller[Type any, Status StatusType](w *Workflow[Type, Status], statu
 	processName := makeRole(status.String(), "timeout-consumer")
 
 	errBackOff := w.defaultOpts.errBackOff
-	if timeouts.errBackOff.Nanoseconds() != 0 {
+	if timeouts.errBackOff > 0 {
 		errBackOff = timeouts.errBackOff
 	}
 
 	pollingFrequency := w.defaultOpts.pollingFrequency
-	if timeouts.pollingFrequency.Nanoseconds() != 0 {
+	if timeouts.pollingFrequency > 0 {
 		pollingFrequency = timeouts.pollingFrequency
 	}
 
@@ -231,17 +231,17 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](
 	}
 
 	errBackOff := w.defaultOpts.errBackOff
-	if timeouts.errBackOff.Nanoseconds() != 0 {
+	if timeouts.errBackOff > 0 {
 		errBackOff = timeouts.errBackOff
 	}
 
 	pollingFrequency := w.defaultOpts.pollingFrequency
-	if timeouts.pollingFrequency.Nanoseconds() != 0 {
+	if timeouts.pollingFrequency > 0 {
 		pollingFrequency = timeouts.pollingFrequency
 	}
 
 	lagAlert := w.defaultOpts.lagAlert
-	if timeouts.lagAlert.Nanoseconds() != 0 {
+	if timeouts.lagAlert > 0 {
 		lagAlert = timeouts.lagAlert
 	}
 

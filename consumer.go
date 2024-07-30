@@ -52,17 +52,17 @@ func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentSta
 	topic := Topic(w.Name, int(currentStatus))
 
 	errBackOff := w.defaultOpts.errBackOff
-	if p.errBackOff.Nanoseconds() != 0 {
+	if p.errBackOff > 0 {
 		errBackOff = p.errBackOff
 	}
 
 	pollingFrequency := w.defaultOpts.pollingFrequency
-	if p.pollingFrequency.Nanoseconds() != 0 {
+	if p.pollingFrequency > 0 {
 		pollingFrequency = p.pollingFrequency
 	}
 
 	lagAlert := w.defaultOpts.lagAlert
-	if p.lagAlert.Nanoseconds() != 0 {
+	if p.lagAlert > 0 {
 		lagAlert = p.lagAlert
 	}
 
@@ -72,7 +72,7 @@ func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentSta
 	}
 
 	lag := w.defaultOpts.lag
-	if p.lag.Nanoseconds() != 0 {
+	if p.lag > 0 {
 		lag = p.lag
 	}
 

@@ -12,7 +12,6 @@ import (
 	"github.com/luno/jettison/j"
 	"github.com/luno/reflex"
 	"github.com/luno/reflex/rsql"
-
 	"github.com/luno/workflow"
 )
 
@@ -85,7 +84,7 @@ func (c constructor) NewConsumer(ctx context.Context, topic string, name string,
 	}
 
 	pollFrequency := time.Millisecond * 50
-	if copts.PollFrequency.Nanoseconds() != 0 {
+	if copts.PollFrequency > 0 {
 		pollFrequency = copts.PollFrequency
 	}
 

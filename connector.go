@@ -43,17 +43,17 @@ func connectorConsumer[Type any, Status StatusType](w *Workflow[Type, Status], c
 	)
 
 	errBackOff := w.defaultOpts.errBackOff
-	if config.errBackOff.Nanoseconds() != 0 {
+	if config.errBackOff > 0 {
 		errBackOff = config.errBackOff
 	}
 
 	lagAlert := w.defaultOpts.lagAlert
-	if config.lagAlert.Nanoseconds() != 0 {
+	if config.lagAlert > 0 {
 		lagAlert = config.lagAlert
 	}
 
 	lag := w.defaultOpts.lag
-	if config.lag.Nanoseconds() != 0 {
+	if config.lag > 0 {
 		lag = config.lag
 	}
 
