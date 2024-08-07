@@ -1,7 +1,6 @@
-<div style="text-align: center;">
+<div align="center">
     <img src="./logo/workflow.png" width="500" alt="Workflow Logo">
 </div>
-
 ## Workflow is a Golang workflow framework that encompasses these main features:
 - Defining small units of work called "Steps"
 - Consumer management and graceful shutdown
