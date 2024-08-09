@@ -12,20 +12,20 @@ import (
 )
 
 func RunRoleSchedulerTest(t *testing.T, factory func() workflow.RoleScheduler) {
-	tests := []func(t *testing.T, rs workflow.RoleScheduler){
+	tests := []func(t *testing.T, factory func() workflow.RoleScheduler){
 		testReturnedContext,
 		testLocking,
 		testReleasing,
 	}
 
 	for _, test := range tests {
-		storeForTesting := factory()
-		test(t, storeForTesting)
+		test(t, factory)
 	}
 }
 
-func testReturnedContext(t *testing.T, rs workflow.RoleScheduler) {
+func testReturnedContext(t *testing.T, factory func() workflow.RoleScheduler) {
 	t.Run("Ensure that the passed in context is a parent of the returned context", func(t *testing.T) {
+		rs := factory()
 		ctx := context.Background()
 		ctxWithValue := context.WithValue(ctx, "parent", "context")
 
@@ -38,8 +38,9 @@ func testReturnedContext(t *testing.T, rs workflow.RoleScheduler) {
 	})
 }
 
-func testLocking(t *testing.T, rs workflow.RoleScheduler) {
+func testLocking(t *testing.T, factory func() workflow.RoleScheduler) {
 	t.Run("Ensure role is locked and successive calls are blocked", func(t *testing.T) {
+		rs := factory()
 		ctx := context.Background()
 		ctxWithValue := context.WithValue(ctx, "parent", "context")
 
@@ -71,8 +72,9 @@ func testLocking(t *testing.T, rs workflow.RoleScheduler) {
 	})
 }
 
-func testReleasing(t *testing.T, rs workflow.RoleScheduler) {
+func testReleasing(t *testing.T, factory func() workflow.RoleScheduler) {
 	t.Run("Ensure role is released on context cancellation", func(t *testing.T) {
+		rs := factory()
 		ctx := context.Background()
 
 		_, cancel, err := rs.Await(ctx, "leader")

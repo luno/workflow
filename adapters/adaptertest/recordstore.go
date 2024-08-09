@@ -17,7 +17,7 @@ import (
 )
 
 func RunRecordStoreTest(t *testing.T, factory func() workflow.RecordStore) {
-	tests := []func(t *testing.T, store workflow.RecordStore){
+	tests := []func(t *testing.T, factory func() workflow.RecordStore){
 		testLatest,
 		testLookup,
 		testStore,
@@ -27,260 +27,109 @@ func RunRecordStoreTest(t *testing.T, factory func() workflow.RecordStore) {
 	}
 
 	for _, test := range tests {
-		storeForTesting := factory()
-		test(t, storeForTesting)
+		test(t, factory)
 	}
 }
 
-func testLatest(t *testing.T, store workflow.RecordStore) {
+func testLatest(t *testing.T, factory func() workflow.RecordStore) {
 	t.Run("Latest", func(t *testing.T) {
+		store := factory()
 		ctx := context.Background()
-		workflowName := "my_workflow"
-		foreignID := "Andrew Wormald"
-		runID := "LSDKLJFN-SKDFJB-WERLTBE"
-
-		type example struct {
-			name string
-		}
-
-		e := example{name: foreignID}
-		b, err := json.Marshal(e)
-		jtest.RequireNil(t, err)
-
-		createdAt := time.Now()
-
-		wr := &workflow.WireRecord{
-			WorkflowName: workflowName,
-			ForeignID:    foreignID,
-			RunID:        runID,
-			Status:       int(statusStarted),
-			RunState:     workflow.RunStateInitiated,
-			Object:       b,
-			CreatedAt:    createdAt,
-			UpdatedAt:    createdAt,
-		}
-
+		expected := dummyWireRecordWithID(t, 1)
 		maker := func(recordID int64) (workflow.OutboxEventData, error) { return workflow.OutboxEventData{}, nil }
 
-		err = store.Store(ctx, wr, maker)
+		err := store.Store(ctx, expected, maker)
 		jtest.RequireNil(t, err)
 
-		expected := workflow.WireRecord{
-			ID:           1,
-			WorkflowName: workflowName,
-			ForeignID:    foreignID,
-			RunID:        runID,
-			RunState:     workflow.RunStateInitiated,
-			Status:       int(statusStarted),
-			Object:       b,
-			CreatedAt:    createdAt,
-			UpdatedAt:    createdAt,
-		}
-
-		latest, err := store.Latest(ctx, workflowName, foreignID)
+		latest, err := store.Latest(ctx, expected.WorkflowName, expected.ForeignID)
 		jtest.RequireNil(t, err)
 
-		recordIsEqual(t, expected, *latest)
+		recordIsEqual(t, *expected, *latest)
 
-		wr = latest
-		wr.Status = int(statusEnd)
-		wr.RunState = workflow.RunStateCompleted
-		err = store.Store(ctx, wr, maker)
+		expected.Status = int(statusEnd)
+		expected.RunState = workflow.RunStateCompleted
+		err = store.Store(ctx, expected, maker)
 		jtest.RequireNil(t, err)
 
-		expected = workflow.WireRecord{
-			ID:           1,
-			WorkflowName: workflowName,
-			ForeignID:    foreignID,
-			RunID:        runID,
-			RunState:     workflow.RunStateCompleted,
-			Status:       int(statusEnd),
-			Object:       b,
-			CreatedAt:    createdAt,
-			UpdatedAt:    createdAt,
-		}
-
-		latest, err = store.Latest(ctx, workflowName, foreignID)
+		latest, err = store.Latest(ctx, expected.WorkflowName, expected.ForeignID)
 		jtest.RequireNil(t, err)
-		recordIsEqual(t, expected, *latest)
+		recordIsEqual(t, *expected, *latest)
 	})
 }
 
-func testLookup(t *testing.T, store workflow.RecordStore) {
+func testLookup(t *testing.T, factory func() workflow.RecordStore) {
 	t.Run("Lookup", func(t *testing.T) {
+		store := factory()
 		ctx := context.Background()
-		workflowName := "my_workflow"
-		foreignID := "Andrew Wormald"
-		runID := "LSDKLJFN-SKDFJB-WERLTBE"
-
-		type example struct {
-			name string
-		}
-
-		e := example{name: foreignID}
-		b, err := json.Marshal(e)
-		jtest.RequireNil(t, err)
-
-		createdAt := time.Now()
-
-		wr := &workflow.WireRecord{
-			WorkflowName: workflowName,
-			ForeignID:    foreignID,
-			RunID:        runID,
-			RunState:     workflow.RunStateInitiated,
-			Status:       int(statusStarted),
-			Object:       b,
-			CreatedAt:    createdAt,
-			UpdatedAt:    createdAt,
-		}
-
+		expected := dummyWireRecordWithID(t, 1)
 		maker := func(recordID int64) (workflow.OutboxEventData, error) { return workflow.OutboxEventData{}, nil }
 
-		err = store.Store(ctx, wr, maker)
+		err := store.Store(ctx, expected, maker)
 		jtest.RequireNil(t, err)
-
-		expected := workflow.WireRecord{
-			ID:           1,
-			WorkflowName: workflowName,
-			ForeignID:    foreignID,
-			RunID:        runID,
-			RunState:     workflow.RunStateInitiated,
-			Status:       int(statusStarted),
-			Object:       b,
-			CreatedAt:    createdAt,
-			UpdatedAt:    createdAt,
-		}
 
 		latest, err := store.Lookup(ctx, 1)
 		jtest.RequireNil(t, err)
 
-		recordIsEqual(t, expected, *latest)
+		recordIsEqual(t, *expected, *latest)
 	})
 }
 
-func testStore(t *testing.T, store workflow.RecordStore) {
+func testStore(t *testing.T, factory func() workflow.RecordStore) {
 	t.Run("RecordStore", func(t *testing.T) {
+		store := factory()
 		ctx := context.Background()
-		workflowName := "my_workflow"
-		foreignID := "Andrew Wormald"
-		runID := "LSDKLJFN-SKDFJB-WERLTBE"
-
-		type example struct {
-			name string
-		}
-
-		e := example{name: foreignID}
-		b, err := json.Marshal(e)
-		jtest.RequireNil(t, err)
-
-		createdAt := time.Now()
-
-		wr := &workflow.WireRecord{
-			WorkflowName: workflowName,
-			ForeignID:    foreignID,
-			RunID:        runID,
-			RunState:     workflow.RunStateInitiated,
-			Status:       int(statusStarted),
-			Object:       b,
-			CreatedAt:    createdAt,
-			UpdatedAt:    createdAt,
-		}
-
+		expected := dummyWireRecordWithID(t, 1)
 		maker := func(recordID int64) (workflow.OutboxEventData, error) { return workflow.OutboxEventData{}, nil }
 
-		err = store.Store(ctx, wr, maker)
+		err := store.Store(ctx, expected, maker)
 		jtest.RequireNil(t, err)
 
 		latest, err := store.Lookup(ctx, 1)
 		jtest.RequireNil(t, err)
 
 		latest.Status = int(statusMiddle)
+		expected.Status = int(statusMiddle)
 
 		err = store.Store(ctx, latest, maker)
 		jtest.RequireNil(t, err)
 
-		expected := workflow.WireRecord{
-			ID:           1,
-			WorkflowName: workflowName,
-			ForeignID:    foreignID,
-			RunID:        runID,
-			RunState:     workflow.RunStateInitiated,
-			Status:       int(statusMiddle),
-			Object:       b,
-			CreatedAt:    createdAt,
-			UpdatedAt:    createdAt,
-		}
-
-		recordIsEqual(t, expected, *latest)
+		recordIsEqual(t, *expected, *latest)
 
 		latest, err = store.Lookup(ctx, 1)
 		jtest.RequireNil(t, err)
 
 		latest.Status = int(statusEnd)
+		expected.Status = int(statusEnd)
 
 		err = store.Store(ctx, latest, maker)
 		jtest.RequireNil(t, err)
 
-		expected = workflow.WireRecord{
-			ID:           1,
-			WorkflowName: workflowName,
-			ForeignID:    foreignID,
-			RunID:        runID,
-			RunState:     workflow.RunStateInitiated,
-			Status:       int(statusEnd),
-			Object:       b,
-			CreatedAt:    createdAt,
-			UpdatedAt:    createdAt,
-		}
-
-		recordIsEqual(t, expected, *latest)
+		recordIsEqual(t, *expected, *latest)
 	})
 }
 
-func testListOutboxEvents(t *testing.T, store workflow.RecordStore) {
+func testListOutboxEvents(t *testing.T, factory func() workflow.RecordStore) {
 	t.Run("ListOutboxEvents", func(t *testing.T) {
+		store := factory()
 		ctx := context.Background()
-		workflowName := "my_workflow"
-		foreignID := "Andrew Wormald"
-		runID := "LSDKLJFN-SKDFJB-WERLTBE"
-
-		type example struct {
-			name string
-		}
-
-		e := example{name: foreignID}
-		b, err := json.Marshal(e)
-		jtest.RequireNil(t, err)
-
-		createdAt := time.Now()
-
-		wr := &workflow.WireRecord{
-			WorkflowName: workflowName,
-			ForeignID:    foreignID,
-			RunID:        runID,
-			RunState:     workflow.RunStateInitiated,
-			Status:       int(statusStarted),
-			Object:       b,
-			CreatedAt:    createdAt,
-			UpdatedAt:    createdAt,
-		}
+		expected := dummyWireRecord(t)
 
 		maker := func(recordID int64) (workflow.OutboxEventData, error) {
 			// Record ID would not have been set if it is a new record. Assign the recordID that the Store provides
-			wr.ID = recordID
-			return workflow.WireRecordToOutboxEventData(*wr, workflow.RunStateInitiated)
+			expected.ID = recordID
+			return workflow.WireRecordToOutboxEventData(*expected, workflow.RunStateInitiated)
 		}
 
-		err = store.Store(ctx, wr, maker)
+		err := store.Store(ctx, expected, maker)
 		jtest.RequireNil(t, err)
 
-		ls, err := store.ListOutboxEvents(ctx, workflowName, 1000)
+		ls, err := store.ListOutboxEvents(ctx, expected.WorkflowName, 1000)
 		jtest.RequireNil(t, err)
 
 		require.Equal(t, 1, len(ls))
 
 		require.Equal(t, int64(1), ls[0].ID)
-		require.Equal(t, workflowName, ls[0].WorkflowName)
+		require.Equal(t, expected.WorkflowName, ls[0].WorkflowName)
 
 		var r outboxpb.OutboxRecord
 		err = proto.Unmarshal(ls[0].Data, &r)
@@ -293,41 +142,19 @@ func testListOutboxEvents(t *testing.T, store workflow.RecordStore) {
 	})
 }
 
-func testDeleteOutboxEvent(t *testing.T, store workflow.RecordStore) {
+func testDeleteOutboxEvent(t *testing.T, factory func() workflow.RecordStore) {
 	t.Run("DeleteOutboxEvent", func(t *testing.T) {
+		store := factory()
 		ctx := context.Background()
-		workflowName := "my_workflow"
-		foreignID := "Andrew Wormald"
-		runID := "LSDKLJFN-SKDFJB-WERLTBE"
-
-		type example struct {
-			name string
-		}
-
-		e := example{name: foreignID}
-		b, err := json.Marshal(e)
-		jtest.RequireNil(t, err)
-
-		createdAt := time.Now()
-
-		wr := &workflow.WireRecord{
-			WorkflowName: workflowName,
-			ForeignID:    foreignID,
-			RunID:        runID,
-			RunState:     workflow.RunStateInitiated,
-			Status:       int(statusStarted),
-			Object:       b,
-			CreatedAt:    createdAt,
-			UpdatedAt:    createdAt,
-		}
+		expected := dummyWireRecord(t)
 
 		maker := func(recordID int64) (workflow.OutboxEventData, error) {
 			// Record ID would not have been set if it is a new record. Assign the recordID that the Store provides
-			wr.ID = recordID
-			return workflow.WireRecordToOutboxEventData(*wr, workflow.RunStateInitiated)
+			expected.ID = recordID
+			return workflow.WireRecordToOutboxEventData(*expected, workflow.RunStateInitiated)
 		}
 
-		err = store.Store(ctx, wr, maker)
+		err := store.Store(ctx, expected, maker)
 		jtest.RequireNil(t, err)
 
 		latest, err := store.Lookup(ctx, 1)
@@ -335,43 +162,30 @@ func testDeleteOutboxEvent(t *testing.T, store workflow.RecordStore) {
 
 		latest.Status = int(statusMiddle)
 
-		ls, err := store.ListOutboxEvents(ctx, workflowName, 1000)
+		ls, err := store.ListOutboxEvents(ctx, expected.WorkflowName, 1000)
 		jtest.RequireNil(t, err)
 
 		err = store.DeleteOutboxEvent(ctx, ls[0].ID)
 		jtest.RequireNil(t, err)
 
-		ls, err = store.ListOutboxEvents(ctx, workflowName, 1000)
+		ls, err = store.ListOutboxEvents(ctx, expected.WorkflowName, 1000)
 		jtest.RequireNil(t, err)
 
 		require.Equal(t, 0, len(ls))
 	})
 }
 
-func testList(t *testing.T, store workflow.RecordStore) {
+func testList(t *testing.T, factory func() workflow.RecordStore) {
+	workflowName := "my_workflow"
+	maker := func(recordID int64) (workflow.OutboxEventData, error) { return workflow.OutboxEventData{}, nil }
+
 	t.Run("List", func(t *testing.T) {
+		store := factory()
 		ctx := context.Background()
-		workflowName := "my_workflow"
-		maker := func(recordID int64) (workflow.OutboxEventData, error) { return workflow.OutboxEventData{}, nil }
-
-		type example struct {
-			value string
-		}
-
-		e := example{value: "test"}
-		b, err := json.Marshal(e)
-		jtest.RequireNil(t, err)
 
 		seedCount := 1000
 		for i := 0; i < seedCount; i++ {
-			newRecord := &workflow.WireRecord{
-				WorkflowName: workflowName,
-				ForeignID:    fmt.Sprintf("%v", i),
-				RunID:        "SLDKFLSD-FLSDKF-SLDKNFL",
-				Object:       b,
-			}
-
-			err := store.Store(ctx, newRecord, maker)
+			err := store.Store(ctx, dummyWireRecord(t), maker)
 			jtest.RequireNil(t, err)
 		}
 
@@ -406,33 +220,15 @@ func testList(t *testing.T, store workflow.RecordStore) {
 	})
 
 	t.Run("List - FilterByForeignID", func(t *testing.T) {
+		store := factory()
 		ctx := context.Background()
-		workflowName := "my_workflow"
-		maker := func(recordID int64) (workflow.OutboxEventData, error) { return workflow.OutboxEventData{}, nil }
-
-		type example struct {
-			value string
-		}
-
-		e := example{value: "test"}
-		b, err := json.Marshal(e)
-		jtest.RequireNil(t, err)
-
 		foreignIDs := []string{"MSDVUI-OBEWF-BYUIOW", "FRELBJK-SRGIUE-RGTJDSF"}
 		for _, foreignID := range foreignIDs {
 			for i := 0; i < 20; i++ {
-				uid, err := uuid.NewUUID()
-				jtest.RequireNil(t, err)
+				wr := dummyWireRecord(t)
+				wr.ForeignID = foreignID
 
-				newRecord := &workflow.WireRecord{
-					WorkflowName: workflowName,
-					Status:       int(statusMiddle),
-					ForeignID:    foreignID,
-					RunID:        uid.String(),
-					Object:       b,
-				}
-
-				err = store.Store(ctx, newRecord, maker)
+				err := store.Store(ctx, wr, maker)
 				jtest.RequireNil(t, err)
 			}
 		}
@@ -451,18 +247,8 @@ func testList(t *testing.T, store workflow.RecordStore) {
 	})
 
 	t.Run("List - FilterByRunState", func(t *testing.T) {
+		store := factory()
 		ctx := context.Background()
-		workflowName := "my_workflow"
-		maker := func(recordID int64) (workflow.OutboxEventData, error) { return workflow.OutboxEventData{}, nil }
-
-		type example struct {
-			value string
-		}
-
-		e := example{value: "test"}
-		b, err := json.Marshal(e)
-		jtest.RequireNil(t, err)
-
 		config := map[workflow.RunState]int{
 			workflow.RunStateInitiated:   10,
 			workflow.RunStateRunning:     100,
@@ -473,19 +259,10 @@ func testList(t *testing.T, store workflow.RecordStore) {
 		}
 		for runState, count := range config {
 			for i := 0; i < count; i++ {
-				uid, err := uuid.NewUUID()
-				jtest.RequireNil(t, err)
+				wr := dummyWireRecord(t)
+				wr.RunState = runState
 
-				newRecord := &workflow.WireRecord{
-					WorkflowName: workflowName,
-					Status:       int(statusMiddle),
-					ForeignID:    "1",
-					RunState:     runState,
-					RunID:        uid.String(),
-					Object:       b,
-				}
-
-				err = store.Store(ctx, newRecord, maker)
+				err := store.Store(ctx, wr, maker)
 				jtest.RequireNil(t, err)
 			}
 		}
@@ -493,7 +270,7 @@ func testList(t *testing.T, store workflow.RecordStore) {
 		for runState, count := range config {
 			ls, err := store.List(ctx, workflowName, 0, 100, workflow.OrderTypeAscending, workflow.FilterByRunState(runState))
 			jtest.RequireNil(t, err)
-			require.Equal(t, count, len(ls))
+			require.Equal(t, count, len(ls), fmt.Sprintf("Expected to have %v entries of %v", count, runState.String()))
 
 			for _, l := range ls {
 				require.Equal(t, l.RunState, runState)
@@ -502,18 +279,8 @@ func testList(t *testing.T, store workflow.RecordStore) {
 	})
 
 	t.Run("List - FilterByStatus", func(t *testing.T) {
+		store := factory()
 		ctx := context.Background()
-		workflowName := "my_workflow"
-		maker := func(recordID int64) (workflow.OutboxEventData, error) { return workflow.OutboxEventData{}, nil }
-
-		type example struct {
-			value string
-		}
-
-		e := example{value: "test"}
-		b, err := json.Marshal(e)
-		jtest.RequireNil(t, err)
-
 		config := map[status]int{
 			statusStarted: 10,
 			statusMiddle:  100,
@@ -521,19 +288,10 @@ func testList(t *testing.T, store workflow.RecordStore) {
 		}
 		for status, count := range config {
 			for i := 0; i < count; i++ {
-				uid, err := uuid.NewUUID()
-				jtest.RequireNil(t, err)
+				newRecord := dummyWireRecord(t)
+				newRecord.Status = int(status)
 
-				newRecord := &workflow.WireRecord{
-					WorkflowName: workflowName,
-					Status:       int(status),
-					ForeignID:    "1",
-					RunState:     workflow.RunStateCompleted,
-					RunID:        uid.String(),
-					Object:       b,
-				}
-
-				err = store.Store(ctx, newRecord, maker)
+				err := store.Store(ctx, newRecord, maker)
 				jtest.RequireNil(t, err)
 			}
 		}
@@ -548,6 +306,39 @@ func testList(t *testing.T, store workflow.RecordStore) {
 			}
 		}
 	})
+}
+
+func dummyWireRecord(t *testing.T) *workflow.WireRecord {
+	return dummyWireRecordWithID(t, 0)
+}
+
+func dummyWireRecordWithID(t *testing.T, id int64) *workflow.WireRecord {
+	workflowName := "my_workflow"
+	foreignID := "Andrew Wormald"
+	runID, err := uuid.NewUUID()
+	jtest.RequireNil(t, err)
+
+	type example struct {
+		name string
+	}
+
+	e := example{name: foreignID}
+	b, err := json.Marshal(e)
+	jtest.RequireNil(t, err)
+
+	createdAt := time.Now()
+
+	return &workflow.WireRecord{
+		ID:           id,
+		WorkflowName: workflowName,
+		ForeignID:    foreignID,
+		RunID:        runID.String(),
+		Status:       int(statusStarted),
+		RunState:     workflow.RunStateInitiated,
+		Object:       b,
+		CreatedAt:    createdAt,
+		UpdatedAt:    createdAt,
+	}
 }
 
 func recordIsEqual(t *testing.T, a, b workflow.WireRecord) {
