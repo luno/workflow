@@ -12,6 +12,9 @@ on:
 jobs:
 
   build:
+    strategy:
+      matrix:
+        go: [ '1.21', '1.22', '1' ]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -19,7 +22,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: ['1.21', '1.22', '1']
+        go-version: ${{ matrix.go }}
 
     - name: Vet
       run: go vet -v ./...
