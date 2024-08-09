@@ -297,7 +297,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 		}
 
 		for status, count := range config {
-			ls, err := store.List(ctx, workflowName, 0, 100, workflow.OrderTypeAscending, workflow.FilterByStatus(status))
+			ls, err := store.List(ctx, workflowName, 0, 100, workflow.OrderTypeAscending, workflow.FilterByStatus(int64(status)))
 			jtest.RequireNil(t, err)
 			require.Equal(t, count, len(ls))
 
