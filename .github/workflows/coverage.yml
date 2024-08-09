@@ -1,7 +1,7 @@
 # This workflow will build a golang project
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
 
-name: Go
+name: Run Coverage
 
 on:
   push:
@@ -20,12 +20,6 @@ jobs:
       uses: actions/setup-go@v4
       with:
         go-version: '1.22'
-
-    - name: Vet
-      run: go vet -v ./...
-
-    - name: Test
-      run: go test -v ./...
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4.0.1
