@@ -49,9 +49,9 @@ func FilterByForeignID(val string) RecordFilter {
 	}
 }
 
-func FilterByStatus[status StatusType](s status) RecordFilter {
+func FilterByStatus(status int64) RecordFilter {
 	return func(filters *recordFilters) {
-		i := strconv.FormatInt(int64(s), 10)
+		i := strconv.FormatInt(status, 10)
 		filters.byStatus = makeFilterValue(i)
 	}
 }
