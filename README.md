@@ -7,6 +7,9 @@
         <a style="padding: 0 10px" href="https://codecov.io/gh/luno/workflow" > 
             <img src="https://codecov.io/gh/luno/workflow/graph/badge.svg?token=YLMMOMHYOB"/> 
         </a>
+        <a style="padding: 0 10px" href="https://codecov.io/gh/luno/workflow" > 
+            <img src="https://codecov.io/gh/luno/workflow/graph/badge.svg?token=YLMMOMHYOB"/> 
+        </a>
     </div>
 </div>
 
