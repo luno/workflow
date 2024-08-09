@@ -1,6 +1,6 @@
-<div style="display: flex; justify-content: center; align-items: center; flex-direction: column">
+<div align="center">
     <img src="./logo/workflow.png" width="500" alt="Workflow Logo">    
-    <div style="display: flex; justify-content: center; align-items: center; flex-direction: row; flex-wrap: wrap; max-width: 750px;">
+    <div  align="center">
         <a style="padding: 0 10px" href="https://goreportcard.com/report/github.com/luno/workflow" > 
             <img src="https://goreportcard.com/badge/github.com/luno/workflow"/> 
         </a>
