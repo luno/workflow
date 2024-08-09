@@ -22,7 +22,7 @@ jobs:
           go-version: '1.22'
 
       - name: Generate Sonar Report
-        run: go test -coverprofile=coverage.out -json ./... > sonar-report.json
+        run: go test -coverpkg=./... -coverprofile=coverage.out -json ./... > sonar-report.json
 
       - name: Upload coverage reports to Sonar
         uses: sonarsource/sonarcloud-github-action@master
