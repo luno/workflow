@@ -1,14 +1,32 @@
 <div align="center">
     <img src="./logo/workflow.png" width="500" alt="Workflow Logo">    
-    <div  align="center">
-        <a style="padding: 0 10px" href="https://goreportcard.com/report/github.com/luno/workflow" > 
+    <div  align="center" style="max-width: 750px">
+        <a style="padding: 0 5px" href="https://goreportcard.com/report/github.com/luno/workflow" > 
             <img src="https://goreportcard.com/badge/github.com/luno/workflow"/> 
         </a>
-        <a style="padding: 0 10px" href="https://codecov.io/gh/luno/workflow" > 
-            <img src="https://codecov.io/gh/luno/workflow/graph/badge.svg?token=YLMMOMHYOB"/> 
+        <a style="padding: 0 5px" href="https://sonarcloud.io/summary/new_code?id=luno_workflow" > 
+            <img src="https://sonarcloud.io/api/project_badges/measure?project=luno_workflow&metric=coverage"/> 
         </a>
-        <a style="padding: 0 10px" href="https://codecov.io/gh/luno/workflow" > 
-            <img src="https://codecov.io/gh/luno/workflow/graph/badge.svg?token=YLMMOMHYOB"/> 
+        <a style="padding: 0 5px" href="https://sonarcloud.io/summary/new_code?id=luno_workflow" > 
+            <img src="https://sonarcloud.io/api/project_badges/measure?project=luno_workflow&metric=alert_status"/> 
+        </a>
+        <a style="padding: 0 5px" href="https://sonarcloud.io/summary/new_code?id=luno_workflow" > 
+            <img src="https://sonarcloud.io/api/project_badges/measure?project=luno_workflow&metric=bugs"/> 
+        </a>
+        <a style="padding: 0 5px" href="https://sonarcloud.io/summary/new_code?id=luno_workflow" > 
+            <img src="https://sonarcloud.io/api/project_badges/measure?project=luno_workflow&metric=reliability_rating"/> 
+        </a>
+        <a style="padding: 0 5px" href="https://sonarcloud.io/summary/new_code?id=luno_workflow" > 
+            <img src="https://sonarcloud.io/api/project_badges/measure?project=luno_workflow&metric=security_rating"/> 
+        </a>
+        <a style="padding: 0 5px" href="https://sonarcloud.io/summary/new_code?id=luno_workflow" > 
+            <img src="https://sonarcloud.io/api/project_badges/measure?project=luno_workflow&metric=sqale_rating"/> 
+        </a>
+        <a style="padding: 0 5px" href="https://sonarcloud.io/summary/new_code?id=luno_workflow" > 
+            <img src="https://sonarcloud.io/api/project_badges/measure?project=luno_workflow&metric=vulnerabilities"/> 
+        </a>
+        <a style="padding: 0 5px" href="https://sonarcloud.io/summary/new_code?id=luno_workflow" > 
+            <img src="https://sonarcloud.io/api/project_badges/measure?project=luno_workflow&metric=duplicated_lines_density"/> 
         </a>
     </div>
 </div>
