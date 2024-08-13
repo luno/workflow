@@ -58,9 +58,9 @@ func (rs RunState) Finished() bool {
 	}
 }
 
-// Stopped is the type of status that requires consumers to ignore the workflow record as it is in a stopped state. Only
-// paused workflow records can be resumed and must be done so via the workflow API or the Run methods. All cancelled
-// workflow records are cancelled permanently and cannot be undone whereas Pausing can be resumed.
+// Stopped is the type of status that requires consumers to ignore the workflow run as it is in a stopped state. Only
+// paused workflow runs can be resumed and must be done so via the workflow API or the Run methods. All cancelled
+// workflow runs are cancelled permanently and cannot be undone whereas Pausing can be resumed.
 func (rs RunState) Stopped() bool {
 	switch rs {
 	case RunStatePaused, RunStateCancelled, RunStateRequestedDataDeleted, RunStateDataDeleted:
@@ -72,20 +72,20 @@ func (rs RunState) Stopped() bool {
 
 // RunStateController allows the interaction with a specific workflow record.
 type RunStateController interface {
-	// Pause will take the workflow record specified and move it into a temporary state where it will no longer be processed.
-	// A paused workflow record can be resumed by calling Resume. ErrUnableToPause is returned when a workflow is not in a
+	// Pause will take the workflow run specified and move it into a temporary state where it will no longer be processed.
+	// A paused workflow run can be resumed by calling Resume. ErrUnableToPause is returned when a workflow is not in a
 	// state to be paused.
 	Pause(ctx context.Context) error
 	// Cancel can be called after Pause has been called. A paused run of the workflow can be indefinitely cancelled.
 	// Once cancelled, DeleteData can be called and will move the run into an indefinite state of DataDeleted.
 	// ErrUnableToCancel is returned when the workflow record is not in a state to be cancelled.
 	Cancel(ctx context.Context) error
-	// Resume can be called on a workflow record that has been paused. ErrUnableToResume is returned when the workflow
+	// Resume can be called on a workflow run that has been paused. ErrUnableToResume is returned when the workflow
 	// run is not in a state to be resumed.
 	Resume(ctx context.Context) error
-	// DeleteData can be called after a workflow record has been completed or cancelled. DeleteData should be used to
+	// DeleteData can be called after a workflow run has been completed or cancelled. DeleteData should be used to
 	// comply with the right to be forgotten such as complying with GDPR. ErrUnableToDelete is returned when the
-	// workflow record is not in a state to be deleted.
+	// workflow run is not in a state to be deleted.
 	DeleteData(ctx context.Context) error
 }
 
