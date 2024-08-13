@@ -2,13 +2,12 @@ package example
 
 import (
 	"github.com/luno/workflow"
+	"github.com/luno/workflow/adapters/kafkastreamer"
 	"github.com/luno/workflow/adapters/memrecordstore"
 	"github.com/luno/workflow/adapters/memrolescheduler"
 	"github.com/luno/workflow/adapters/memtimeoutstore"
 	"github.com/luno/workflow/example"
 	"github.com/luno/workflow/example/gettingstarted"
-
-	"github.com/luno/workflow/adapters/kafkastreamer"
 )
 
 func ExampleWorkflow() *workflow.Workflow[gettingstarted.GettingStarted, example.Status] {
