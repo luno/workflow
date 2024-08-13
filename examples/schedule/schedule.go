@@ -34,7 +34,6 @@ func ExampleWorkflow(d Deps) *workflow.Workflow[Example, examples.Status] {
 	return b.Build(
 		d.EventStreamer,
 		d.RecordStore,
-		d.TimeoutStore,
 		d.RoleScheduler,
 		workflow.WithClock(d.Clock),
 	)

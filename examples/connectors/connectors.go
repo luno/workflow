@@ -45,7 +45,6 @@ func Workflow(d Deps) *workflow.Workflow[gettingstarted.GettingStarted, examples
 	return builder.Build(
 		d.EventStreamer,
 		d.RecordStore,
-		d.TimeoutStore,
 		d.RoleScheduler,
 	)
 }
