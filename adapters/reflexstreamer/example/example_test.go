@@ -11,7 +11,6 @@ import (
 	"github.com/luno/reflex/rpatterns"
 	"github.com/luno/reflex/rsql"
 	"github.com/luno/workflow"
-	"github.com/luno/workflow/example"
 	"github.com/luno/workflow/example/gettingstarted"
 	"github.com/stretchr/testify/require"
 
@@ -30,19 +29,19 @@ func TestExampleWorkflow(t *testing.T) {
 	t.Cleanup(wf.Stop)
 
 	foreignID := "82347982374982374"
-	_, err := wf.Trigger(ctx, foreignID, example.StatusStarted)
+	_, err := wf.Trigger(ctx, foreignID, _example.StatusStarted)
 	jtest.RequireNil(t, err)
 
-	workflow.Require(t, wf, foreignID, example.StatusReadTheDocs, gettingstarted.GettingStarted{
+	workflow.Require(t, wf, foreignID, _example.StatusReadTheDocs, gettingstarted.GettingStarted{
 		ReadTheDocs: "✅",
 	})
 
-	workflow.Require(t, wf, foreignID, example.StatusFollowedTheExample, gettingstarted.GettingStarted{
+	workflow.Require(t, wf, foreignID, _example.StatusFollowedTheExample, gettingstarted.GettingStarted{
 		ReadTheDocs:     "✅",
 		FollowAnExample: "✅",
 	})
 
-	workflow.Require(t, wf, foreignID, example.StatusCreatedAFunExample, gettingstarted.GettingStarted{
+	workflow.Require(t, wf, foreignID, _example.StatusCreatedAFunExample, gettingstarted.GettingStarted{
 		ReadTheDocs:       "✅",
 		FollowAnExample:   "✅",
 		CreateAFunExample: "✅",
@@ -60,10 +59,10 @@ func TestExampleReflexConsumerStream(t *testing.T) {
 	t.Cleanup(wf.Stop)
 
 	foreignID := "82347982374982374"
-	_, err := wf.Trigger(ctx, foreignID, example.StatusStarted)
+	_, err := wf.Trigger(ctx, foreignID, _example.StatusStarted)
 	jtest.RequireNil(t, err)
 
-	workflow.Require(t, wf, foreignID, example.StatusCreatedAFunExample, gettingstarted.GettingStarted{
+	workflow.Require(t, wf, foreignID, _example.StatusCreatedAFunExample, gettingstarted.GettingStarted{
 		ReadTheDocs:       "✅",
 		FollowAnExample:   "✅",
 		CreateAFunExample: "✅",
@@ -75,13 +74,13 @@ func TestExampleReflexConsumerStream(t *testing.T) {
 		reflex.NewConsumer("something", func(ctx context.Context, event *reflex.Event) error {
 			switch event.IDInt() {
 			case 1:
-				require.Equal(t, int(example.StatusStarted), event.Type.ReflexType())
+				require.Equal(t, int(_example.StatusStarted), event.Type.ReflexType())
 			case 2:
-				require.Equal(t, int(example.StatusReadTheDocs), event.Type.ReflexType())
+				require.Equal(t, int(_example.StatusReadTheDocs), event.Type.ReflexType())
 			case 3:
-				require.Equal(t, int(example.StatusFollowedTheExample), event.Type.ReflexType())
+				require.Equal(t, int(_example.StatusFollowedTheExample), event.Type.ReflexType())
 			case 4:
-				require.Equal(t, int(example.StatusCreatedAFunExample), event.Type.ReflexType())
+				require.Equal(t, int(_example.StatusCreatedAFunExample), event.Type.ReflexType())
 			}
 
 			// End the test

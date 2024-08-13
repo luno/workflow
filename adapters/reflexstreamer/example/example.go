@@ -12,13 +12,12 @@ import (
 	"github.com/luno/workflow/adapters/memrecordstore"
 	"github.com/luno/workflow/adapters/memrolescheduler"
 	"github.com/luno/workflow/adapters/memtimeoutstore"
-	"github.com/luno/workflow/example"
 	"github.com/luno/workflow/example/gettingstarted"
 
 	"github.com/luno/workflow/adapters/reflexstreamer"
 )
 
-func ExampleWorkflow(db *sql.DB, table *rsql.EventsTableInt, cstore reflex.CursorStore) *workflow.Workflow[gettingstarted.GettingStarted, example.Status] {
+func ExampleWorkflow(db *sql.DB, table *rsql.EventsTableInt, cstore reflex.CursorStore) *workflow.Workflow[gettingstarted.GettingStarted, _example.Status] {
 	return gettingstarted.Workflow(gettingstarted.Deps{
 		EventStreamer: reflexstreamer.New(db, db, table, cstore),
 		RecordStore:   memrecordstore.New(),
