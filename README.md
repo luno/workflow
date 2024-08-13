@@ -13,8 +13,10 @@
 </div>
 
 # Workflow
- Workflow is an event driven workflow that allows for robust, durable, and scalable sequential business logic to
+
+Workflow is an event driven workflow that allows for robust, durable, and scalable sequential business logic to
 be executed in a deterministic manner.
+
 ---
 ## Features
 
