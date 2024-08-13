@@ -7,7 +7,7 @@ import (
 	"k8s.io/utils/clock"
 
 	"github.com/luno/workflow"
-	"github.com/luno/workflow/examples"
+	"github.com/luno/workflow/example"
 )
 
 type Example struct {
@@ -22,19 +22,19 @@ type Deps struct {
 	Clock         clock.Clock
 }
 
-func ExampleWorkflow(d Deps) *workflow.Workflow[Example, examples.Status] {
-	b := workflow.NewBuilder[Example, examples.Status]("timeout example")
+func ExampleWorkflow(d Deps) *workflow.Workflow[Example, example.Status] {
+	b := workflow.NewBuilder[Example, example.Status]("timeout example")
 
-	b.AddTimeout(examples.StatusStarted,
-		func(ctx context.Context, r *workflow.Record[Example, examples.Status], now time.Time) (time.Time, error) {
+	b.AddTimeout(example.StatusStarted,
+		func(ctx context.Context, r *workflow.Record[Example, example.Status], now time.Time) (time.Time, error) {
 			// Using "now" over time.Now() allows for you to specify a clock for testing.
 			return now.Add(time.Hour), nil
 		},
-		func(ctx context.Context, r *workflow.Record[Example, examples.Status], now time.Time) (examples.Status, error) {
+		func(ctx context.Context, r *workflow.Record[Example, example.Status], now time.Time) (example.Status, error) {
 			r.Object.Now = now
-			return examples.StatusFollowedTheExample, nil
+			return example.StatusFollowedTheExample, nil
 		},
-		examples.StatusFollowedTheExample,
+		example.StatusFollowedTheExample,
 	)
 
 	return b.Build(
@@ -42,5 +42,6 @@ func ExampleWorkflow(d Deps) *workflow.Workflow[Example, examples.Status] {
 		d.RecordStore,
 		d.RoleScheduler,
 		workflow.WithClock(d.Clock),
+		workflow.WithTimeoutStore(d.TimeoutStore),
 	)
 }

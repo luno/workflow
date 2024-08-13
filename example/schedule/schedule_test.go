@@ -14,8 +14,8 @@ import (
 	"github.com/luno/workflow/adapters/memrolescheduler"
 	"github.com/luno/workflow/adapters/memstreamer"
 	"github.com/luno/workflow/adapters/memtimeoutstore"
-	"github.com/luno/workflow/examples"
-	"github.com/luno/workflow/examples/schedule"
+	"github.com/luno/workflow/example"
+	"github.com/luno/workflow/example/schedule"
 )
 
 func TestExampleWorkflow(t *testing.T) {
@@ -37,7 +37,7 @@ func TestExampleWorkflow(t *testing.T) {
 	foreignID := "hourly-run"
 
 	go func() {
-		err := wf.Schedule(foreignID, examples.StatusStarted, "@hourly")
+		err := wf.Schedule(foreignID, example.StatusStarted, "@hourly")
 		jtest.RequireNil(t, err)
 	}()
 

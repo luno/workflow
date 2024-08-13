@@ -11,8 +11,8 @@ import (
 	"github.com/luno/workflow/adapters/memrolescheduler"
 	"github.com/luno/workflow/adapters/memstreamer"
 	"github.com/luno/workflow/adapters/memtimeoutstore"
-	"github.com/luno/workflow/examples"
-	"github.com/luno/workflow/examples/callbacks"
+	"github.com/luno/workflow/example"
+	"github.com/luno/workflow/example/callbacks"
 )
 
 func TestCallbackWorkflow(t *testing.T) {
@@ -28,14 +28,14 @@ func TestCallbackWorkflow(t *testing.T) {
 	wf.Run(ctx)
 
 	foreignID := "andrew"
-	runID, err := wf.Trigger(ctx, foreignID, examples.StatusStarted)
+	runID, err := wf.Trigger(ctx, foreignID, example.StatusStarted)
 	jtest.RequireNil(t, err)
 
-	workflow.TriggerCallbackOn(t, wf, foreignID, runID, examples.StatusStarted, callbacks.EmailConfirmationResponse{
+	workflow.TriggerCallbackOn(t, wf, foreignID, runID, example.StatusStarted, callbacks.EmailConfirmationResponse{
 		Confirmed: true,
 	})
 
-	workflow.Require(t, wf, foreignID, examples.StatusFollowedTheExample, callbacks.Example{
+	workflow.Require(t, wf, foreignID, example.StatusFollowedTheExample, callbacks.Example{
 		EmailConfirmed: true,
 	})
 }

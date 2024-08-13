@@ -6,7 +6,7 @@ import (
 	"k8s.io/utils/clock"
 
 	"github.com/luno/workflow"
-	"github.com/luno/workflow/examples"
+	"github.com/luno/workflow/example"
 )
 
 type Example struct {
@@ -21,14 +21,14 @@ type Deps struct {
 	Clock         clock.Clock
 }
 
-func ExampleWorkflow(d Deps) *workflow.Workflow[Example, examples.Status] {
-	b := workflow.NewBuilder[Example, examples.Status]("schedule trigger example")
+func ExampleWorkflow(d Deps) *workflow.Workflow[Example, example.Status] {
+	b := workflow.NewBuilder[Example, example.Status]("schedule trigger example")
 
-	b.AddStep(examples.StatusStarted,
-		func(ctx context.Context, r *workflow.Record[Example, examples.Status]) (examples.Status, error) {
-			return examples.StatusFollowedTheExample, nil
+	b.AddStep(example.StatusStarted,
+		func(ctx context.Context, r *workflow.Record[Example, example.Status]) (example.Status, error) {
+			return example.StatusFollowedTheExample, nil
 		},
-		examples.StatusFollowedTheExample,
+		example.StatusFollowedTheExample,
 	)
 
 	return b.Build(

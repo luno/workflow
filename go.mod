@@ -1,6 +1,6 @@
 module github.com/luno/workflow
 
-go 1.22
+go 1.22.3
 
 require (
 	github.com/google/uuid v1.3.0

@@ -13,8 +13,8 @@ import (
 	"github.com/luno/workflow/adapters/memrolescheduler"
 	"github.com/luno/workflow/adapters/memstreamer"
 	"github.com/luno/workflow/adapters/memtimeoutstore"
-	"github.com/luno/workflow/examples"
-	"github.com/luno/workflow/examples/timeouts"
+	"github.com/luno/workflow/example"
+	"github.com/luno/workflow/example/timeouts"
 )
 
 func TestTimeoutWorkflow(t *testing.T) {
@@ -33,14 +33,14 @@ func TestTimeoutWorkflow(t *testing.T) {
 	wf.Run(ctx)
 
 	foreignID := "andrew"
-	runID, err := wf.Trigger(ctx, foreignID, examples.StatusStarted)
+	runID, err := wf.Trigger(ctx, foreignID, example.StatusStarted)
 	jtest.RequireNil(t, err)
 
-	workflow.AwaitTimeoutInsert(t, wf, foreignID, runID, examples.StatusStarted)
+	workflow.AwaitTimeoutInsert(t, wf, foreignID, runID, example.StatusStarted)
 
 	clock.Step(time.Hour)
 
-	workflow.Require(t, wf, foreignID, examples.StatusFollowedTheExample, timeouts.Example{
+	workflow.Require(t, wf, foreignID, example.StatusFollowedTheExample, timeouts.Example{
 		Now: clock.Now(),
 	})
 }

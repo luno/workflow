@@ -10,9 +10,9 @@ import (
 	"github.com/luno/workflow/adapters/memrolescheduler"
 	"github.com/luno/workflow/adapters/memstreamer"
 	"github.com/luno/workflow/adapters/memtimeoutstore"
-	"github.com/luno/workflow/examples"
-	"github.com/luno/workflow/examples/connectors"
-	"github.com/luno/workflow/examples/gettingstarted"
+	"github.com/luno/workflow/example"
+	"github.com/luno/workflow/example/connectors"
+	"github.com/luno/workflow/example/gettingstarted"
 )
 
 func TestConnectStreamParallelConsumer(t *testing.T) {
@@ -39,7 +39,7 @@ func TestConnectStreamParallelConsumer(t *testing.T) {
 	w.Run(ctx)
 	t.Cleanup(w.Stop)
 
-	workflow.Require(t, w, foreignID, examples.StatusFollowedTheExample, gettingstarted.GettingStarted{
+	workflow.Require(t, w, foreignID, example.StatusFollowedTheExample, gettingstarted.GettingStarted{
 		ReadTheDocs:     "✅",
 		FollowAnExample: "✅",
 	})

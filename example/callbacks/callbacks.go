@@ -6,7 +6,7 @@ import (
 	"io"
 
 	"github.com/luno/workflow"
-	"github.com/luno/workflow/examples"
+	"github.com/luno/workflow/example"
 )
 
 type Example struct {
@@ -24,10 +24,10 @@ type Deps struct {
 	RoleScheduler workflow.RoleScheduler
 }
 
-func ExampleWorkflow(d Deps) *workflow.Workflow[Example, examples.Status] {
-	b := workflow.NewBuilder[Example, examples.Status]("callback example")
+func ExampleWorkflow(d Deps) *workflow.Workflow[Example, example.Status] {
+	b := workflow.NewBuilder[Example, example.Status]("callback example")
 
-	b.AddCallback(examples.StatusStarted, func(ctx context.Context, r *workflow.Record[Example, examples.Status], reader io.Reader) (examples.Status, error) {
+	b.AddCallback(example.StatusStarted, func(ctx context.Context, r *workflow.Record[Example, example.Status], reader io.Reader) (example.Status, error) {
 		b, err := io.ReadAll(reader)
 		if err != nil {
 			return 0, err
@@ -41,8 +41,8 @@ func ExampleWorkflow(d Deps) *workflow.Workflow[Example, examples.Status] {
 
 		r.Object.EmailConfirmed = e.Confirmed
 
-		return examples.StatusFollowedTheExample, nil
-	}, examples.StatusFollowedTheExample)
+		return example.StatusFollowedTheExample, nil
+	}, example.StatusFollowedTheExample)
 
 	return b.Build(
 		d.EventStreamer,
