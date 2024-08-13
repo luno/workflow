@@ -9,8 +9,6 @@ import (
 	"github.com/luno/jettison/jtest"
 	"github.com/luno/reflex"
 	"github.com/stretchr/testify/require"
-
-	"github.com/luno/workflow/adapters/reflexstreamer"
 )
 
 var tables = []string{
@@ -56,16 +54,16 @@ func TestDefaultTranslators(t *testing.T) {
 	now := time.Date(2024, time.April, 9, 0, 0, 0, 0, time.UTC)
 	reflexEvent := reflex.Event{
 		ID:        "1",
-		Type:      reflexstreamer.EventType(1),
+		Type:      EventType(1),
 		ForeignID: "9",
 		MetaData:  []byte("my meta"),
 		Timestamp: now,
 	}
 
-	connectorEvent, err := reflexstreamer.DefaultReflexTranslator(&reflexEvent)
+	connectorEvent, err := DefaultReflexTranslator(&reflexEvent)
 	jtest.RequireNil(t, err)
 
-	translated, err := reflexstreamer.DefaultConnectorTranslator(connectorEvent)
+	translated, err := DefaultConnectorTranslator(connectorEvent)
 	jtest.RequireNil(t, err)
 
 	require.Equal(t, reflexEvent.ID, translated.ID)

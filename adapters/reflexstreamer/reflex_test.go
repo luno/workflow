@@ -16,14 +16,13 @@ import (
 	"github.com/luno/workflow/adapters/memrecordstore"
 	"github.com/luno/workflow/adapters/memrolescheduler"
 	"github.com/luno/workflow/adapters/memtimeoutstore"
-	"github.com/luno/workflow/adapters/reflexstreamer"
 )
 
 func TestStreamer(t *testing.T) {
 	eventsTable := rsql.NewEventsTableInt("workflow_events", rsql.WithEventMetadataField("metadata"))
 	dbc := ConnectForTesting(t)
 	cTable := rsql.NewCursorsTable("cursors")
-	constructor := reflexstreamer.New(dbc, dbc, eventsTable, cTable.ToStore(dbc))
+	constructor := New(dbc, dbc, eventsTable, cTable.ToStore(dbc))
 	adaptertest.RunEventStreamerTest(t, constructor)
 }
 
@@ -53,7 +52,7 @@ func TestStreamFunc(t *testing.T) {
 	recordStore := memrecordstore.New()
 
 	wf := b.Build(
-		reflexstreamer.New(dbc, dbc, eventsTable, rpatterns.MemCursorStore()),
+		New(dbc, dbc, eventsTable, rpatterns.MemCursorStore()),
 		recordStore,
 		memtimeoutstore.New(),
 		memrolescheduler.New(),
@@ -70,7 +69,7 @@ func TestStreamFunc(t *testing.T) {
 	workflow.Require(t, wf, fid, statusEnd, "Started and Completed in a Workflow")
 
 	spec := reflex.NewSpec(
-		reflexstreamer.StreamFunc(dbc, eventsTable, "myWorkflow"),
+		StreamFunc(dbc, eventsTable, "myWorkflow"),
 		rpatterns.MemCursorStore(),
 		reflex.NewConsumer("something", func(ctx context.Context, fate fate.Fate, event *reflex.Event) error {
 			wireRecord, err := recordStore.Lookup(ctx, event.ForeignIDInt())
@@ -110,7 +109,7 @@ func TestConnector(t *testing.T) {
 		jtest.RequireNil(t, err)
 
 		for _, event := range seedEvents {
-			notify, err := eventsTable.Insert(ctx, tx, event.ForeignID, reflexstreamer.EventType(1))
+			notify, err := eventsTable.Insert(ctx, tx, event.ForeignID, EventType(1))
 			if err != nil {
 				originalErr := err
 				err = tx.Rollback()
@@ -124,7 +123,7 @@ func TestConnector(t *testing.T) {
 		err = tx.Commit()
 		jtest.RequireNil(t, err)
 
-		return reflexstreamer.NewConnector(eventsTable.ToStream(dbc), cTable.ToStore(dbc), reflexstreamer.DefaultReflexTranslator)
+		return NewConnector(eventsTable.ToStream(dbc), cTable.ToStore(dbc), DefaultReflexTranslator)
 	})
 }
 

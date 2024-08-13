@@ -11,13 +11,12 @@ import (
 
 	"github.com/luno/workflow"
 	"github.com/luno/workflow/adapters/adaptertest"
-	"github.com/luno/workflow/adapters/kafkastreamer"
 )
 
 const brokerAddress = "localhost:9092"
 
 func TestStreamer(t *testing.T) {
-	constructor := kafkastreamer.New([]string{brokerAddress})
+	constructor := New([]string{brokerAddress})
 	adaptertest.RunEventStreamerTest(t, constructor)
 }
 
@@ -41,7 +40,7 @@ func TestConnector(t *testing.T) {
 			CreatedAt: m.Time,
 		}
 	}
-	constructor := kafkastreamer.NewConnector(config, translator)
+	constructor := NewConnector(config, translator)
 	adaptertest.RunConnectorTest(t, func(seedEvents []workflow.ConnectorEvent) workflow.ConnectorConstructor {
 		writer := &kafka.Writer{
 			Addr:                   kafka.TCP(brokerAddress),

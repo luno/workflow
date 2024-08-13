@@ -5,12 +5,11 @@ import (
 
 	"github.com/luno/workflow"
 	"github.com/luno/workflow/adapters/adaptertest"
-	"github.com/luno/workflow/adapters/sqltimeout"
 )
 
 func TestStore(t *testing.T) {
 	adaptertest.RunTimeoutStoreTest(t, func() workflow.TimeoutStore {
 		dbc := ConnectForTesting(t)
-		return sqltimeout.New(dbc, dbc, "workflow_timeouts")
+		return New(dbc, dbc, "workflow_timeouts")
 	})
 }
