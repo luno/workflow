@@ -32,7 +32,7 @@
 
 ## Installation
 To start using workflow you will need to add the workflow module to your project. You can do this by running:
-```go
+```bash
 go get github.com/luno/workflow
 ```
 
@@ -41,22 +41,22 @@ Some adapters dont come with the core workflow module such as `kafkastreamer`, `
  wish to use these you need to add them individually based on your needs or build out your own adapter.
 
 #### Kafka
-```go
+```bash
 go get github.com/luno/workflow/adapters/kafkastreamer
 ```
 
 #### Reflex
-```go
+```bash
 go get github.com/luno/workflow/adapters/reflexstreamer
 ```
 
 #### SQL Store
-```go
+```bash
 go get github.com/luno/workflow/adapters/sqlstore
 ```
 
 #### SQL Timeout
-```go
+```bash
 go get github.com/luno/workflow/adapters/sqltimeout
 ```
 ---
