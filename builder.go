@@ -293,13 +293,13 @@ func (b *Builder[Type, Status]) determineEndPoints(graph map[int][]int) map[Stat
 }
 
 func DurationTimerFunc[Type any, Status StatusType](duration time.Duration) TimerFunc[Type, Status] {
-	return func(ctx context.Context, r *Record[Type, Status], now time.Time) (time.Time, error) {
+	return func(ctx context.Context, r *Run[Type, Status], now time.Time) (time.Time, error) {
 		return now.Add(duration), nil
 	}
 }
 
 func TimeTimerFunc[Type any, Status StatusType](t time.Time) TimerFunc[Type, Status] {
-	return func(ctx context.Context, r *Record[Type, Status], now time.Time) (time.Time, error) {
+	return func(ctx context.Context, r *Run[Type, Status], now time.Time) (time.Time, error) {
 		return t, nil
 	}
 }

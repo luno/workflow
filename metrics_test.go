@@ -24,7 +24,7 @@ import (
 func runWorkflow(t *testing.T) *workflow.Workflow[string, status] {
 	b := workflow.NewBuilder[string, status]("example")
 	b.AddStep(StatusStart,
-		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+		func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
 			return 0, nil
 		},
 		StatusMiddle,
@@ -179,14 +179,14 @@ func TestMetricProcessIdleState(t *testing.T) {
 
 	b := workflow.NewBuilder[string, status]("example")
 	b.AddStep(StatusStart,
-		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+		func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
 			return 0, nil
 		}, StatusMiddle,
 	).WithOptions(
 		workflow.PollingFrequency(time.Millisecond * 100),
 	)
 	b.AddStep(StatusMiddle,
-		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+		func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
 			return 0, nil
 		}, StatusEnd,
 	).WithOptions(
@@ -278,7 +278,7 @@ func TestMetricProcessErrors(t *testing.T) {
 
 	b := workflow.NewBuilder[string, status]("example")
 	b.AddStep(StatusStart,
-		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+		func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
 			return 0, errors.New("mock error")
 		}, StatusMiddle,
 	).WithOptions(
@@ -332,14 +332,14 @@ func TestRunStateChanges(t *testing.T) {
 
 	b := workflow.NewBuilder[string, status]("example")
 	b.AddStep(StatusStart,
-		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+		func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
 			return StatusMiddle, nil
 		}, StatusMiddle,
 	).WithOptions(
 		workflow.PollingFrequency(time.Millisecond * 10),
 	)
 	b.AddStep(StatusMiddle,
-		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+		func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
 			return StatusEnd, nil
 		}, StatusEnd,
 	).WithOptions(
@@ -372,7 +372,7 @@ func TestMetricProcessSkippedEvents(t *testing.T) {
 
 	b := workflow.NewBuilder[string, status]("example")
 	b.AddStep(StatusStart,
-		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+		func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
 			return 0, nil
 		}, StatusMiddle,
 	).WithOptions(
@@ -408,7 +408,7 @@ func TestMetricProcessSkippedEvents(t *testing.T) {
 
 func update(ctx context.Context, store workflow.RecordStore, wr *workflow.WireRecord) error {
 	return store.Store(ctx, wr, func(recordID int64) (workflow.OutboxEventData, error) {
-		// Record ID would not have been set if it is a new record. Assign the recordID that the Store provides
+		// Run ID would not have been set if it is a new record. Assign the recordID that the Store provides
 		wr.ID = recordID
 		return workflow.WireRecordToOutboxEventData(*wr, workflow.RunStateUnknown)
 	})

@@ -27,9 +27,9 @@ func TestProcessTimeout(t *testing.T) {
 	jtest.RequireNil(t, err)
 
 	type calls struct {
-		updater      func(ctx context.Context, current testStatus, next testStatus, record *Record[string, testStatus]) error
+		updater      func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error
 		store        func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error
-		timeoutFunc  func(ctx context.Context, r *Record[string, testStatus], now time.Time) (testStatus, error)
+		timeoutFunc  func(ctx context.Context, r *Run[string, testStatus], now time.Time) (testStatus, error)
 		completeFunc func(ctx context.Context, id int64) error
 	}
 
@@ -47,7 +47,7 @@ func TestProcessTimeout(t *testing.T) {
 			name: "Golden path consume - initiated",
 			caller: func(call map[string]int) calls {
 				return calls{
-					updater: func(ctx context.Context, current testStatus, next testStatus, record *Record[string, testStatus]) error {
+					updater: func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error {
 						call["updater"] += 1
 						require.Equal(t, "new data", *record.Object)
 						return nil
@@ -56,7 +56,7 @@ func TestProcessTimeout(t *testing.T) {
 						call["store"] += 1
 						return nil
 					},
-					timeoutFunc: func(ctx context.Context, r *Record[string, testStatus], now time.Time) (testStatus, error) {
+					timeoutFunc: func(ctx context.Context, r *Run[string, testStatus], now time.Time) (testStatus, error) {
 						call["timeout/TimeoutFunc"] += 1
 						*r.Object = "new data"
 						return statusEnd, nil
@@ -86,7 +86,7 @@ func TestProcessTimeout(t *testing.T) {
 			name: "Golden path consume - running",
 			caller: func(call map[string]int) calls {
 				return calls{
-					updater: func(ctx context.Context, current testStatus, next testStatus, record *Record[string, testStatus]) error {
+					updater: func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error {
 						call["updater"] += 1
 						require.Equal(t, "new data", *record.Object)
 						return nil
@@ -95,7 +95,7 @@ func TestProcessTimeout(t *testing.T) {
 						call["store"] += 1
 						return nil
 					},
-					timeoutFunc: func(ctx context.Context, r *Record[string, testStatus], now time.Time) (testStatus, error) {
+					timeoutFunc: func(ctx context.Context, r *Run[string, testStatus], now time.Time) (testStatus, error) {
 						call["timeout/TimeoutFunc"] += 1
 						*r.Object = "new data"
 						return statusEnd, nil
@@ -125,7 +125,7 @@ func TestProcessTimeout(t *testing.T) {
 			name: "Skip consume",
 			caller: func(call map[string]int) calls {
 				return calls{
-					timeoutFunc: func(ctx context.Context, r *Record[string, testStatus], now time.Time) (testStatus, error) {
+					timeoutFunc: func(ctx context.Context, r *Run[string, testStatus], now time.Time) (testStatus, error) {
 						call["timeout/TimeoutFunc"] += 1
 						*r.Object = "new data"
 						return testStatus(SkipTypeDefault), nil
@@ -149,7 +149,7 @@ func TestProcessTimeout(t *testing.T) {
 			name: "Pause record when meeting error count",
 			caller: func(call map[string]int) calls {
 				return calls{
-					timeoutFunc: func(ctx context.Context, r *Record[string, testStatus], now time.Time) (testStatus, error) {
+					timeoutFunc: func(ctx context.Context, r *Run[string, testStatus], now time.Time) (testStatus, error) {
 						call["timeout/TimeoutFunc"] += 1
 						return 0, errors.New("test error")
 					},

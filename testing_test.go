@@ -18,11 +18,11 @@ func TestRequireForCircularStatus(t *testing.T) {
 	}
 
 	b := workflow.NewBuilder[Counter, status]("circular flow")
-	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Record[Counter, status]) (status, error) {
+	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Run[Counter, status]) (status, error) {
 		r.Object.Count += 1
 		return StatusMiddle, nil
 	}, StatusMiddle)
-	b.AddStep(StatusMiddle, func(ctx context.Context, r *workflow.Record[Counter, status]) (status, error) {
+	b.AddStep(StatusMiddle, func(ctx context.Context, r *workflow.Run[Counter, status]) (status, error) {
 		if r.Object.Count < 2 {
 			return StatusStart, nil
 		}

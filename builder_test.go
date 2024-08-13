@@ -108,7 +108,7 @@ func TestWithClock(t *testing.T) {
 }
 
 func TestAddingCallbacks(t *testing.T) {
-	var exampleFn CallbackFunc[string, testStatus] = func(ctx context.Context, s *Record[string, testStatus], r io.Reader) (testStatus, error) {
+	var exampleFn CallbackFunc[string, testStatus] = func(ctx context.Context, s *Run[string, testStatus], r io.Reader) (testStatus, error) {
 		return statusEnd, nil
 	}
 
@@ -124,7 +124,7 @@ func TestWithTimeoutErrBackOff(t *testing.T) {
 	b.AddTimeout(
 		statusStart,
 		DurationTimerFunc[string, testStatus](time.Hour),
-		func(ctx context.Context, t *Record[string, testStatus], now time.Time) (testStatus, error) {
+		func(ctx context.Context, t *Run[string, testStatus], now time.Time) (testStatus, error) {
 			return statusEnd, nil
 		},
 		statusEnd,
@@ -140,7 +140,7 @@ func TestWithTimeoutPollingFrequency(t *testing.T) {
 	b.AddTimeout(
 		statusStart,
 		DurationTimerFunc[string, testStatus](time.Hour),
-		func(ctx context.Context, t *Record[string, testStatus], now time.Time) (testStatus, error) {
+		func(ctx context.Context, t *Run[string, testStatus], now time.Time) (testStatus, error) {
 			return statusEnd, nil
 		},
 		statusEnd,
@@ -242,7 +242,7 @@ func TestWithStepLagAlert(t *testing.T) {
 			b := NewBuilder[string, testStatus]("consumer lag alert")
 			b.AddStep(
 				statusStart,
-				func(ctx context.Context, r *Record[string, testStatus]) (testStatus, error) {
+				func(ctx context.Context, r *Run[string, testStatus]) (testStatus, error) {
 					return statusEnd, nil
 				},
 				statusEnd,
@@ -261,7 +261,7 @@ func TestAddStepSingleUseValidation(t *testing.T) {
 	b := NewBuilder[string, testStatus]("consumer lag")
 	b.AddStep(
 		statusStart,
-		func(ctx context.Context, r *Record[string, testStatus]) (testStatus, error) {
+		func(ctx context.Context, r *Run[string, testStatus]) (testStatus, error) {
 			return statusEnd, nil
 		},
 		statusEnd,
@@ -273,7 +273,7 @@ func TestAddStepSingleUseValidation(t *testing.T) {
 		func() {
 			b.AddStep(
 				statusStart,
-				func(ctx context.Context, r *Record[string, testStatus]) (testStatus, error) {
+				func(ctx context.Context, r *Run[string, testStatus]) (testStatus, error) {
 					return statusEnd, nil
 				},
 				statusEnd,
@@ -286,7 +286,7 @@ func TestConfigureTimeoutWithoutTimeoutStore(t *testing.T) {
 	b.AddTimeout(
 		statusStart,
 		DurationTimerFunc[string, testStatus](time.Hour),
-		func(ctx context.Context, r *Record[string, testStatus], now time.Time) (testStatus, error) {
+		func(ctx context.Context, r *Run[string, testStatus], now time.Time) (testStatus, error) {
 			return statusEnd, nil
 		},
 		statusEnd,
@@ -309,7 +309,7 @@ func TestWithStepConsumerLag(t *testing.T) {
 	b := NewBuilder[string, testStatus]("consumer lag")
 	b.AddStep(
 		statusStart,
-		func(ctx context.Context, r *Record[string, testStatus]) (testStatus, error) {
+		func(ctx context.Context, r *Run[string, testStatus]) (testStatus, error) {
 			return statusEnd, nil
 		},
 		statusEnd,
@@ -325,7 +325,7 @@ func TestWithDefaultOptions(t *testing.T) {
 	b := NewBuilder[string, testStatus]("consumer lag")
 	b.AddStep(
 		statusStart,
-		func(ctx context.Context, r *Record[string, testStatus]) (testStatus, error) {
+		func(ctx context.Context, r *Run[string, testStatus]) (testStatus, error) {
 			return statusEnd, nil
 		},
 		statusEnd,

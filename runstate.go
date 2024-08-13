@@ -59,7 +59,7 @@ func (rs RunState) Finished() bool {
 }
 
 // Stopped is the type of status that requires consumers to ignore the workflow record as it is in a stopped state. Only
-// paused workflow records can be resumed and must be done so via the workflow API or the Record methods. All cancelled
+// paused workflow records can be resumed and must be done so via the workflow API or the Run methods. All cancelled
 // workflow records are cancelled permanently and cannot be undone whereas Pausing can be resumed.
 func (rs RunState) Stopped() bool {
 	switch rs {

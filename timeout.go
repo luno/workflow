@@ -134,7 +134,7 @@ func processTimeout[Type any, Status StatusType](
 					})
 				}
 
-				// Record paused - now clear the error counter.
+				// Run paused - now clear the error counter.
 				w.errorCounter.Clear(originalErr, processName, record.RunID)
 				return nil
 			}
@@ -246,7 +246,7 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](
 	}
 
 	w.run(role, processName, func(ctx context.Context) error {
-		consumerFunc := func(ctx context.Context, r *Record[Type, Status]) (Status, error) {
+		consumerFunc := func(ctx context.Context, r *Run[Type, Status]) (Status, error) {
 			for _, config := range timeouts.transitions {
 				expireAt, err := config.TimerFunc(ctx, r, w.clock.Now())
 				if err != nil {
@@ -287,10 +287,10 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](
 // TimerFunc exists to allow the specification of when the timeout should expire dynamically. If not time is set then a
 // timeout will not be created and the event will be skipped. If the time is set then a timeout will be created and
 // once expired TimeoutFunc will be called. Any non-nil error will be retried with backoff.
-type TimerFunc[Type any, Status StatusType] func(ctx context.Context, r *Record[Type, Status], now time.Time) (time.Time, error)
+type TimerFunc[Type any, Status StatusType] func(ctx context.Context, r *Run[Type, Status], now time.Time) (time.Time, error)
 
 // TimeoutFunc runs once the timeout has expired which is set by TimerFunc. If false is returned with a nil error
 // then the timeout is skipped and not retried at a later date. If a non-nil error is returned the TimeoutFunc will be
 // called again until a nil error is returned. If true is returned with a nil error then the provided record and any
 // modifications made to it will be stored and the status updated - continuing the workflow.
-type TimeoutFunc[Type any, Status StatusType] func(ctx context.Context, r *Record[Type, Status], now time.Time) (Status, error)
+type TimeoutFunc[Type any, Status StatusType] func(ctx context.Context, r *Run[Type, Status], now time.Time) (Status, error)

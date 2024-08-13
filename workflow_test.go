@@ -196,7 +196,7 @@ func benchmarkWorkflow(b *testing.B, numberOfSteps int) {
 	bldr := workflow.NewBuilder[MyType, status]("benchmark")
 
 	for i := range numberOfSteps {
-		bldr.AddStep(status(i), func(ctx context.Context, r *workflow.Record[MyType, status]) (status, error) {
+		bldr.AddStep(status(i), func(ctx context.Context, r *workflow.Run[MyType, status]) (status, error) {
 			return status(i + 1), nil
 		}, status(i+1))
 	}
@@ -239,11 +239,11 @@ func TestTimeout(t *testing.T) {
 
 	b := workflow.NewBuilder[MyType, status]("user sign up")
 
-	b.AddStep(StatusInitiated, func(ctx context.Context, t *workflow.Record[MyType, status]) (status, error) {
+	b.AddStep(StatusInitiated, func(ctx context.Context, t *workflow.Run[MyType, status]) (status, error) {
 		return StatusProfileCreated, nil
 	}, StatusProfileCreated)
 
-	b.AddTimeout(StatusProfileCreated, workflow.DurationTimerFunc[MyType, status](time.Hour), func(ctx context.Context, t *workflow.Record[MyType, status], now time.Time) (status, error) {
+	b.AddTimeout(StatusProfileCreated, workflow.DurationTimerFunc[MyType, status](time.Hour), func(ctx context.Context, t *workflow.Run[MyType, status], now time.Time) (status, error) {
 		return StatusCompleted, nil
 	}, StatusCompleted).WithOptions(
 		workflow.PollingFrequency(100 * time.Millisecond),
@@ -290,16 +290,16 @@ var (
 	expectedOTPVerified       = true
 )
 
-func createProfile(ctx context.Context, mt *workflow.Record[MyType, status]) (status, error) {
+func createProfile(ctx context.Context, mt *workflow.Run[MyType, status]) (status, error) {
 	mt.Object.Profile = "Andrew Wormald"
 	return StatusProfileCreated, nil
 }
 
-func sendEmailConfirmation(ctx context.Context, mt *workflow.Record[MyType, status]) (status, error) {
+func sendEmailConfirmation(ctx context.Context, mt *workflow.Run[MyType, status]) (status, error) {
 	return StatusEmailConfirmationSent, nil
 }
 
-func emailVerifiedCallback(ctx context.Context, mt *workflow.Record[MyType, status], r io.Reader) (status, error) {
+func emailVerifiedCallback(ctx context.Context, mt *workflow.Run[MyType, status], r io.Reader) (status, error) {
 	b, err := io.ReadAll(r)
 	if err != nil {
 		return 0, err
@@ -320,7 +320,7 @@ func emailVerifiedCallback(ctx context.Context, mt *workflow.Record[MyType, stat
 	return StatusEmailVerified, nil
 }
 
-func cellphoneNumberCallback(ctx context.Context, mt *workflow.Record[MyType, status], r io.Reader) (status, error) {
+func cellphoneNumberCallback(ctx context.Context, mt *workflow.Run[MyType, status], r io.Reader) (status, error) {
 	b, err := io.ReadAll(r)
 	if err != nil {
 		return 0, err
@@ -339,12 +339,12 @@ func cellphoneNumberCallback(ctx context.Context, mt *workflow.Record[MyType, st
 	return StatusCellphoneNumberSubmitted, nil
 }
 
-func sendOTP(ctx context.Context, mt *workflow.Record[MyType, status]) (status, error) {
+func sendOTP(ctx context.Context, mt *workflow.Run[MyType, status]) (status, error) {
 	mt.Object.OTP = expectedOTP
 	return StatusOTPSent, nil
 }
 
-func otpCallback(ctx context.Context, mt *workflow.Record[MyType, status], r io.Reader) (status, error) {
+func otpCallback(ctx context.Context, mt *workflow.Run[MyType, status], r io.Reader) (status, error) {
 	b, err := io.ReadAll(r)
 	if err != nil {
 		return 0, err
@@ -363,18 +363,18 @@ func otpCallback(ctx context.Context, mt *workflow.Record[MyType, status], r io.
 	return StatusOTPVerified, nil
 }
 
-func waitForAccountCoolDown(ctx context.Context, mt *workflow.Record[MyType, status], now time.Time) (status, error) {
+func waitForAccountCoolDown(ctx context.Context, mt *workflow.Run[MyType, status], now time.Time) (status, error) {
 	return StatusCompleted, nil
 }
 
 func TestWorkflow_ErrWorkflowNotRunning(t *testing.T) {
 	b := workflow.NewBuilder[MyType, status]("sync users")
 
-	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Record[MyType, status]) (status, error) {
+	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Run[MyType, status]) (status, error) {
 		return StatusMiddle, nil
 	}, StatusMiddle)
 
-	b.AddStep(StatusMiddle, func(ctx context.Context, t *workflow.Record[MyType, status]) (status, error) {
+	b.AddStep(StatusMiddle, func(ctx context.Context, t *workflow.Run[MyType, status]) (status, error) {
 		return StatusEnd, nil
 	}, StatusEnd)
 
@@ -399,12 +399,12 @@ func TestWorkflow_ErrWorkflowNotRunning(t *testing.T) {
 func TestWorkflow_TestingRequire(t *testing.T) {
 	b := workflow.NewBuilder[MyType, status]("sync users")
 
-	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Record[MyType, status]) (status, error) {
+	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Run[MyType, status]) (status, error) {
 		t.Object.Email = "andrew@workflow.com"
 		return StatusMiddle, nil
 	}, StatusMiddle)
 
-	b.AddStep(StatusMiddle, func(ctx context.Context, t *workflow.Record[MyType, status]) (status, error) {
+	b.AddStep(StatusMiddle, func(ctx context.Context, t *workflow.Run[MyType, status]) (status, error) {
 		t.Object.Cellphone = "+44 349 8594"
 		return StatusEnd, nil
 	}, StatusEnd)
@@ -450,7 +450,7 @@ func TestTimeTimerFunc(t *testing.T) {
 	launchDate := time.Date(1992, time.April, 9, 0, 0, 0, 0, time.UTC)
 	b.AddTimeout(StatusStart,
 		workflow.TimeTimerFunc[YinYang, status](launchDate),
-		func(ctx context.Context, t *workflow.Record[YinYang, status], now time.Time) (status, error) {
+		func(ctx context.Context, t *workflow.Run[YinYang, status], now time.Time) (status, error) {
 			t.Object.Yin = true
 			t.Object.Yang = true
 			return StatusEnd, nil
@@ -526,7 +526,7 @@ func TestConnector(t *testing.T) {
 		},
 	)
 
-	buidler.AddStep(StatusStart, func(ctx context.Context, r *workflow.Record[typeX, status]) (status, error) {
+	buidler.AddStep(StatusStart, func(ctx context.Context, r *workflow.Run[typeX, status]) (status, error) {
 		r.Object.Val = "workflow step set value"
 		return StatusEnd, nil
 	}, StatusEnd)
@@ -565,7 +565,7 @@ func TestStepConsumerLag(t *testing.T) {
 	b := workflow.NewBuilder[TimeWatcher, status]("step consumer lag")
 	b.AddStep(
 		StatusStart,
-		func(ctx context.Context, t *workflow.Record[TimeWatcher, status]) (status, error) {
+		func(ctx context.Context, t *workflow.Run[TimeWatcher, status]) (status, error) {
 			t.Object.ConsumeTime = clock.Now()
 
 			return StatusEnd, nil

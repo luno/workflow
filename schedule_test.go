@@ -19,11 +19,11 @@ import (
 func TestSchedule(t *testing.T) {
 	workflowName := "sync users"
 	b := workflow.NewBuilder[MyType, status](workflowName)
-	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Record[MyType, status]) (status, error) {
+	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Run[MyType, status]) (status, error) {
 		return StatusMiddle, nil
 	}, StatusMiddle)
 
-	b.AddStep(StatusMiddle, func(ctx context.Context, t *workflow.Record[MyType, status]) (status, error) {
+	b.AddStep(StatusMiddle, func(ctx context.Context, t *workflow.Run[MyType, status]) (status, error) {
 		return StatusEnd, nil
 	}, StatusEnd)
 
@@ -84,7 +84,7 @@ func TestSchedule(t *testing.T) {
 
 func TestWorkflow_ScheduleShutdown(t *testing.T) {
 	b := workflow.NewBuilder[MyType, status]("example")
-	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Record[MyType, status]) (status, error) {
+	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Run[MyType, status]) (status, error) {
 		return 0, nil
 	}, StatusEnd)
 
@@ -133,11 +133,11 @@ func TestWorkflow_ScheduleShutdown(t *testing.T) {
 func TestWorkflow_ScheduleFilter(t *testing.T) {
 	workflowName := "sync users"
 	b := workflow.NewBuilder[MyType, status](workflowName)
-	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Record[MyType, status]) (status, error) {
+	b.AddStep(StatusStart, func(ctx context.Context, t *workflow.Run[MyType, status]) (status, error) {
 		return StatusMiddle, nil
 	}, StatusMiddle)
 
-	b.AddStep(StatusMiddle, func(ctx context.Context, t *workflow.Record[MyType, status]) (status, error) {
+	b.AddStep(StatusMiddle, func(ctx context.Context, t *workflow.Run[MyType, status]) (status, error) {
 		return StatusEnd, nil
 	}, StatusEnd)
 

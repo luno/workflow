@@ -18,7 +18,7 @@ func TestUpdater(t *testing.T) {
 		name             string
 		lookup           lookupFunc
 		current          testStatus
-		update           Record[string, testStatus]
+		update           Run[string, testStatus]
 		transitions      []graph.Transition
 		expectedRunState RunState
 		expectedErr      error
@@ -31,7 +31,7 @@ func TestUpdater(t *testing.T) {
 				}, nil
 			},
 			current: statusStart,
-			update: Record[string, testStatus]{
+			update: Run[string, testStatus]{
 				WireRecord: WireRecord{
 					RunState: RunStateRunning,
 					Status:   int(statusMiddle),
@@ -58,7 +58,7 @@ func TestUpdater(t *testing.T) {
 				}, nil
 			},
 			current: statusStart,
-			update: Record[string, testStatus]{
+			update: Run[string, testStatus]{
 				WireRecord: WireRecord{
 					RunState: RunStateRunning,
 					Status:   int(statusMiddle),
@@ -76,7 +76,7 @@ func TestUpdater(t *testing.T) {
 				}, nil
 			},
 			current: statusStart,
-			update: Record[string, testStatus]{
+			update: Run[string, testStatus]{
 				WireRecord: WireRecord{
 					RunState: RunStateRunning,
 					Status:   int(statusMiddle),
@@ -116,7 +116,7 @@ func TestUpdater(t *testing.T) {
 				}, nil
 			},
 			current: statusStart,
-			update: Record[string, testStatus]{
+			update: Run[string, testStatus]{
 				WireRecord: WireRecord{
 					RunState: RunStateRunning,
 					Status:   int(statusMiddle),

@@ -110,7 +110,7 @@ func Require[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status
 	err := json.Unmarshal(wr.Object, &typ)
 	jtest.RequireNil(t, err)
 
-	actual := &Record[Type, Status]{
+	actual := &Run[Type, Status]{
 		WireRecord: *wr,
 		Status:     Status(wr.Status),
 		Object:     &typ,

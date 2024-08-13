@@ -9,13 +9,13 @@ import (
 	"github.com/luno/reflex"
 	"github.com/luno/reflex/rpatterns"
 	"github.com/luno/reflex/rsql"
-	"github.com/stretchr/testify/require"
-
 	"github.com/luno/workflow"
 	"github.com/luno/workflow/adapters/adaptertest"
 	"github.com/luno/workflow/adapters/memrecordstore"
 	"github.com/luno/workflow/adapters/memrolescheduler"
 	"github.com/luno/workflow/adapters/memtimeoutstore"
+	"github.com/stretchr/testify/require"
+
 	"github.com/luno/workflow/adapters/reflexstreamer"
 )
 
@@ -35,7 +35,7 @@ func TestStreamFunc(t *testing.T) {
 	b := workflow.NewBuilder[string, status](workflowName)
 	b.AddStep(
 		statusStart,
-		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+		func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
 			*r.Object = "Started and "
 			return statusMiddle, nil
 		},
@@ -43,7 +43,7 @@ func TestStreamFunc(t *testing.T) {
 	)
 	b.AddStep(
 		statusMiddle,
-		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+		func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
 			*r.Object += "Completed in a Workflow"
 			return statusEnd, nil
 		},

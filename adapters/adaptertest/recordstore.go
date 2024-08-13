@@ -115,7 +115,7 @@ func testListOutboxEvents(t *testing.T, factory func() workflow.RecordStore) {
 		expected := dummyWireRecord(t)
 
 		maker := func(recordID int64) (workflow.OutboxEventData, error) {
-			// Record ID would not have been set if it is a new record. Assign the recordID that the Store provides
+			// Run ID would not have been set if it is a new record. Assign the recordID that the Store provides
 			expected.ID = recordID
 			return workflow.WireRecordToOutboxEventData(*expected, workflow.RunStateInitiated)
 		}
@@ -149,7 +149,7 @@ func testDeleteOutboxEvent(t *testing.T, factory func() workflow.RecordStore) {
 		expected := dummyWireRecord(t)
 
 		maker := func(recordID int64) (workflow.OutboxEventData, error) {
-			// Record ID would not have been set if it is a new record. Assign the recordID that the Store provides
+			// Run ID would not have been set if it is a new record. Assign the recordID that the Store provides
 			expected.ID = recordID
 			return workflow.WireRecordToOutboxEventData(*expected, workflow.RunStateInitiated)
 		}
