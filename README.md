@@ -331,7 +331,7 @@ b.AddStep(
 ---
 ## Example
 
-Head on over to `./examples` to get familiar with the syntax 😊
+Head on over to [./_example](./_example) to get familiar with the syntax 😊
 
 ## Glossary
 
