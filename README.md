@@ -1,5 +1,5 @@
 <div align="center">
-    <img src="./logo/workflow.png" width="500" alt="Workflow Logo">    
+    <img src="./logo/logo.png" style="width: 150px; margin: 30px" alt="Workflow Logo">
     <div  align="center" style="max-width: 750px">
         <a style="padding: 0 5px" href="https://goreportcard.com/report/github.com/luno/workflow"><img src="https://goreportcard.com/badge/github.com/luno/workflow"/></a>
         <a style="padding: 0 5px" href="https://sonarcloud.io/summary/new_code?id=luno_workflow"><img src="https://sonarcloud.io/api/project_badges/measure?project=luno_workflow&metric=coverage"/></a>
@@ -12,144 +12,334 @@
     </div>
 </div>
 
-## Workflow is a Golang workflow framework that encompasses these main features:
-- Defining small units of work called "Steps"
-- Consumer management and graceful shutdown
-- Supports event streaming platforms such as Kafka and Reflex (or you can write your own implementation of the EventStreamer interface!)
-- Built in support for timeout operations (e.g. account cool down periods etc).
-- Built in support for callbacks (e.g. Call an async endpoint and trigger the callback from a webhook handler).
-- Connect two workflows together. Wait for specific events from another workflow and make it part of your workflow!
-- Super Duper testable
+# Workflow
 
-## Example
+Workflow is an event driven workflow that allows for robust, durable, and scalable sequential business logic to
+be executed in a deterministic manner.
 
-Head on over to `./examples` to get familiar with the syntax 😊
+---
+## Features
+
+- **Tech stack agnostic:** Use Kafka, Cassandra, Redis, MongoDB, Postgresql, MySQL, RabbitM, or Reflex - the choice is yours!
+- **Graph based (Directed Acyclic Graph - DAG):** Design the workflow by defining small units of work called "Steps".
+- **TDD:** Workflow was built using TDD and remains well-supported through a suit of tools.
+- **Schedule:** Allows standard cron spec to schedule workflows 
+- **Timeouts:** Set either a dynamic or static time for a workflow to wait for. Once the timeout finishes everything continues as it was.
+- **Event fusion:** Add event connectors to your workflow to consume external event streams (even if its from a different event streaming platform).  
+- **Callbacks:** Allow for manual callbacks from webhooks or manual triggers from consoles to progress the workflow such as approval buttons or third-party webhooks.  
+- **Parallel consumers:** Specify how many step consumers should run or specify the default for all consumers. 
+- **Consumer management:** Consumer management and graceful shutdown of all processes making sure there is no goroutine leaks!
+
+---
+
+## Installation
+To start using workflow you will need to add the workflow module to your project. You can do this by running:
+```bash
+go get github.com/luno/workflow
+```
+
+### Adapters
+Some adapters dont come with the core workflow module such as `kafkastreamer`, `reflexstreamer`, `sqlstore`, and `sqltimeout`. If you
+ wish to use these you need to add them individually based on your needs or build out your own adapter.
+
+#### Kafka
+```bash
+go get github.com/luno/workflow/adapters/kafkastreamer
+```
+
+#### Reflex
+```bash
+go get github.com/luno/workflow/adapters/reflexstreamer
+```
+
+#### SQL Store
+```bash
+go get github.com/luno/workflow/adapters/sqlstore
+```
+
+#### SQL Timeout
+```bash
+go get github.com/luno/workflow/adapters/sqltimeout
+```
+---
+## Usage
+
+### Step 1: Define the workflow
+```go
+package usage
+
+import (
+	"context"
+
+	"github.com/luno/workflow"
+)
+
+type Step int
+
+func (s Step) String() string {
+	switch s {
+	case StepOne:
+		return "One"
+	case StepTwo:
+		return "Two"
+	case StepThree:
+		return "Three"
+	default:
+		return "Unknown"
+	}
+}
+
+const (
+	StepUnknown Step = 0
+	StepOne Step = 1
+	StepTwo Step = 2
+	StepThree Step = 3
+)
+
+type MyType struct {
+	Field string
+}
+
+func Workflow() *workflow.Workflow[MyType, Step] {
+	b := workflow.NewBuilder[MyType, Step]("my workflow name")
+
+	b.AddStep(StepOne, func(ctx context.Context, r *workflow.Record[MyType, Step]) (Step, error) {
+		r.Object.Field = "Hello,"
+		return StepTwo, nil
+	}, StepTwo)
+
+	b.AddStep(StepTwo, func(ctx context.Context, r *workflow.Record[MyType, Step]) (Step, error) {
+		r.Object.Field += " world!"
+		return StepThree, nil
+	}, StepThree)
+
+	return b.Build(...)
+}
+```
+```mermaid
+---
+title: The above defined workflow creates the below Directed Acyclic Graph
+---
+stateDiagram-v2
+	direction LR
+    
+	[*]-->One
+    One-->Two
+    Two-->Three
+    Three-->[*]
+```
+### Step 2: Run the workflow
+```go
+wf := usage.Workflow()
+
+ctx := context.Background()
+wf.Run(ctx)
+```
+**Stop:** To stop all processes and wait for them to shut down correctly call
+```go
+wf.Stop()
+```
+### Step 3: Trigger the workflow
+```go
+foreignID := "82347982374982374"
+runID, err := wf.Trigger(ctx, foreignID, StepOne)
+if err != nil {
+	...
+}
+```
+**Awaiting results:** If appropriate and desired you can wait for the workflow to complete. Using context timeout (cancellation) is advised.
+```go
+foreignID := "82347982374982374"
+runID, err := wf.Trigger(ctx, foreignID, StepOne)
+if err != nil {
+	...
+}
+
+ctx, cancel := context.WithTimeout(ctx, 10 * time.Second)
+defer cancel()
+
+record, err := wf.Await(ctx, foreignID, runID, StepThree)
+if err != nil {
+	...
+}
+```
+
+### Detailed examples
+Head on over to [./examples](./examples) to get familiar with **callbacks**, **timeouts**, **testing**, **connectors** and
+ more about the syntax in depth 😊
+
+---
+
+## Workflow's RunState
+RunState is the state of a workflow run and can only exist in one state at any given time. RunState is a
+ finite state machine and allows for control over the workflow run. A workflow run is every instance of
+ a triggered workflow.
+```mermaid
+---
+title: Diagram the run states of a workflow
+---
+stateDiagram-v2
+	direction LR
+    
+	[*]-->Initiated
+
+    Initiated-->Running
+    
+    Running-->Completed
+    Running-->Paused
+
+    Paused-->Running
+    
+    Running --> Cancelled
+    Paused --> Cancelled
+    
+    state Finished {
+        Completed --> RequestedDataDeleted
+        Cancelled --> RequestedDataDeleted
+            
+        DataDeleted-->RequestedDataDeleted
+        RequestedDataDeleted-->DataDeleted
+        DataDeleted-->[*]
+    }
+```
+
+---
+
+## Configuration Options
+
+This package provides several options to configure the behavior of the workflow process. You can use these options to customize the instance count, polling frequency, error handling, lag settings, and more. Each option is defined as a function that takes a pointer to an `options` struct and modifies it accordingly. Below is a description of each available option:
+
+### `ParallelCount`
+
+```go
+func ParallelCount(instances int) Option
+```
+
+- **Description:** Defines the number of instances of the workflow process. These instances are distributed consistently, each named to reflect its position (e.g., "consumer-1-of-5"). This helps in managing parallelism in workflow execution.
+- **Parameters:**
+    - `instances`: The total number of parallel instances to create.
+- **Usage Example:**
+```go
+b.AddStep(
+    StepOne,
+    ...,
+    StepTwo,
+).WithOptions(
+    workflow.ParallelCount(5)
+)
+```
+
+### `PollingFrequency`
+
+```go
+func PollingFrequency(d time.Duration) Option
+```
+
+- **Description:** Sets the duration at which the workflow process polls for changes. Adjust this to control how frequently the process checks for new events or updates.
+- **Parameters:**
+    - `d`: The polling frequency as a `time.Duration`.
+- **Usage Example:**
+```go
+b.AddStep(
+    StepOne,
+    ...,
+    StepTwo,
+).WithOptions(
+    workflow.PollingFrequency(10 * time.Second)
+)
+```
+
+### `ErrBackOff`
+
+```go
+func ErrBackOff(d time.Duration) Option
+```
+
+- **Description:** Defines the duration for which the workflow process will back off after encountering an error. This is useful for managing retries and avoiding rapid repeated failures.
+- **Parameters:**
+    - `d`: The backoff duration as a `time.Duration`.
+- **Usage Example:**
+```go
+b.AddStep(
+    StepOne,
+    ...,
+    StepTwo,
+).WithOptions(
+    workflow.ErrBackOff(5 * time.Minute)
+)
+```
+### `LagAlert`
+
+```go
+func LagAlert(d time.Duration) Option
+```
+
+- **Description:** Specifies the time threshold before a Prometheus metric switches to true, indicating that the workflow consumer is struggling to keep up. This can signal the need to convert to a parallel consumer.
+- **Parameters:**
+    - `d`: The duration of the lag alert as a `time.Duration`.
+- **Usage Example:**
+```go
+b.AddStep(
+    StepOne,
+    ...,
+    StepTwo,
+).WithOptions(
+    workflow.LagAlert(15 * time.Minute),
+)
+```
+### `ConsumeLag`
+
+```go
+func ConsumeLag(d time.Duration) Option
+```
+
+- **Description:** Defines the maximum age of events that the consumer will process. Events newer than the specified duration will be held until they are older than the lag period.
+- **Parameters:**
+    - `d`: The lag duration as a `time.Duration`.
+- **Usage Example:**
+```go
+b.AddStep(
+    StepOne,
+    ...,
+    StepTwo,
+).WithOptions(
+    workflow.ConsumeLag(10 * time.Minute),
+)
+```
+### `PauseAfterErrCount`
+
+```go
+func PauseAfterErrCount(count int) Option
+```
+
+- **Description:** Sets the number of errors allowed before a record is updated to `RunStatePaused`. This mechanism acts similarly to a Dead Letter Queue, preventing further processing of problematic records and allowing for investigation and retry.
+- **Parameters:**
+    - `count`: The maximum number of errors before pausing.
+- **Usage Example:**
+```go
+b.AddStep(
+    StepOne,
+    ...,
+    StepTwo,
+).WithOptions(
+    workflow.PauseAfterErrCount(3),
+)
+```
+---
 
 ## Glossary
 
-1. **API:**
-    - An interface providing methods for interacting with workflows. It includes functionality for triggering, scheduling, awaiting, and stopping workflows.
-
-2. **Await:**
-    - A method in the workflow API that blocks until a workflow with a specific runID reaches a specified status. It returns the record associated with that status.
-
-3. **Builder:**
-    - A struct type that facilitates the construction of workflows. It provides methods for adding steps, callbacks, timeouts, and connecting workflows.
-
-4. **Build:**
-    - A method in the builder that finalizes the construction of the workflow and returns the built workflow.
-
-5. **BuildOption:**
-    - A functional option for configuring the build process, such as specifying a custom clock or enabling debug mode.
-
-6. **Callback:**
-    - A method in the workflow API that can be used to trigger a callback function for a specified status. It passes data from a reader to the specified callback function.
-
-7. **CallbackFunc:**
-    - A function type representing a callback in the workflow, triggered when transitioning from one status to another.
-
-8. **ConnectWorkflow:**
-    - A method in the builder that connects a workflow to another workflow using a connector configuration.
-
-9. **ConnectorConfig:**
-    - A configuration struct representing the settings for a connector, including workflow name, status, stream, filter, and consumer.
-
-10. **Consumer:**
-    - A component that consumes events from an event stream. In this context, it refers to the background consumer goroutines launched by the workflow.
-
-11. **ConsumerFunc:**
-    - A function type representing a step in the workflow that consumes records and transitions to a specified status.
-
-12. **DebugMode:**
-    - A configuration option that, when enabled, causes the workflow to operate in debug mode, providing additional information or logging for debugging purposes.
-
-13. **DurationTimerFunc:**
-    - A function that creates a timer function based on a specified duration.
-
-14. **Endpoints:**
-    - Statuses in the workflow that do not have any outgoing transitions, indicating the end points of the workflow.
-
-15. **EventStreamer:**
-    - An interface representing a stream for workflow events. It includes methods for producing and consuming events.
-
-16. **Graph:**
-    - A representation of the workflow's structure, showing the relationships between different statuses and transitions.
-
-17. **InternalState:**
-    - A map holding the state of all expected consumers and timeout goroutines using their role names as keys. It is protected by a mutex to ensure thread safety.
-
-18. **MermaidDiagram:**
-    - A function generating a Mermaid diagram for the workflow structure based on the provided Workflow, path, and MermaidDirection.
-
-19. **MermaidDirection:**
-    - A type representing the direction of the Mermaid diagram, such as TopToBottom, LeftToRight, RightToLeft, or BottomToTop.
-
-20. **Not:**
-    - A function that negates the result of another consumer function, used as a filter for steps.
-
-21. **Producer:**
-    - A component that produces events to an event stream. It is responsible for sending events to the stream.
-
-22. **RecordStore:**
-    - An interface representing a store for workflow records. It includes methods for storing and retrieving records.
-
-23. **RoleScheduler:**
-    - An interface representing a scheduler for roles in the workflow. It is responsible for coordinating the execution of different roles.
-
-24. **Run:**
-    - A method in the workflow struct that starts background processes necessary for running the workflow, such as consumers, timeouts, and connectors.
-
-25. **Schedule:**
-    - A method in the workflow API that schedules workflow triggers at specified intervals using a cron-like specification.
-
-26. **State:**
-    - An enumeration representing the state of a consumer or timeout goroutine. Possible states include StateUnknown, StateShutdown, and others.
-
-27. **StepOption:**
-    - A functional option for configuring step-specific settings, such as parallel count, polling frequency, and error backoff.
-
-28. **TimeoutFunc:**
-    - A function type representing a timeout action in the workflow, executed when a specified time duration has elapsed.
-
-29. **TimeoutOption:**
-    - A functional option for configuring timeout-specific settings, such as polling frequency and error backoff.
-
-30. **Topic:**
-    - A method that generates a topic for producing events in the event streamer based on the workflow name and status.
-
-31. **TimerFunc:**
-    - A function type used to calculate the time for a timeout. It takes a context, record, and the current time as inputs.
-
-32. **Trigger:**
-    - A method in the workflow API that initiates a workflow for a specified foreignID and starting status. It returns a runID and allows for additional configuration options.
-
-33. **WithClock:**
-    - A build option that sets a custom clock for the workflow.
-
-34. **WithDebugMode:**
-    - A build option that enables debug mode for the workflow.
-
-35. **WithParallelCount:**
-    - A step option that sets the parallel count for a step, indicating how many instances of the step can run concurrently.
-
-36. **WithStepErrBackOff:**
-    - A step option that sets the error backoff duration for a step, specifying the time to wait before retrying in case of an error.
-
-37. **WithStepPollingFrequency:**
-    - A step option that sets the polling frequency for a step, determining how often the step should check for updates.
-
-38. **WithTimeoutErrBackOff:**
-    - A timeout option that sets the error backoff duration for a timeout transition.
-
-39. **WithTimeoutPollingFrequency:**
-    - A timeout option that sets the polling frequency for a timeout transition.
-
-40. **WireFormat:**
-    - A format used for serializing and deserializing data for communication between workflow components. It refers to the wire format of the WireRecord.
-
-41. **WireRecord:**
-    - A struct representing a record with additional metadata used for communication between workflow components. It can be marshaled to a wire format for storage and transmission.
-
-## Authors
-
-- [@andrewwormald](https://github.com/andrewwormald)
+| **Term**         | **Description**                                                                                                                                          |
+|------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Builder**      | A struct type that facilitates the construction of workflows. It provides methods for adding steps, callbacks, timeouts, and connecting workflows.       |
+| **Callback**     | A method in the workflow API that can be used to trigger a callback function for a specified status. It passes data from a reader to the specified callback function. |
+| **Consumer**     | A component that consumes events from an event stream. In this context, it refers to the background consumer goroutines launched by the workflow.          |
+| **EventStreamer**| An interface representing a stream for workflow events. It includes methods for producing and consuming events.                                           |
+| **Graph**        | A representation of the workflow's structure, showing the relationships between different statuses and transitions.                                        |
+| **Producer**     | A component that produces events to an event stream. It is responsible for sending events to the stream.                                                 |
+| **RecordStore**  | An interface representing a store for workflow records. It includes methods for storing and retrieving records.                                           |
+| **RoleScheduler**| An interface representing a scheduler for roles in the workflow. It is responsible for coordinating the execution of different roles.                       |
+| **Topic**        | A method that generates a topic for producing events in the event streamer based on the workflow name and status.                                          |
+| **Trigger**      | A method in the workflow API that initiates a workflow for a specified foreignID and starting status. It returns a runID and allows for additional configuration options. |
+| **WireFormat**   | A format used for serializing and deserializing data for communication between workflow components. It refers to the wire format of the WireRecord.       |
+| **WireRecord**   | A struct representing a record with additional metadata used for communication between workflow components. It can be marshaled to a wire format for storage and transmission. |
