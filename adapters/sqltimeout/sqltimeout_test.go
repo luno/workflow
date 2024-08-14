@@ -5,6 +5,10 @@ import (
 
 	"github.com/luno/workflow"
 	"github.com/luno/workflow/adapters/adaptertest"
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
 	"github.com/luno/workflow/adapters/sqltimeout"
 )
 
