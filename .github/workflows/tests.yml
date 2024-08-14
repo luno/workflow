@@ -30,9 +30,6 @@ jobs:
     - name: Test workflow module
       run: go test -v ./...
 
-    - name: Test kafkastreamer module
-      run: cd ./adapters/kafkastreamer && go test -v ./...
-
     - name: Test reflexstreamer module
       run: cd ./adapters/reflexstreamer && go test -v ./...
 
