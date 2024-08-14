@@ -24,9 +24,9 @@ func New(opts ...Option) *Store {
 	}
 
 	s := &Store{
-		keyIndex:         make(map[string]*workflow.WireRecord),
-		store:            make(map[int64]*workflow.WireRecord),
-		snapshots:        make(map[string][]*workflow.WireRecord),
+		keyIndex:         make(map[string]*workflow.Record),
+		store:            make(map[int64]*workflow.Record),
+		snapshots:        make(map[string][]*workflow.Record),
 		snapshotsOffsets: make(map[string]int),
 		clock:            opt.clock,
 	}
@@ -54,17 +54,17 @@ type Store struct {
 
 	clock clock.Clock
 
-	keyIndex map[string]*workflow.WireRecord
-	store    map[int64]*workflow.WireRecord
+	keyIndex map[string]*workflow.Record
+	store    map[int64]*workflow.Record
 
 	outbox            []workflow.OutboxEvent
 	outboxIDIncrement int64
 
-	snapshots        map[string][]*workflow.WireRecord
+	snapshots        map[string][]*workflow.Record
 	snapshotsOffsets map[string]int
 }
 
-func (s *Store) Lookup(ctx context.Context, id int64) (*workflow.WireRecord, error) {
+func (s *Store) Lookup(ctx context.Context, id int64) (*workflow.Record, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -74,7 +74,7 @@ func (s *Store) Lookup(ctx context.Context, id int64) (*workflow.WireRecord, err
 	}
 
 	// Return a new pointer so modifications don't affect the store.
-	return &workflow.WireRecord{
+	return &workflow.Record{
 		ID:           record.ID,
 		WorkflowName: record.WorkflowName,
 		ForeignID:    record.ForeignID,
@@ -87,7 +87,7 @@ func (s *Store) Lookup(ctx context.Context, id int64) (*workflow.WireRecord, err
 	}, nil
 }
 
-func (s *Store) Store(ctx context.Context, record *workflow.WireRecord, maker workflow.OutboxEventDataMaker) error {
+func (s *Store) Store(ctx context.Context, record *workflow.Record, maker workflow.OutboxEventDataMaker) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -121,7 +121,7 @@ func (s *Store) Store(ctx context.Context, record *workflow.WireRecord, maker wo
 	return nil
 }
 
-func (s *Store) Latest(ctx context.Context, workflowName, foreignID string) (*workflow.WireRecord, error) {
+func (s *Store) Latest(ctx context.Context, workflowName, foreignID string) (*workflow.Record, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -132,7 +132,7 @@ func (s *Store) Latest(ctx context.Context, workflowName, foreignID string) (*wo
 	}
 
 	// Return a new pointer so modifications don't affect the store.
-	return &workflow.WireRecord{
+	return &workflow.Record{
 		ID:           record.ID,
 		WorkflowName: record.WorkflowName,
 		ForeignID:    record.ForeignID,
@@ -178,12 +178,12 @@ func (s *Store) DeleteOutboxEvent(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (s *Store) List(ctx context.Context, workflowName string, offsetID int64, limit int, order workflow.OrderType, filters ...workflow.RecordFilter) ([]workflow.WireRecord, error) {
+func (s *Store) List(ctx context.Context, workflowName string, offsetID int64, limit int, order workflow.OrderType, filters ...workflow.RecordFilter) ([]workflow.Record, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	filter := workflow.MakeFilter(filters...)
-	filteredStore := make(map[int64]*workflow.WireRecord)
+	filteredStore := make(map[int64]*workflow.Record)
 	increment := int64(1)
 	if len(filters) > 0 {
 		for _, record := range s.store {
@@ -210,7 +210,7 @@ func (s *Store) List(ctx context.Context, workflowName string, offsetID int64, l
 	}
 
 	var (
-		entries []workflow.WireRecord
+		entries []workflow.Record
 		length  = int64(len(filteredStore))
 		start   = offsetID + 1
 		end     = start + int64(limit)
@@ -235,7 +235,7 @@ func (s *Store) List(ctx context.Context, workflowName string, offsetID int64, l
 	}
 
 	if order == workflow.OrderTypeDescending {
-		var descEntries []workflow.WireRecord
+		var descEntries []workflow.Record
 		for i := len(entries) - 1; i >= 0; i-- {
 			descEntries = append(descEntries, entries[i])
 		}
@@ -246,7 +246,7 @@ func (s *Store) List(ctx context.Context, workflowName string, offsetID int64, l
 	return entries, nil
 }
 
-func (s *Store) Snapshots(workflowName, foreignID, runID string) []*workflow.WireRecord {
+func (s *Store) Snapshots(workflowName, foreignID, runID string) []*workflow.Record {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

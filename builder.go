@@ -260,7 +260,7 @@ func WithDefaultOptions(opts ...Option) BuildOption {
 
 func WithCustomDelete[Type any](fn func(object *Type) error) BuildOption {
 	return func(bo *buildOptions) {
-		bo.customDelete = func(wr *WireRecord) ([]byte, error) {
+		bo.customDelete = func(wr *Record) ([]byte, error) {
 			var t Type
 			err := Unmarshal(wr.Object, &t)
 			if err != nil {

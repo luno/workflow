@@ -54,7 +54,7 @@ func runWorkflow(t *testing.T) *workflow.Workflow[string, status] {
 	payload, err := workflow.Marshal(&s)
 	jtest.RequireNil(t, err)
 
-	err = update(ctx, recordStore, &workflow.WireRecord{
+	err = update(ctx, recordStore, &workflow.Record{
 		WorkflowName: "example",
 		ForeignID:    "29384723984732",
 		RunID:        runID,
@@ -306,7 +306,7 @@ func TestMetricProcessErrors(t *testing.T) {
 	payload, err := workflow.Marshal(&s)
 	jtest.RequireNil(t, err)
 
-	err = update(ctx, recordStore, &workflow.WireRecord{
+	err = update(ctx, recordStore, &workflow.Record{
 		WorkflowName: "example",
 		ForeignID:    "29384723984732",
 		RunID:        runID,
@@ -406,7 +406,7 @@ func TestMetricProcessSkippedEvents(t *testing.T) {
 	metrics.ProcessSkippedEvents.Reset()
 }
 
-func update(ctx context.Context, store workflow.RecordStore, wr *workflow.WireRecord) error {
+func update(ctx context.Context, store workflow.RecordStore, wr *workflow.Record) error {
 	return store.Store(ctx, wr, func(recordID int64) (workflow.OutboxEventData, error) {
 		// Run ID would not have been set if it is a new record. Assign the recordID that the Store provides
 		wr.ID = recordID

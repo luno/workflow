@@ -29,7 +29,7 @@ func TestProcessCallback(t *testing.T) {
 	b, err := Marshal(&value)
 	jtest.RequireNil(t, err)
 
-	current := &WireRecord{
+	current := &Record{
 		ID:           1,
 		WorkflowName: "example",
 		ForeignID:    "32948623984623",
@@ -46,7 +46,7 @@ func TestProcessCallback(t *testing.T) {
 			"latestLookup": 0,
 		}
 
-		current := &WireRecord{
+		current := &Record{
 			ID:           1,
 			WorkflowName: "example",
 			ForeignID:    "32948623984623",
@@ -68,12 +68,12 @@ func TestProcessCallback(t *testing.T) {
 			return nil
 		}
 
-		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*WireRecord, error) {
+		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*Record, error) {
 			calls["latestLookup"] += 1
 			return current, nil
 		}
 
-		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+		store := func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
 			calls["store"] += 1
 			return nil
 		}
@@ -108,12 +108,12 @@ func TestProcessCallback(t *testing.T) {
 			return nil
 		}
 
-		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*WireRecord, error) {
+		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*Record, error) {
 			calls["latestLookup"] += 1
 			return current, nil
 		}
 
-		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+		store := func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
 			calls["store"] += 1
 			return nil
 		}
@@ -146,12 +146,12 @@ func TestProcessCallback(t *testing.T) {
 			return nil
 		}
 
-		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*WireRecord, error) {
+		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*Record, error) {
 			calls["latestLookup"] += 1
 			return current, nil
 		}
 
-		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+		store := func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
 			calls["store"] += 1
 			return nil
 		}
@@ -168,7 +168,7 @@ func TestProcessCallback(t *testing.T) {
 	})
 
 	t.Run("Return on lookup error", func(t *testing.T) {
-		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*WireRecord, error) {
+		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*Record, error) {
 			return nil, errors.New("test error")
 		}
 
@@ -177,7 +177,7 @@ func TestProcessCallback(t *testing.T) {
 	})
 
 	t.Run("Return on callbackFunc error", func(t *testing.T) {
-		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*WireRecord, error) {
+		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*Record, error) {
 			return current, nil
 		}
 
@@ -190,11 +190,11 @@ func TestProcessCallback(t *testing.T) {
 	})
 
 	t.Run("Ignore if record is in different state", func(t *testing.T) {
-		currentRecord := &WireRecord{
+		currentRecord := &Record{
 			Status: int(statusMiddle),
 		}
 
-		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*WireRecord, error) {
+		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*Record, error) {
 			return currentRecord, nil
 		}
 

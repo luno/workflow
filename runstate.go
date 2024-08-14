@@ -89,17 +89,17 @@ type RunStateController interface {
 	DeleteData(ctx context.Context) error
 }
 
-func NewRunStateController(store storeFunc, wr *WireRecord) RunStateController {
+func NewRunStateController(store storeFunc, wr *Record) RunStateController {
 	return &runStateControllerImpl{
 		record: wr,
 		store:  store,
 	}
 }
 
-type customDelete func(wr *WireRecord) ([]byte, error)
+type customDelete func(wr *Record) ([]byte, error)
 
 type runStateControllerImpl struct {
-	record *WireRecord
+	record *Record
 	store  storeFunc
 }
 
@@ -130,7 +130,7 @@ func (rsc *runStateControllerImpl) update(ctx context.Context, rs RunState, inva
 	return updateWireRecord(ctx, rsc.store, rsc.record, previousRunState)
 }
 
-func validateRunStateTransition(record *WireRecord, runState RunState, sentinelErr error) error {
+func validateRunStateTransition(record *Record, runState RunState, sentinelErr error) error {
 	valid, ok := runStateTransitions[record.RunState]
 	if !ok {
 		return errors.Wrap(sentinelErr, "current run state is terminal", j.MKV{

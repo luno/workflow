@@ -26,7 +26,7 @@ func TestConsume(t *testing.T) {
 	b, err := Marshal(&value)
 	jtest.RequireNil(t, err)
 
-	current := &WireRecord{
+	current := &Record{
 		ID:           1,
 		WorkflowName: "example",
 		ForeignID:    "32948623984623",
@@ -43,7 +43,7 @@ func TestConsume(t *testing.T) {
 			"updater":      0,
 		}
 
-		currentRecord := &WireRecord{
+		currentRecord := &Record{
 			ID:           1,
 			WorkflowName: "example",
 			ForeignID:    "32948623984623",
@@ -70,7 +70,7 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+		store := func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
 			calls["store"] += 1
 			return nil
 		}
@@ -110,7 +110,7 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+		store := func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
 			calls["store"] += 1
 			return nil
 		}
@@ -149,7 +149,7 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+		store := func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
 			calls["store"] += 1
 			return nil
 		}
@@ -193,7 +193,7 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+		store := func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
 			calls["store"] += 1
 			return nil
 		}

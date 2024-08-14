@@ -36,7 +36,7 @@ func (w *Workflow[Type, Status]) Schedule(foreignID string, startingStatus Statu
 		latestEntry, err := w.recordStore.Latest(ctx, w.Name, foreignID)
 		if errors.Is(err, ErrRecordNotFound) {
 			// NoReturnErr: Rather use zero value for lastRunID and use current clock for first run.
-			latestEntry = &WireRecord{}
+			latestEntry = &Record{}
 		} else if err != nil {
 			return err
 		}

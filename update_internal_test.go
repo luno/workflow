@@ -25,14 +25,14 @@ func TestUpdater(t *testing.T) {
 	}{
 		{
 			name: "Golden path",
-			lookup: func(ctx context.Context, id int64) (*WireRecord, error) {
-				return &WireRecord{
+			lookup: func(ctx context.Context, id int64) (*Record, error) {
+				return &Record{
 					Status: int(statusStart),
 				}, nil
 			},
 			current: statusStart,
 			update: Run[string, testStatus]{
-				WireRecord: WireRecord{
+				Record: Record{
 					RunState: RunStateRunning,
 					Status:   int(statusMiddle),
 				},
@@ -52,14 +52,14 @@ func TestUpdater(t *testing.T) {
 		},
 		{
 			name: "No transitions - error",
-			lookup: func(ctx context.Context, id int64) (*WireRecord, error) {
-				return &WireRecord{
+			lookup: func(ctx context.Context, id int64) (*Record, error) {
+				return &Record{
 					Status: int(statusStart),
 				}, nil
 			},
 			current: statusStart,
 			update: Run[string, testStatus]{
-				WireRecord: WireRecord{
+				Record: Record{
 					RunState: RunStateRunning,
 					Status:   int(statusMiddle),
 				},
@@ -70,14 +70,14 @@ func TestUpdater(t *testing.T) {
 		},
 		{
 			name: "Mark as completed",
-			lookup: func(ctx context.Context, id int64) (*WireRecord, error) {
-				return &WireRecord{
+			lookup: func(ctx context.Context, id int64) (*Record, error) {
+				return &Record{
 					Status: int(statusStart),
 				}, nil
 			},
 			current: statusStart,
 			update: Run[string, testStatus]{
-				WireRecord: WireRecord{
+				Record: Record{
 					RunState: RunStateRunning,
 					Status:   int(statusMiddle),
 				},
@@ -93,15 +93,15 @@ func TestUpdater(t *testing.T) {
 		},
 		{
 			name: "Return error on lookup",
-			lookup: func(ctx context.Context, id int64) (*WireRecord, error) {
+			lookup: func(ctx context.Context, id int64) (*Record, error) {
 				return nil, errors.New("lookup error")
 			},
 			expectedErr: errors.New("lookup error"),
 		},
 		{
 			name: "Exit early if lookup record status has changed",
-			lookup: func(ctx context.Context, id int64) (*WireRecord, error) {
-				return &WireRecord{
+			lookup: func(ctx context.Context, id int64) (*Record, error) {
+				return &Record{
 					Status: int(statusEnd),
 				}, nil
 			},
@@ -110,14 +110,14 @@ func TestUpdater(t *testing.T) {
 		},
 		{
 			name: "No valid transition available",
-			lookup: func(ctx context.Context, id int64) (*WireRecord, error) {
-				return &WireRecord{
+			lookup: func(ctx context.Context, id int64) (*Record, error) {
+				return &Record{
 					Status: int(statusStart),
 				}, nil
 			},
 			current: statusStart,
 			update: Run[string, testStatus]{
-				WireRecord: WireRecord{
+				Record: Record{
 					RunState: RunStateRunning,
 					Status:   int(statusMiddle),
 				},
@@ -141,7 +141,7 @@ func TestUpdater(t *testing.T) {
 			}
 			c := clock_testing.NewFakeClock(time.Now())
 
-			store := func(ctx context.Context, r *WireRecord, maker OutboxEventDataMaker) error {
+			store := func(ctx context.Context, r *Record, maker OutboxEventDataMaker) error {
 				require.Equal(t, tc.expectedRunState, r.RunState)
 				_, err := maker(1)
 				jtest.RequireNil(t, err)

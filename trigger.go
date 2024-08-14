@@ -35,7 +35,7 @@ func (w *Workflow[Type, Status]) Trigger(ctx context.Context, foreignID string, 
 
 	lastRecord, err := w.recordStore.Latest(ctx, w.Name, foreignID)
 	if errors.Is(err, ErrRecordNotFound) {
-		lastRecord = &WireRecord{}
+		lastRecord = &Record{}
 	} else if err != nil {
 		return "", err
 	}
@@ -56,7 +56,7 @@ func (w *Workflow[Type, Status]) Trigger(ctx context.Context, foreignID string, 
 	}
 
 	runID = uid.String()
-	wr := &WireRecord{
+	wr := &Record{
 		WorkflowName: w.Name,
 		ForeignID:    foreignID,
 		RunID:        runID,

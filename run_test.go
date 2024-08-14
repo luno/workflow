@@ -11,7 +11,7 @@ import (
 )
 
 func TestNewTestingRun(t *testing.T) {
-	r := workflow.NewTestingRun[string, status](t, workflow.WireRecord{}, "test")
+	r := workflow.NewTestingRun[string, status](t, workflow.Record{}, "test")
 	ctx := context.Background()
 
 	pauseStatus, err := r.Pause(ctx)

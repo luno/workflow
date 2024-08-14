@@ -29,7 +29,7 @@ func (w *Workflow[Type, Status]) Callback(ctx context.Context, foreignID string,
 	return nil
 }
 
-type latestLookup func(ctx context.Context, workflowName, foreignID string) (*WireRecord, error)
+type latestLookup func(ctx context.Context, workflowName, foreignID string) (*Record, error)
 
 func processCallback[Type any, Status StatusType](
 	ctx context.Context,

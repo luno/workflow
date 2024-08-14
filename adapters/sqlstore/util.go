@@ -6,7 +6,6 @@ import (
 
 	"github.com/luno/jettison/errors"
 	"github.com/luno/jettison/j"
-
 	"github.com/luno/workflow"
 )
 
@@ -72,20 +71,20 @@ func (s *SQLStore) insertOutboxEvent(ctx context.Context, tx *sql.Tx, workflowNa
 	return resp.LastInsertId()
 }
 
-func (s *SQLStore) lookupWhere(ctx context.Context, dbc *sql.DB, where string, args ...any) (*workflow.WireRecord, error) {
+func (s *SQLStore) lookupWhere(ctx context.Context, dbc *sql.DB, where string, args ...any) (*workflow.Record, error) {
 	return recordScan(dbc.QueryRowContext(ctx, s.recordSelectPrefix+where, args...))
 }
 
 // listWhere queries the table with the provided where clause, then scans
 // and returns all the rows.
-func (s *SQLStore) listWhere(ctx context.Context, dbc *sql.DB, where string, args ...any) ([]workflow.WireRecord, error) {
+func (s *SQLStore) listWhere(ctx context.Context, dbc *sql.DB, where string, args ...any) ([]workflow.Record, error) {
 	rows, err := dbc.QueryContext(ctx, s.recordSelectPrefix+where, args...)
 	if err != nil {
 		return nil, errors.Wrap(err, "listWhere")
 	}
 	defer rows.Close()
 
-	var res []workflow.WireRecord
+	var res []workflow.Record
 	for rows.Next() {
 		r, err := recordScan(rows)
 		if err != nil {
@@ -125,8 +124,8 @@ func (s *SQLStore) listOutboxWhere(ctx context.Context, dbc *sql.DB, where strin
 	return res, nil
 }
 
-func recordScan(row row) (*workflow.WireRecord, error) {
-	var r workflow.WireRecord
+func recordScan(row row) (*workflow.Record, error) {
+	var r workflow.Record
 	err := row.Scan(
 		&r.ID,
 		&r.WorkflowName,

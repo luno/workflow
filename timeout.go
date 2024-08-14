@@ -104,7 +104,7 @@ func processTimeout[Type any, Status StatusType](
 	ctx context.Context,
 	w *Workflow[Type, Status],
 	config timeout[Type, Status],
-	r *WireRecord,
+	r *Record,
 	timeout TimeoutRecord,
 	completeFn completeFunc,
 	store storeFunc,

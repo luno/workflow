@@ -8,7 +8,7 @@ import (
 	"github.com/luno/workflow"
 )
 
-func ProtoMarshal(r *workflow.WireRecord) ([]byte, error) {
+func ProtoMarshal(r *workflow.Record) ([]byte, error) {
 	pb, err := proto.Marshal(ToProto(r))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to proto marshal record")
@@ -17,7 +17,7 @@ func ProtoMarshal(r *workflow.WireRecord) ([]byte, error) {
 	return pb, nil
 }
 
-func ToProto(r *workflow.WireRecord) *Record {
+func ToProto(r *workflow.Record) *Record {
 	return &Record{
 		Id:           r.ID,
 		WorkflowName: r.WorkflowName,
@@ -31,14 +31,14 @@ func ToProto(r *workflow.WireRecord) *Record {
 	}
 }
 
-func UnmarshalRecord(b []byte) (*workflow.WireRecord, error) {
+func UnmarshalRecord(b []byte) (*workflow.Record, error) {
 	var wpb Record
 	err := proto.Unmarshal(b, &wpb)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to proto marshal record")
 	}
 
-	return &workflow.WireRecord{
+	return &workflow.Record{
 		ID:           wpb.Id,
 		WorkflowName: wpb.WorkflowName,
 		ForeignID:    wpb.ForeignId,

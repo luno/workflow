@@ -2,7 +2,7 @@ package workflow
 
 import "time"
 
-type WireRecord struct {
+type Record struct {
 	ID           int64
 	WorkflowName string
 	ForeignID    string

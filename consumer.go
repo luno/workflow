@@ -218,7 +218,7 @@ func wait(ctx context.Context, d time.Duration) error {
 func consume[Type any, Status StatusType](
 	ctx context.Context,
 	w *Workflow[Type, Status],
-	current *WireRecord,
+	current *Record,
 	cf ConsumerFunc[Type, Status],
 	ack Ack,
 	store storeFunc,

@@ -130,7 +130,7 @@ func TestWorkflowRunStateController(t *testing.T) {
 	ctx := context.Background()
 	workflowName := "test-workflow"
 	foreignID := "foreignID"
-	err = recordStore.Store(ctx, &workflow.WireRecord{
+	err = recordStore.Store(ctx, &workflow.Record{
 		WorkflowName: workflowName,
 		ForeignID:    foreignID,
 		RunState:     workflow.RunStateInitiated,

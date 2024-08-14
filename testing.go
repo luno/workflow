@@ -89,7 +89,7 @@ func Require[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status
 		runID = latest.RunID
 	}
 
-	var wr *WireRecord
+	var wr *Record
 	for wr == nil {
 		offset := testingStore.SnapshotOffset(w.Name, foreignID, runID)
 		snapshots := testingStore.Snapshots(w.Name, foreignID, runID)
@@ -111,9 +111,9 @@ func Require[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status
 	jtest.RequireNil(t, err)
 
 	actual := &Run[Type, Status]{
-		WireRecord: *wr,
-		Status:     Status(wr.Status),
-		Object:     &typ,
+		Record: *wr,
+		Status: Status(wr.Status),
+		Object: &typ,
 	}
 
 	require.Equal(t, expected, *actual.Object)

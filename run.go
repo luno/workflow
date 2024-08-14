@@ -5,16 +5,16 @@ import (
 	"testing"
 )
 
-// Run is a representation of a workflow run. It incorporates all the fields from the WireRecord as well as
+// Run is a representation of a workflow run. It incorporates all the fields from the Record as well as
 // having defined types for the Status and Object fields along with access to the RunStateController which
 // controls the state of the run aka "RunState".
 type Run[Type any, Status StatusType] struct {
-	WireRecord
+	Record
 	Status Status
 	Object *Type
 
 	// stopper provides controls over the run state of the record. Run is not serializable and is not
-	// intended to be and thus WireRecord exists as a serializable representation of a record.
+	// intended to be and thus Record exists as a serializable representation of a record.
 	controller RunStateController
 }
 
@@ -49,16 +49,16 @@ func (r *Run[Type, Status]) Cancel(ctx context.Context) (Status, error) {
 
 // NewTestingRun should be used when testing logic that defines a workflow.Run as a parameter. This is usually the
 // case in unit tests and would not normally be found when doing an Acceptance test for the entire workflow.
-func NewTestingRun[Type any, Status StatusType](t *testing.T, wr WireRecord, object Type) Run[Type, Status] {
+func NewTestingRun[Type any, Status StatusType](t *testing.T, wr Record, object Type) Run[Type, Status] {
 	return Run[Type, Status]{
-		WireRecord: wr,
+		Record:     wr,
 		Status:     Status(wr.Status),
 		Object:     &object,
 		controller: &noopRunStateController{},
 	}
 }
 
-func buildConsumableRecord[Type any, Status StatusType](store storeFunc, wr *WireRecord) (*Run[Type, Status], error) {
+func buildConsumableRecord[Type any, Status StatusType](store storeFunc, wr *Record) (*Run[Type, Status], error) {
 	var t Type
 	err := Unmarshal(wr.Object, &t)
 	if err != nil {
@@ -67,7 +67,7 @@ func buildConsumableRecord[Type any, Status StatusType](store storeFunc, wr *Wir
 
 	controller := NewRunStateController(store, wr)
 	record := Run[Type, Status]{
-		WireRecord: *wr,
+		Record:     *wr,
 		Status:     Status(wr.Status),
 		Object:     &t,
 		controller: controller,
