@@ -103,12 +103,12 @@ type MyType struct {
 func Workflow() *workflow.Workflow[MyType, Step] {
 	b := workflow.NewBuilder[MyType, Step]("my workflow name")
 
-	b.AddStep(StepOne, func(ctx context.Context, r *workflow.Record[MyType, Step]) (Step, error) {
+	b.AddStep(StepOne, func(ctx context.Context, r *workflow.Run[MyType, Step]) (Step, error) {
 		r.Object.Field = "Hello,"
 		return StepTwo, nil
 	}, StepTwo)
 
-	b.AddStep(StepTwo, func(ctx context.Context, r *workflow.Record[MyType, Step]) (Step, error) {
+	b.AddStep(StepTwo, func(ctx context.Context, r *workflow.Run[MyType, Step]) (Step, error) {
 		r.Object.Field += " world!"
 		return StepThree, nil
 	}, StepThree)
@@ -181,8 +181,6 @@ title: Diagram the run states of a workflow
 stateDiagram-v2
 	direction LR
     
-	[*]-->Initiated
-
     Initiated-->Running
     
     Running-->Completed
@@ -199,7 +197,6 @@ stateDiagram-v2
             
         DataDeleted-->RequestedDataDeleted
         RequestedDataDeleted-->DataDeleted
-        DataDeleted-->[*]
     }
 ```
 
@@ -329,17 +326,18 @@ b.AddStep(
 
 ## Glossary
 
-| **Term**         | **Description**                                                                                                                                          |
-|------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Builder**      | A struct type that facilitates the construction of workflows. It provides methods for adding steps, callbacks, timeouts, and connecting workflows.       |
-| **Callback**     | A method in the workflow API that can be used to trigger a callback function for a specified status. It passes data from a reader to the specified callback function. |
-| **Consumer**     | A component that consumes events from an event stream. In this context, it refers to the background consumer goroutines launched by the workflow.          |
-| **EventStreamer**| An interface representing a stream for workflow events. It includes methods for producing and consuming events.                                           |
-| **Graph**        | A representation of the workflow's structure, showing the relationships between different statuses and transitions.                                        |
-| **Producer**     | A component that produces events to an event stream. It is responsible for sending events to the stream.                                                 |
-| **RecordStore**  | An interface representing a store for workflow records. It includes methods for storing and retrieving records.                                           |
-| **RoleScheduler**| An interface representing a scheduler for roles in the workflow. It is responsible for coordinating the execution of different roles.                       |
-| **Topic**        | A method that generates a topic for producing events in the event streamer based on the workflow name and status.                                          |
-| **Trigger**      | A method in the workflow API that initiates a workflow for a specified foreignID and starting status. It returns a runID and allows for additional configuration options. |
-| **WireFormat**   | A format used for serializing and deserializing data for communication between workflow components. It refers to the wire format of the WireRecord.       |
-| **WireRecord**   | A struct representing a record with additional metadata used for communication between workflow components. It can be marshaled to a wire format for storage and transmission. |
+| **Term**         | **Description**                                                                                                                                                                                                       |
+|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Builder**      | A struct type that facilitates the construction of workflows. It provides methods for adding steps, callbacks, timeouts, and connecting workflows.                                                                    |
+| **Callback**     | A method in the workflow API that can be used to trigger a callback function for a specified status. It passes data from a reader to the specified callback function.                                                 |
+| **Consumer**     | A component that consumes events from an event stream. In this context, it refers to the background consumer goroutines launched by the workflow.                                                                     |
+| **EventStreamer**| An interface representing a stream for workflow events. It includes methods for producing and consuming events.                                                                                                       |
+| **Graph**        | A representation of the workflow's structure, showing the relationships between different statuses and transitions.                                                                                                   |
+| **Producer**     | A component that produces events to an event stream. It is responsible for sending events to the stream.                                                                                                              |
+| **Record**  | Is the wire format and representation of a run that can be stored and retrieved. The RecordStore is used for storing and retrieving records.                                                                          |
+| **RecordStore**  | An interface representing a store for Record(s). It defines the methods needed for storing and retrieving records. The RecordStore's underlying technology must support transactions in order to prevent dual-writes. |
+| **RoleScheduler**| An interface representing a scheduler for roles in the workflow. It is responsible for coordinating the execution of different roles.                                                                                 |
+| **Topic**        | A method that generates a topic for producing events in the event streamer based on the workflow name and status.                                                                                                     |
+| **Trigger**      | A method in the workflow API that initiates a workflow for a specified foreignID and starting status. It returns a runID and allows for additional configuration options.                                             |
+| **WireFormat**   | A format used for serializing and deserializing data for communication between workflow components. It refers to the wire format of the WireRecord.                                                                   |
+| **WireRecord**   | A struct representing a record with additional metadata used for communication between workflow components. It can be marshaled to a wire format for storage and transmission.                                        |

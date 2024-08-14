@@ -18,7 +18,7 @@ func TestAwait(t *testing.T) {
 	b := workflow.NewBuilder[string, status]("consumer lag")
 	b.AddStep(
 		StatusStart,
-		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+		func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
 			*r.Object = "hello world"
 			return StatusEnd, nil
 		},

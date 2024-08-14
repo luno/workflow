@@ -67,7 +67,7 @@ type OutboxEventData struct {
 	Data []byte
 }
 
-func WireRecordToOutboxEventData(record WireRecord, previousRunState RunState) (OutboxEventData, error) {
+func WireRecordToOutboxEventData(record Record, previousRunState RunState) (OutboxEventData, error) {
 	topic := Topic(record.WorkflowName, record.Status)
 
 	// Any record that is updated with a RunState of RunStateRequestedDataDeleted has it's events pushed into

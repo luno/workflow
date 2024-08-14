@@ -105,15 +105,15 @@ func RunEventStreamerTest(t *testing.T, constructor workflow.EventStreamer) {
 	require.NotEmpty(t, record.Object.UID)
 }
 
-func setEmail() func(ctx context.Context, t *workflow.Record[User, SyncStatus]) (SyncStatus, error) {
-	return func(ctx context.Context, t *workflow.Record[User, SyncStatus]) (SyncStatus, error) {
+func setEmail() func(ctx context.Context, t *workflow.Run[User, SyncStatus]) (SyncStatus, error) {
+	return func(ctx context.Context, t *workflow.Run[User, SyncStatus]) (SyncStatus, error) {
 		t.Object.Email = "andrew@workflow.com"
 		return SyncStatusEmailSet, nil
 	}
 }
 
-func coolDownTimerFunc() func(ctx context.Context, r *workflow.Record[User, SyncStatus], now time.Time) (time.Time, error) {
-	return func(ctx context.Context, r *workflow.Record[User, SyncStatus], now time.Time) (time.Time, error) {
+func coolDownTimerFunc() func(ctx context.Context, r *workflow.Run[User, SyncStatus], now time.Time) (time.Time, error) {
+	return func(ctx context.Context, r *workflow.Run[User, SyncStatus], now time.Time) (time.Time, error) {
 		// Place a 1-hour cool down period for Great Britain users
 		if r.Object.CountryCode == "GB" {
 			return now.Add(time.Hour), nil
@@ -124,8 +124,8 @@ func coolDownTimerFunc() func(ctx context.Context, r *workflow.Record[User, Sync
 	}
 }
 
-func coolDownTimeout() func(ctx context.Context, r *workflow.Record[User, SyncStatus], now time.Time) (SyncStatus, error) {
-	return func(ctx context.Context, r *workflow.Record[User, SyncStatus], now time.Time) (SyncStatus, error) {
+func coolDownTimeout() func(ctx context.Context, r *workflow.Run[User, SyncStatus], now time.Time) (SyncStatus, error) {
+	return func(ctx context.Context, r *workflow.Run[User, SyncStatus], now time.Time) (SyncStatus, error) {
 		if r.Object.Email == "andrew@workflow.com" {
 			return SyncStatusRegulationTimeout, nil
 		}
@@ -134,8 +134,8 @@ func coolDownTimeout() func(ctx context.Context, r *workflow.Record[User, SyncSt
 	}
 }
 
-func generateUserID() func(ctx context.Context, t *workflow.Record[User, SyncStatus]) (SyncStatus, error) {
-	return func(ctx context.Context, t *workflow.Record[User, SyncStatus]) (SyncStatus, error) {
+func generateUserID() func(ctx context.Context, t *workflow.Run[User, SyncStatus]) (SyncStatus, error) {
+	return func(ctx context.Context, t *workflow.Run[User, SyncStatus]) (SyncStatus, error) {
 		t.Object.UID = uuid.New().String()
 		return SyncStatusCompleted, nil
 	}

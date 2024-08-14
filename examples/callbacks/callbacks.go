@@ -27,7 +27,7 @@ type Deps struct {
 func ExampleWorkflow(d Deps) *workflow.Workflow[Example, examples.Status] {
 	b := workflow.NewBuilder[Example, examples.Status]("callback example")
 
-	b.AddCallback(examples.StatusStarted, func(ctx context.Context, r *workflow.Record[Example, examples.Status], reader io.Reader) (examples.Status, error) {
+	b.AddCallback(examples.StatusStarted, func(ctx context.Context, r *workflow.Run[Example, examples.Status], reader io.Reader) (examples.Status, error) {
 		b, err := io.ReadAll(reader)
 		if err != nil {
 			return 0, err
@@ -47,7 +47,6 @@ func ExampleWorkflow(d Deps) *workflow.Workflow[Example, examples.Status] {
 	return b.Build(
 		d.EventStreamer,
 		d.RecordStore,
-		d.TimeoutStore,
 		d.RoleScheduler,
 	)
 }

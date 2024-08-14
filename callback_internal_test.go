@@ -29,7 +29,7 @@ func TestProcessCallback(t *testing.T) {
 	b, err := Marshal(&value)
 	jtest.RequireNil(t, err)
 
-	current := &WireRecord{
+	current := &Record{
 		ID:           1,
 		WorkflowName: "example",
 		ForeignID:    "32948623984623",
@@ -46,7 +46,7 @@ func TestProcessCallback(t *testing.T) {
 			"latestLookup": 0,
 		}
 
-		current := &WireRecord{
+		current := &Record{
 			ID:           1,
 			WorkflowName: "example",
 			ForeignID:    "32948623984623",
@@ -56,24 +56,24 @@ func TestProcessCallback(t *testing.T) {
 			Object:       b,
 		}
 
-		callbackFn := CallbackFunc[string, testStatus](func(ctx context.Context, r *Record[string, testStatus], reader io.Reader) (testStatus, error) {
+		callbackFn := CallbackFunc[string, testStatus](func(ctx context.Context, r *Run[string, testStatus], reader io.Reader) (testStatus, error) {
 			calls["callbackFunc"] += 1
 			*r.Object = "new data"
 			return statusEnd, nil
 		})
 
-		updater := func(ctx context.Context, current testStatus, next testStatus, record *Record[string, testStatus]) error {
+		updater := func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error {
 			calls["updater"] += 1
 			require.Equal(t, "new data", *record.Object)
 			return nil
 		}
 
-		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*WireRecord, error) {
+		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*Record, error) {
 			calls["latestLookup"] += 1
 			return current, nil
 		}
 
-		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+		store := func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
 			calls["store"] += 1
 			return nil
 		}
@@ -96,24 +96,24 @@ func TestProcessCallback(t *testing.T) {
 			"latestLookup": 0,
 		}
 
-		callbackFn := CallbackFunc[string, testStatus](func(ctx context.Context, r *Record[string, testStatus], reader io.Reader) (testStatus, error) {
+		callbackFn := CallbackFunc[string, testStatus](func(ctx context.Context, r *Run[string, testStatus], reader io.Reader) (testStatus, error) {
 			calls["callbackFunc"] += 1
 			*r.Object = "new data"
 			return statusEnd, nil
 		})
 
-		updater := func(ctx context.Context, current testStatus, next testStatus, record *Record[string, testStatus]) error {
+		updater := func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error {
 			calls["updater"] += 1
 			require.Equal(t, "new data", *record.Object)
 			return nil
 		}
 
-		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*WireRecord, error) {
+		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*Record, error) {
 			calls["latestLookup"] += 1
 			return current, nil
 		}
 
-		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+		store := func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
 			calls["store"] += 1
 			return nil
 		}
@@ -136,22 +136,22 @@ func TestProcessCallback(t *testing.T) {
 			"latestLookup": 0,
 		}
 
-		callbackFn := CallbackFunc[string, testStatus](func(ctx context.Context, r *Record[string, testStatus], reader io.Reader) (testStatus, error) {
+		callbackFn := CallbackFunc[string, testStatus](func(ctx context.Context, r *Run[string, testStatus], reader io.Reader) (testStatus, error) {
 			calls["callbackFunc"] += 1
 			return testStatus(SkipTypeDefault), nil
 		})
 
-		updater := func(ctx context.Context, current testStatus, next testStatus, record *Record[string, testStatus]) error {
+		updater := func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error {
 			calls["updater"] += 1
 			return nil
 		}
 
-		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*WireRecord, error) {
+		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*Record, error) {
 			calls["latestLookup"] += 1
 			return current, nil
 		}
 
-		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+		store := func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
 			calls["store"] += 1
 			return nil
 		}
@@ -168,7 +168,7 @@ func TestProcessCallback(t *testing.T) {
 	})
 
 	t.Run("Return on lookup error", func(t *testing.T) {
-		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*WireRecord, error) {
+		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*Record, error) {
 			return nil, errors.New("test error")
 		}
 
@@ -177,11 +177,11 @@ func TestProcessCallback(t *testing.T) {
 	})
 
 	t.Run("Return on callbackFunc error", func(t *testing.T) {
-		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*WireRecord, error) {
+		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*Record, error) {
 			return current, nil
 		}
 
-		callbackFn := CallbackFunc[string, testStatus](func(ctx context.Context, r *Record[string, testStatus], reader io.Reader) (testStatus, error) {
+		callbackFn := CallbackFunc[string, testStatus](func(ctx context.Context, r *Run[string, testStatus], reader io.Reader) (testStatus, error) {
 			return 0, errors.New("test error")
 		})
 
@@ -190,11 +190,11 @@ func TestProcessCallback(t *testing.T) {
 	})
 
 	t.Run("Ignore if record is in different state", func(t *testing.T) {
-		currentRecord := &WireRecord{
+		currentRecord := &Record{
 			Status: int(statusMiddle),
 		}
 
-		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*WireRecord, error) {
+		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*Record, error) {
 			return currentRecord, nil
 		}
 

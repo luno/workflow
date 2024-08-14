@@ -34,9 +34,9 @@ type API[Type any, Status StatusType] interface {
 	// for Trigger.
 	Schedule(foreignID string, startingStatus Status, spec string, opts ...ScheduleOption[Type, Status]) error
 
-	// Await is a blocking call that returns the typed Record when the workflow of the specified run ID reaches the
+	// Await is a blocking call that returns the typed Run when the workflow of the specified run ID reaches the
 	// specified status.
-	Await(ctx context.Context, foreignID, runID string, status Status, opts ...AwaitOption) (*Record[Type, Status], error)
+	Await(ctx context.Context, foreignID, runID string, status Status, opts ...AwaitOption) (*Run[Type, Status], error)
 
 	// Callback can be used if Builder.AddCallback has been defined for the provided status. The data in the reader
 	// will be passed to the CallbackFunc that you specify and so the serialisation and deserialisation is in the

@@ -85,13 +85,7 @@ title: Diagram of {{.WorkflowName}} Workflow
 ---
 stateDiagram-v2
 	direction {{.Direction}}
-	{{range $key, $value := .StartingPoints }}
-	[*]-->{{$value}}
-	{{- end }}
 	{{range $key, $value := .Transitions }}
 	{{$value.From}}-->{{$value.To}}
-	{{- end }}
-	{{range $key, $value := .TerminalPoints }}
-	{{$value}}-->[*]
 	{{- end }}
 `

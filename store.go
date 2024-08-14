@@ -12,13 +12,13 @@ type RecordStore interface {
 	// Store should create or update a record depending on whether the underlying store is mutable or append only. Store
 	// must implement transactions and a separate outbox store to store the event that can be retrieved when calling
 	// ListOutboxEvents and can be deleted when DeleteOutboxEvent is called.
-	Store(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error
-	Lookup(ctx context.Context, id int64) (*WireRecord, error)
-	Latest(ctx context.Context, workflowName, foreignID string) (*WireRecord, error)
+	Store(ctx context.Context, record *Record, maker OutboxEventDataMaker) error
+	Lookup(ctx context.Context, id int64) (*Record, error)
+	Latest(ctx context.Context, workflowName, foreignID string) (*Record, error)
 
-	// List provides a slice of WireRecord where the total items will be equal or less than the limit depending
+	// List provides a slice of Record where the total items will be equal or less than the limit depending
 	// on the offset provided and how many records remain after that ID.
-	List(ctx context.Context, workflowName string, offsetID int64, limit int, order OrderType, filters ...RecordFilter) ([]WireRecord, error)
+	List(ctx context.Context, workflowName string, offsetID int64, limit int, order OrderType, filters ...RecordFilter) ([]Record, error)
 
 	// ListOutboxEvents lists all events that are yet to be published to the event streamer. A requirement for
 	// implementation of the RecordStore is to support a Transactional Outbox that has Event's written to it when
@@ -32,7 +32,7 @@ type RecordStore interface {
 type TestingRecordStore interface {
 	RecordStore
 
-	Snapshots(workflowName, foreignID, runID string) []*WireRecord
+	Snapshots(workflowName, foreignID, runID string) []*Record
 	SetSnapshotOffset(workflowName, foreignID, runID string, offset int)
 	SnapshotOffset(workflowName, foreignID, runID string) int
 }

@@ -34,7 +34,7 @@ func Workflow(d Deps) *workflow.Workflow[gettingstarted.GettingStarted, examples
 	)
 
 	builder.AddStep(examples.StatusStarted,
-		func(ctx context.Context, r *workflow.Record[gettingstarted.GettingStarted, examples.Status]) (examples.Status, error) {
+		func(ctx context.Context, r *workflow.Run[gettingstarted.GettingStarted, examples.Status]) (examples.Status, error) {
 			r.Object.FollowAnExample = "✅"
 
 			return examples.StatusFollowedTheExample, nil
@@ -45,7 +45,6 @@ func Workflow(d Deps) *workflow.Workflow[gettingstarted.GettingStarted, examples
 	return builder.Build(
 		d.EventStreamer,
 		d.RecordStore,
-		d.TimeoutStore,
 		d.RoleScheduler,
 	)
 }
