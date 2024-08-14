@@ -5,14 +5,13 @@ import (
 	"testing"
 
 	"github.com/luno/jettison/jtest"
-
 	"github.com/luno/workflow"
 	"github.com/luno/workflow/adapters/memrecordstore"
 	"github.com/luno/workflow/adapters/memrolescheduler"
 	"github.com/luno/workflow/adapters/memstreamer"
 	"github.com/luno/workflow/adapters/memtimeoutstore"
-	"github.com/luno/workflow/example"
-	"github.com/luno/workflow/example/gettingstarted"
+
+	"github.com/luno/workflow/_examples/gettingstarted"
 )
 
 func TestWorkflow(t *testing.T) {
@@ -28,19 +27,19 @@ func TestWorkflow(t *testing.T) {
 	wf.Run(ctx)
 
 	foreignID := "82347982374982374"
-	_, err := wf.Trigger(ctx, foreignID, example.StatusStarted)
+	_, err := wf.Trigger(ctx, foreignID, gettingstarted.StatusStarted)
 	jtest.RequireNil(t, err)
 
-	workflow.Require(t, wf, foreignID, example.StatusReadTheDocs, gettingstarted.GettingStarted{
+	workflow.Require(t, wf, foreignID, gettingstarted.StatusReadTheDocs, gettingstarted.GettingStarted{
 		ReadTheDocs: "✅",
 	})
 
-	workflow.Require(t, wf, foreignID, example.StatusFollowedTheExample, gettingstarted.GettingStarted{
+	workflow.Require(t, wf, foreignID, gettingstarted.StatusFollowedTheExample, gettingstarted.GettingStarted{
 		ReadTheDocs:     "✅",
 		FollowAnExample: "✅",
 	})
 
-	workflow.Require(t, wf, foreignID, example.StatusCreatedAFunExample, gettingstarted.GettingStarted{
+	workflow.Require(t, wf, foreignID, gettingstarted.StatusCreatedAFunExample, gettingstarted.GettingStarted{
 		ReadTheDocs:       "✅",
 		FollowAnExample:   "✅",
 		CreateAFunExample: "✅",
