@@ -103,12 +103,12 @@ type MyType struct {
 func Workflow() *workflow.Workflow[MyType, Step] {
 	b := workflow.NewBuilder[MyType, Step]("my workflow name")
 
-	b.AddStep(StepOne, func(ctx context.Context, r *workflow.Record[MyType, Step]) (Step, error) {
+	b.AddStep(StepOne, func(ctx context.Context, r *workflow.Run[MyType, Step]) (Step, error) {
 		r.Object.Field = "Hello,"
 		return StepTwo, nil
 	}, StepTwo)
 
-	b.AddStep(StepTwo, func(ctx context.Context, r *workflow.Record[MyType, Step]) (Step, error) {
+	b.AddStep(StepTwo, func(ctx context.Context, r *workflow.Run[MyType, Step]) (Step, error) {
 		r.Object.Field += " world!"
 		return StepThree, nil
 	}, StepThree)
@@ -181,8 +181,6 @@ title: Diagram the run states of a workflow
 stateDiagram-v2
 	direction LR
     
-	[*]-->Initiated
-
     Initiated-->Running
     
     Running-->Completed
@@ -199,7 +197,6 @@ stateDiagram-v2
             
         DataDeleted-->RequestedDataDeleted
         RequestedDataDeleted-->DataDeleted
-        DataDeleted-->[*]
     }
 ```
 

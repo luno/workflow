@@ -5,8 +5,6 @@ title: Diagram the run states of a workflow
 stateDiagram-v2
     direction LR
 
-    [*]-->Initiated
-
     Initiated-->Running
 
     Running-->Completed
@@ -23,6 +21,5 @@ stateDiagram-v2
 
         DataDeleted-->RequestedDataDeleted
         RequestedDataDeleted-->DataDeleted
-        DataDeleted-->[*]
     }
 ```
