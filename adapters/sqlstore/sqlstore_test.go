@@ -5,6 +5,7 @@ import (
 
 	"github.com/luno/workflow"
 	"github.com/luno/workflow/adapters/adaptertest"
+
 	"github.com/luno/workflow/adapters/sqlstore"
 )
 

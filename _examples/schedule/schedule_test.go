@@ -6,16 +6,15 @@ import (
 	"time"
 
 	"github.com/luno/jettison/jtest"
-	"github.com/stretchr/testify/require"
-	clocktesting "k8s.io/utils/clock/testing"
-
 	"github.com/luno/workflow"
 	"github.com/luno/workflow/adapters/memrecordstore"
 	"github.com/luno/workflow/adapters/memrolescheduler"
 	"github.com/luno/workflow/adapters/memstreamer"
 	"github.com/luno/workflow/adapters/memtimeoutstore"
-	"github.com/luno/workflow/examples"
-	"github.com/luno/workflow/examples/schedule"
+	"github.com/stretchr/testify/require"
+	clocktesting "k8s.io/utils/clock/testing"
+
+	"github.com/luno/workflow/_examples/schedule"
 )
 
 func TestExampleWorkflow(t *testing.T) {
@@ -37,7 +36,7 @@ func TestExampleWorkflow(t *testing.T) {
 	foreignID := "hourly-run"
 
 	go func() {
-		err := wf.Schedule(foreignID, examples.StatusStarted, "@hourly")
+		err := wf.Schedule(foreignID, schedule.StatusStarted, "@hourly")
 		jtest.RequireNil(t, err)
 	}()
 

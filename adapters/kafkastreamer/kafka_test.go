@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/luno/jettison/jtest"
-	"github.com/segmentio/kafka-go"
-
 	"github.com/luno/workflow"
 	"github.com/luno/workflow/adapters/adaptertest"
+	"github.com/segmentio/kafka-go"
+
 	"github.com/luno/workflow/adapters/kafkastreamer"
 )
 

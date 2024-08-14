@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/luno/fate"
 	"github.com/luno/jettison/jtest"
 	"github.com/luno/reflex"
 	"github.com/luno/reflex/rpatterns"
@@ -13,7 +12,6 @@ import (
 	"github.com/luno/workflow/adapters/adaptertest"
 	"github.com/luno/workflow/adapters/memrecordstore"
 	"github.com/luno/workflow/adapters/memrolescheduler"
-	"github.com/luno/workflow/adapters/memtimeoutstore"
 	"github.com/stretchr/testify/require"
 
 	"github.com/luno/workflow/adapters/reflexstreamer"
@@ -55,7 +53,6 @@ func TestStreamFunc(t *testing.T) {
 	wf := b.Build(
 		reflexstreamer.New(dbc, dbc, eventsTable, rpatterns.MemCursorStore()),
 		recordStore,
-		memtimeoutstore.New(),
 		memrolescheduler.New(),
 	)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -72,7 +69,7 @@ func TestStreamFunc(t *testing.T) {
 	spec := reflex.NewSpec(
 		reflexstreamer.StreamFunc(dbc, eventsTable, "myWorkflow"),
 		rpatterns.MemCursorStore(),
-		reflex.NewConsumer("something", func(ctx context.Context, fate fate.Fate, event *reflex.Event) error {
+		reflex.NewConsumer("something", func(ctx context.Context, event *reflex.Event) error {
 			wireRecord, err := recordStore.Lookup(ctx, event.ForeignIDInt())
 			if err != nil {
 				return err
