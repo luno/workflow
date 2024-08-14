@@ -14,7 +14,7 @@ type callback[Type any, Status StatusType] struct {
 	CallbackFunc CallbackFunc[Type, Status]
 }
 
-type CallbackFunc[Type any, Status StatusType] func(ctx context.Context, r *Record[Type, Status], reader io.Reader) (Status, error)
+type CallbackFunc[Type any, Status StatusType] func(ctx context.Context, r *Run[Type, Status], reader io.Reader) (Status, error)
 
 func (w *Workflow[Type, Status]) Callback(ctx context.Context, foreignID string, status Status, payload io.Reader) error {
 	updateFn := newUpdater[Type, Status](w.recordStore.Lookup, w.recordStore.Store, w.statusGraph, w.clock)
@@ -29,7 +29,7 @@ func (w *Workflow[Type, Status]) Callback(ctx context.Context, foreignID string,
 	return nil
 }
 
-type latestLookup func(ctx context.Context, workflowName, foreignID string) (*WireRecord, error)
+type latestLookup func(ctx context.Context, workflowName, foreignID string) (*Record, error)
 
 func processCallback[Type any, Status StatusType](
 	ctx context.Context,

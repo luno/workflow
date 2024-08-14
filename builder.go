@@ -260,7 +260,7 @@ func WithDefaultOptions(opts ...Option) BuildOption {
 
 func WithCustomDelete[Type any](fn func(object *Type) error) BuildOption {
 	return func(bo *buildOptions) {
-		bo.customDelete = func(wr *WireRecord) ([]byte, error) {
+		bo.customDelete = func(wr *Record) ([]byte, error) {
 			var t Type
 			err := Unmarshal(wr.Object, &t)
 			if err != nil {
@@ -293,13 +293,13 @@ func (b *Builder[Type, Status]) determineEndPoints(graph map[int][]int) map[Stat
 }
 
 func DurationTimerFunc[Type any, Status StatusType](duration time.Duration) TimerFunc[Type, Status] {
-	return func(ctx context.Context, r *Record[Type, Status], now time.Time) (time.Time, error) {
+	return func(ctx context.Context, r *Run[Type, Status], now time.Time) (time.Time, error) {
 		return now.Add(duration), nil
 	}
 }
 
 func TimeTimerFunc[Type any, Status StatusType](t time.Time) TimerFunc[Type, Status] {
-	return func(ctx context.Context, r *Record[Type, Status], now time.Time) (time.Time, error) {
+	return func(ctx context.Context, r *Run[Type, Status], now time.Time) (time.Time, error) {
 		return t, nil
 	}
 }

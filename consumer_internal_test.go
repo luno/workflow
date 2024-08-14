@@ -26,7 +26,7 @@ func TestConsume(t *testing.T) {
 	b, err := Marshal(&value)
 	jtest.RequireNil(t, err)
 
-	current := &WireRecord{
+	current := &Record{
 		ID:           1,
 		WorkflowName: "example",
 		ForeignID:    "32948623984623",
@@ -43,7 +43,7 @@ func TestConsume(t *testing.T) {
 			"updater":      0,
 		}
 
-		currentRecord := &WireRecord{
+		currentRecord := &Record{
 			ID:           1,
 			WorkflowName: "example",
 			ForeignID:    "32948623984623",
@@ -53,7 +53,7 @@ func TestConsume(t *testing.T) {
 			Object:       b,
 		}
 
-		consumer := ConsumerFunc[string, testStatus](func(ctx context.Context, r *Record[string, testStatus]) (testStatus, error) {
+		consumer := ConsumerFunc[string, testStatus](func(ctx context.Context, r *Run[string, testStatus]) (testStatus, error) {
 			calls["consumerFunc"] += 1
 			*r.Object = "new data"
 			return statusEnd, nil
@@ -64,13 +64,13 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		updater := func(ctx context.Context, current testStatus, next testStatus, record *Record[string, testStatus]) error {
+		updater := func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error {
 			calls["updater"] += 1
 			require.Equal(t, "new data", *record.Object)
 			return nil
 		}
 
-		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+		store := func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
 			calls["store"] += 1
 			return nil
 		}
@@ -93,7 +93,7 @@ func TestConsume(t *testing.T) {
 			"updater":      0,
 		}
 
-		consumer := ConsumerFunc[string, testStatus](func(ctx context.Context, r *Record[string, testStatus]) (testStatus, error) {
+		consumer := ConsumerFunc[string, testStatus](func(ctx context.Context, r *Run[string, testStatus]) (testStatus, error) {
 			calls["consumerFunc"] += 1
 			*r.Object = "new data"
 			return statusEnd, nil
@@ -104,13 +104,13 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		updater := func(ctx context.Context, current testStatus, next testStatus, record *Record[string, testStatus]) error {
+		updater := func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error {
 			calls["updater"] += 1
 			require.Equal(t, "new data", *record.Object)
 			return nil
 		}
 
-		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+		store := func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
 			calls["store"] += 1
 			return nil
 		}
@@ -134,7 +134,7 @@ func TestConsume(t *testing.T) {
 			"storeAndEmit": 0,
 		}
 
-		consumer := ConsumerFunc[string, testStatus](func(ctx context.Context, r *Record[string, testStatus]) (testStatus, error) {
+		consumer := ConsumerFunc[string, testStatus](func(ctx context.Context, r *Run[string, testStatus]) (testStatus, error) {
 			calls["consumerFunc"] += 1
 			return testStatus(SkipTypeDefault), nil
 		})
@@ -144,12 +144,12 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		updater := func(ctx context.Context, current testStatus, next testStatus, record *Record[string, testStatus]) error {
+		updater := func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error {
 			calls["updater"] += 1
 			return nil
 		}
 
-		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+		store := func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
 			calls["store"] += 1
 			return nil
 		}
@@ -178,7 +178,7 @@ func TestConsume(t *testing.T) {
 
 		testErr := errors.New("test error")
 
-		consumer := ConsumerFunc[string, testStatus](func(ctx context.Context, r *Record[string, testStatus]) (testStatus, error) {
+		consumer := ConsumerFunc[string, testStatus](func(ctx context.Context, r *Run[string, testStatus]) (testStatus, error) {
 			calls["consumerFunc"] += 1
 			return 0, testErr
 		})
@@ -188,12 +188,12 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		updater := func(ctx context.Context, current testStatus, next testStatus, record *Record[string, testStatus]) error {
+		updater := func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error {
 			calls["updater"] += 1
 			return nil
 		}
 
-		store := func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error {
+		store := func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
 			calls["store"] += 1
 			return nil
 		}

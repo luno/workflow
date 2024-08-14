@@ -12,14 +12,14 @@ import (
 )
 
 type (
-	lookupFunc func(ctx context.Context, id int64) (*WireRecord, error)
-	storeFunc  func(ctx context.Context, record *WireRecord, maker OutboxEventDataMaker) error
+	lookupFunc func(ctx context.Context, id int64) (*Record, error)
+	storeFunc  func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error
 
-	updater[Type any, Status StatusType] func(ctx context.Context, current Status, next Status, record *Record[Type, Status]) error
+	updater[Type any, Status StatusType] func(ctx context.Context, current Status, next Status, record *Run[Type, Status]) error
 )
 
 func newUpdater[Type any, Status StatusType](lookup lookupFunc, store storeFunc, graph *graph.Graph, clock clock.Clock) updater[Type, Status] {
-	return func(ctx context.Context, current Status, next Status, record *Record[Type, Status]) error {
+	return func(ctx context.Context, current Status, next Status, record *Run[Type, Status]) error {
 		object, err := Marshal(&record.Object)
 		if err != nil {
 			return err
@@ -31,7 +31,7 @@ func newUpdater[Type any, Status StatusType](lookup lookupFunc, store storeFunc,
 			runState = RunStateCompleted
 		}
 
-		updatedRecord := &WireRecord{
+		updatedRecord := &Record{
 			ID:           record.ID,
 			WorkflowName: record.WorkflowName,
 			ForeignID:    record.ForeignID,
@@ -63,7 +63,7 @@ func newUpdater[Type any, Status StatusType](lookup lookupFunc, store storeFunc,
 		metrics.RunStateChanges.WithLabelValues(record.WorkflowName, record.RunState.String(), updatedRecord.RunState.String()).Inc()
 
 		return store(ctx, updatedRecord, func(recordID int64) (OutboxEventData, error) {
-			// Record ID would not have been set if it is a new record. Assign the recordID that the Store provides
+			// Run ID would not have been set if it is a new record. Assign the recordID that the Store provides
 			updatedRecord.ID = recordID
 			return WireRecordToOutboxEventData(*updatedRecord, record.RunState)
 		})
@@ -99,12 +99,12 @@ func validateTransition[Status StatusType](current, next Status, graph *graph.Gr
 	return nil
 }
 
-func updateWireRecord(ctx context.Context, store storeFunc, record *WireRecord, previousRunState RunState) error {
+func updateWireRecord(ctx context.Context, store storeFunc, record *Record, previousRunState RunState) error {
 	// Push run state changes for observability
 	metrics.RunStateChanges.WithLabelValues(record.WorkflowName, previousRunState.String(), record.RunState.String()).Inc()
 
 	return store(ctx, record, func(recordID int64) (OutboxEventData, error) {
-		// Record ID would not have been set if it is a new record. Assign the recordID that the Store provides
+		// Run ID would not have been set if it is a new record. Assign the recordID that the Store provides
 		record.ID = recordID
 		return WireRecordToOutboxEventData(*record, previousRunState)
 	})

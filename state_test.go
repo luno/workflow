@@ -16,12 +16,12 @@ import (
 
 func TestInternalState(t *testing.T) {
 	b := workflow.NewBuilder[string, status]("example")
-	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
 		return StatusMiddle, nil
 	}, StatusMiddle)
 
 	b.AddStep(StatusMiddle,
-		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+		func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
 			return StatusEnd, nil
 		},
 		StatusEnd,
@@ -29,7 +29,7 @@ func TestInternalState(t *testing.T) {
 		workflow.ParallelCount(3),
 	)
 
-	b.AddTimeout(StatusInitiated, workflow.DurationTimerFunc[string, status](time.Hour), func(ctx context.Context, r *workflow.Record[string, status], now time.Time) (status, error) {
+	b.AddTimeout(StatusInitiated, workflow.DurationTimerFunc[string, status](time.Hour), func(ctx context.Context, r *workflow.Run[string, status], now time.Time) (status, error) {
 		return StatusCompleted, nil
 	}, StatusCompleted)
 

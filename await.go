@@ -8,7 +8,7 @@ import (
 	"github.com/luno/jettison/errors"
 )
 
-func (w *Workflow[Type, Status]) Await(ctx context.Context, foreignID, runID string, status Status, opts ...AwaitOption) (*Record[Type, Status], error) {
+func (w *Workflow[Type, Status]) Await(ctx context.Context, foreignID, runID string, status Status, opts ...AwaitOption) (*Run[Type, Status], error) {
 	var opt awaitOpts
 	for _, option := range opts {
 		option(&opt)
@@ -23,7 +23,7 @@ func (w *Workflow[Type, Status]) Await(ctx context.Context, foreignID, runID str
 	return awaitWorkflowStatusByForeignID[Type, Status](ctx, w, status, foreignID, runID, role, pollFrequency)
 }
 
-func awaitWorkflowStatusByForeignID[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], status Status, foreignID, runID string, role string, pollFrequency time.Duration) (*Record[Type, Status], error) {
+func awaitWorkflowStatusByForeignID[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], status Status, foreignID, runID string, role string, pollFrequency time.Duration) (*Run[Type, Status], error) {
 	topic := Topic(w.Name, int(status))
 	stream, err := w.eventStreamer.NewConsumer(
 		ctx,
@@ -77,8 +77,8 @@ func awaitWorkflowStatusByForeignID[Type any, Status StatusType](ctx context.Con
 			return nil, err
 		}
 
-		return &Record[Type, Status]{
-			WireRecord: *r,
+		return &Run[Type, Status]{
+			Record:     *r,
 			Status:     Status(r.Status),
 			Object:     &t,
 			controller: NewRunStateController(w.recordStore.Store, r),

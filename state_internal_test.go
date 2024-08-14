@@ -9,7 +9,7 @@ import (
 
 func TestUpdateState(t *testing.T) {
 	b := NewBuilder[string, testStatus]("example")
-	b.AddStep(statusStart, func(ctx context.Context, r *Record[string, testStatus]) (testStatus, error) {
+	b.AddStep(statusStart, func(ctx context.Context, r *Run[string, testStatus]) (testStatus, error) {
 		return statusEnd, nil
 	}, statusEnd)
 

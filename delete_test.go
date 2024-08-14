@@ -24,18 +24,18 @@ func TestDeleteForever(t *testing.T) {
 
 	testCases := []struct {
 		Name        string
-		storeFn     func(ctx context.Context, record *workflow.WireRecord, maker workflow.OutboxEventDataMaker) error
-		lookupFn    func(ctx context.Context, id int64) (*workflow.WireRecord, error)
-		deleteFn    func(wr *workflow.WireRecord) ([]byte, error)
+		storeFn     func(ctx context.Context, record *workflow.Record, maker workflow.OutboxEventDataMaker) error
+		lookupFn    func(ctx context.Context, id int64) (*workflow.Record, error)
+		deleteFn    func(wr *workflow.Record) ([]byte, error)
 		expectedErr error
 	}{
 		{
 			Name: "Golden path - custom delete",
-			storeFn: func(ctx context.Context, record *workflow.WireRecord, maker workflow.OutboxEventDataMaker) error {
+			storeFn: func(ctx context.Context, record *workflow.Record, maker workflow.OutboxEventDataMaker) error {
 				require.Equal(t, workflow.RunStateDataDeleted, record.RunState)
 				return nil
 			},
-			lookupFn: func(ctx context.Context, id int64) (*workflow.WireRecord, error) {
+			lookupFn: func(ctx context.Context, id int64) (*workflow.Record, error) {
 				require.Equal(t, int64(1), id)
 
 				o := object{
@@ -46,12 +46,12 @@ func TestDeleteForever(t *testing.T) {
 				b, err := workflow.Marshal(&o)
 				jtest.RequireNil(t, err)
 
-				return &workflow.WireRecord{
+				return &workflow.Record{
 					Object:   b,
 					RunState: workflow.RunStateRequestedDataDeleted,
 				}, nil
 			},
-			deleteFn: func(wr *workflow.WireRecord) ([]byte, error) {
+			deleteFn: func(wr *workflow.Record) ([]byte, error) {
 				var o object
 
 				err := workflow.Unmarshal(wr.Object, &o)
@@ -65,11 +65,11 @@ func TestDeleteForever(t *testing.T) {
 		},
 		{
 			Name: "Golden path - default delete",
-			storeFn: func(ctx context.Context, record *workflow.WireRecord, maker workflow.OutboxEventDataMaker) error {
+			storeFn: func(ctx context.Context, record *workflow.Record, maker workflow.OutboxEventDataMaker) error {
 				require.Equal(t, workflow.RunStateDataDeleted, record.RunState)
 				return nil
 			},
-			lookupFn: func(ctx context.Context, id int64) (*workflow.WireRecord, error) {
+			lookupFn: func(ctx context.Context, id int64) (*workflow.Record, error) {
 				require.Equal(t, int64(1), id)
 
 				o := object{
@@ -80,7 +80,7 @@ func TestDeleteForever(t *testing.T) {
 				b, err := workflow.Marshal(&o)
 				jtest.RequireNil(t, err)
 
-				return &workflow.WireRecord{
+				return &workflow.Record{
 					Object:   b,
 					RunState: workflow.RunStateRequestedDataDeleted,
 				}, nil
@@ -89,19 +89,19 @@ func TestDeleteForever(t *testing.T) {
 		},
 		{
 			Name: "Return err on lookup error",
-			lookupFn: func(ctx context.Context, id int64) (*workflow.WireRecord, error) {
+			lookupFn: func(ctx context.Context, id int64) (*workflow.Record, error) {
 				return nil, testErr
 			},
 			expectedErr: testErr,
 		},
 		{
 			Name: "Return err on store error",
-			lookupFn: func(ctx context.Context, id int64) (*workflow.WireRecord, error) {
-				return &workflow.WireRecord{
+			lookupFn: func(ctx context.Context, id int64) (*workflow.Record, error) {
+				return &workflow.Record{
 					RunState: workflow.RunStateRequestedDataDeleted,
 				}, nil
 			},
-			storeFn: func(ctx context.Context, record *workflow.WireRecord, maker workflow.OutboxEventDataMaker) error {
+			storeFn: func(ctx context.Context, record *workflow.Record, maker workflow.OutboxEventDataMaker) error {
 				return testErr
 			},
 			expectedErr: testErr,

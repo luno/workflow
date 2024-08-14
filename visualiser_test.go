@@ -11,17 +11,17 @@ import (
 
 func TestVisualiser(t *testing.T) {
 	b := workflow.NewBuilder[string, status]("example")
-	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
 		return StatusMiddle, nil
 	}, StatusMiddle, StatusEnd)
 
-	b.AddStep(StatusMiddle, func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+	b.AddStep(StatusMiddle, func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
 		return StatusEnd, nil
 	}, StatusEnd,
 	)
 
 	wf := b.Build(nil, nil, nil)
 
-	err := workflow.MermaidDiagram(wf, "./testdata/graph.md", workflow.LeftToRightDirection)
+	err := workflow.MermaidDiagram(wf, "./testdata/graph-visualisation.md", workflow.LeftToRightDirection)
 	jtest.RequireNil(t, err)
 }

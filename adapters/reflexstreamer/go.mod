@@ -1,4 +1,4 @@
-module github.com/luno/workflow/adapters/_external/reflexstreamer
+module github.com/luno/workflow/adapters/reflexstreamer
 
 go 1.22.3
 

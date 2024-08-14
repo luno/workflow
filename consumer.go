@@ -17,7 +17,7 @@ import (
 // the record will not be stored and the event will be skipped and move onto the next event. If a non-nil error is
 // returned then the consumer will back off and try again until a nil error occurs or the retry max has been reached
 // if a Dead Letter Queue has been configured for the workflow.
-type ConsumerFunc[Type any, Status StatusType] func(ctx context.Context, r *Record[Type, Status]) (Status, error)
+type ConsumerFunc[Type any, Status StatusType] func(ctx context.Context, r *Run[Type, Status]) (Status, error)
 
 type consumerConfig[Type any, Status StatusType] struct {
 	pollingFrequency   time.Duration
@@ -218,7 +218,7 @@ func wait(ctx context.Context, d time.Duration) error {
 func consume[Type any, Status StatusType](
 	ctx context.Context,
 	w *Workflow[Type, Status],
-	current *WireRecord,
+	current *Record,
 	cf ConsumerFunc[Type, Status],
 	ack Ack,
 	store storeFunc,
@@ -248,7 +248,7 @@ func consume[Type any, Status StatusType](
 					})
 				}
 
-				// Record paused - now clear the error counter.
+				// Run paused - now clear the error counter.
 				w.errorCounter.Clear(originalErr, processName, record.RunID)
 				return ack()
 			}

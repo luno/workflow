@@ -13,7 +13,7 @@ import (
 
 func TestProtoMarshalAndUnmarshal(t *testing.T) {
 	now := time.Date(2024, time.April, 9, 0, 0, 0, 0, time.UTC)
-	wireRecord := workflow.WireRecord{
+	wireRecord := workflow.Record{
 		ID:           1,
 		WorkflowName: "example",
 		ForeignID:    "o283u44092384",

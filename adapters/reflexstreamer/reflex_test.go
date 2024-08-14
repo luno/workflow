@@ -4,25 +4,24 @@ import (
 	"context"
 	"testing"
 
-	"github.com/luno/fate"
 	"github.com/luno/jettison/jtest"
 	"github.com/luno/reflex"
 	"github.com/luno/reflex/rpatterns"
 	"github.com/luno/reflex/rsql"
-	"github.com/stretchr/testify/require"
-
 	"github.com/luno/workflow"
 	"github.com/luno/workflow/adapters/adaptertest"
 	"github.com/luno/workflow/adapters/memrecordstore"
 	"github.com/luno/workflow/adapters/memrolescheduler"
-	"github.com/luno/workflow/adapters/memtimeoutstore"
+	"github.com/stretchr/testify/require"
+
+	"github.com/luno/workflow/adapters/reflexstreamer"
 )
 
 func TestStreamer(t *testing.T) {
 	eventsTable := rsql.NewEventsTableInt("workflow_events", rsql.WithEventMetadataField("metadata"))
 	dbc := ConnectForTesting(t)
 	cTable := rsql.NewCursorsTable("cursors")
-	constructor := New(dbc, dbc, eventsTable, cTable.ToStore(dbc))
+	constructor := reflexstreamer.New(dbc, dbc, eventsTable, cTable.ToStore(dbc))
 	adaptertest.RunEventStreamerTest(t, constructor)
 }
 
@@ -34,7 +33,7 @@ func TestStreamFunc(t *testing.T) {
 	b := workflow.NewBuilder[string, status](workflowName)
 	b.AddStep(
 		statusStart,
-		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+		func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
 			*r.Object = "Started and "
 			return statusMiddle, nil
 		},
@@ -42,7 +41,7 @@ func TestStreamFunc(t *testing.T) {
 	)
 	b.AddStep(
 		statusMiddle,
-		func(ctx context.Context, r *workflow.Record[string, status]) (status, error) {
+		func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
 			*r.Object += "Completed in a Workflow"
 			return statusEnd, nil
 		},
@@ -52,9 +51,8 @@ func TestStreamFunc(t *testing.T) {
 	recordStore := memrecordstore.New()
 
 	wf := b.Build(
-		New(dbc, dbc, eventsTable, rpatterns.MemCursorStore()),
+		reflexstreamer.New(dbc, dbc, eventsTable, rpatterns.MemCursorStore()),
 		recordStore,
-		memtimeoutstore.New(),
 		memrolescheduler.New(),
 	)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -69,9 +67,9 @@ func TestStreamFunc(t *testing.T) {
 	workflow.Require(t, wf, fid, statusEnd, "Started and Completed in a Workflow")
 
 	spec := reflex.NewSpec(
-		StreamFunc(dbc, eventsTable, "myWorkflow"),
+		reflexstreamer.StreamFunc(dbc, eventsTable, "myWorkflow"),
 		rpatterns.MemCursorStore(),
-		reflex.NewConsumer("something", func(ctx context.Context, fate fate.Fate, event *reflex.Event) error {
+		reflex.NewConsumer("something", func(ctx context.Context, event *reflex.Event) error {
 			wireRecord, err := recordStore.Lookup(ctx, event.ForeignIDInt())
 			if err != nil {
 				return err
@@ -109,7 +107,7 @@ func TestConnector(t *testing.T) {
 		jtest.RequireNil(t, err)
 
 		for _, event := range seedEvents {
-			notify, err := eventsTable.Insert(ctx, tx, event.ForeignID, EventType(1))
+			notify, err := eventsTable.Insert(ctx, tx, event.ForeignID, reflexstreamer.EventType(1))
 			if err != nil {
 				originalErr := err
 				err = tx.Rollback()
@@ -123,7 +121,7 @@ func TestConnector(t *testing.T) {
 		err = tx.Commit()
 		jtest.RequireNil(t, err)
 
-		return NewConnector(eventsTable.ToStream(dbc), cTable.ToStore(dbc), DefaultReflexTranslator)
+		return reflexstreamer.NewConnector(eventsTable.ToStream(dbc), cTable.ToStore(dbc), reflexstreamer.DefaultReflexTranslator)
 	})
 }
 

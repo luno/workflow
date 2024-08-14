@@ -149,7 +149,7 @@ func testDeleteOutboxEvent(t *testing.T, factory func() workflow.RecordStore) {
 		expected := dummyWireRecord(t)
 
 		maker := func(recordID int64) (workflow.OutboxEventData, error) {
-			// Record ID would not have been set if it is a new record. Assign the recordID that the Store provides
+			// Run ID would not have been set if it is a new record. Assign the recordID that the Store provides
 			expected.ID = recordID
 			return workflow.WireRecordToOutboxEventData(*expected, workflow.RunStateInitiated)
 		}
@@ -308,11 +308,11 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 	})
 }
 
-func dummyWireRecord(t *testing.T) *workflow.WireRecord {
+func dummyWireRecord(t *testing.T) *workflow.Record {
 	return dummyWireRecordWithID(t, 0)
 }
 
-func dummyWireRecordWithID(t *testing.T, id int64) *workflow.WireRecord {
+func dummyWireRecordWithID(t *testing.T, id int64) *workflow.Record {
 	workflowName := "my_workflow"
 	foreignID := "Andrew Wormald"
 	runID, err := uuid.NewUUID()
@@ -328,7 +328,7 @@ func dummyWireRecordWithID(t *testing.T, id int64) *workflow.WireRecord {
 
 	createdAt := time.Now()
 
-	return &workflow.WireRecord{
+	return &workflow.Record{
 		ID:           id,
 		WorkflowName: workflowName,
 		ForeignID:    foreignID,
@@ -341,7 +341,7 @@ func dummyWireRecordWithID(t *testing.T, id int64) *workflow.WireRecord {
 	}
 }
 
-func recordIsEqual(t *testing.T, a, b workflow.WireRecord) {
+func recordIsEqual(t *testing.T, a, b workflow.Record) {
 	require.Equal(t, a.ID, b.ID)
 	require.Equal(t, a.WorkflowName, b.WorkflowName)
 	require.Equal(t, a.ForeignID, b.ForeignID)

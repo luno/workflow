@@ -47,7 +47,7 @@ func RunConnectorTest(t *testing.T, maker func(seedEvents []workflow.ConnectorEv
 	)
 
 	builder.AddStep(SyncStatusStarted,
-		func(ctx context.Context, r *workflow.Record[User, SyncStatus]) (SyncStatus, error) {
+		func(ctx context.Context, r *workflow.Run[User, SyncStatus]) (SyncStatus, error) {
 			r.Object.Email = "connector@workflow.com"
 			return SyncStatusEmailSet, nil
 		},

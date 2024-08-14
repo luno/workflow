@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/luno/jettison/errors"
-
 	"github.com/luno/workflow"
 )
 
@@ -42,7 +41,7 @@ func New(writer *sql.DB, reader *sql.DB, recordTableName string, outboxTableName
 
 var _ workflow.RecordStore = (*SQLStore)(nil)
 
-func (s *SQLStore) Store(ctx context.Context, r *workflow.WireRecord, maker workflow.OutboxEventDataMaker) error {
+func (s *SQLStore) Store(ctx context.Context, r *workflow.Record, maker workflow.OutboxEventDataMaker) error {
 	tx, err := s.writer.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -90,11 +89,11 @@ func (s *SQLStore) Store(ctx context.Context, r *workflow.WireRecord, maker work
 	return tx.Commit()
 }
 
-func (s *SQLStore) Lookup(ctx context.Context, id int64) (*workflow.WireRecord, error) {
+func (s *SQLStore) Lookup(ctx context.Context, id int64) (*workflow.Record, error) {
 	return s.lookupWhere(ctx, s.reader, "id=?", id)
 }
 
-func (s *SQLStore) Latest(ctx context.Context, workflowName, foreignID string) (*workflow.WireRecord, error) {
+func (s *SQLStore) Latest(ctx context.Context, workflowName, foreignID string) (*workflow.Record, error) {
 	ls, err := s.listWhere(ctx, s.reader, "workflow_name=? and foreign_id=? order by id desc limit 1", workflowName, foreignID)
 	if err != nil {
 		return nil, err
@@ -120,7 +119,7 @@ func (s *SQLStore) DeleteOutboxEvent(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (s *SQLStore) List(ctx context.Context, workflowName string, offsetID int64, limit int, order workflow.OrderType, filters ...workflow.RecordFilter) ([]workflow.WireRecord, error) {
+func (s *SQLStore) List(ctx context.Context, workflowName string, offsetID int64, limit int, order workflow.OrderType, filters ...workflow.RecordFilter) ([]workflow.Record, error) {
 	filter := workflow.MakeFilter(filters...)
 
 	var filterStr string
