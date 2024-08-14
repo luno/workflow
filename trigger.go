@@ -10,6 +10,10 @@ import (
 )
 
 func (w *Workflow[Type, Status]) Trigger(ctx context.Context, foreignID string, startingStatus Status, opts ...TriggerOption[Type, Status]) (runID string, err error) {
+	return trigger(ctx, w, w.recordStore.Latest, foreignID, startingStatus, opts...)
+}
+
+func trigger[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], lookup latestLookup, foreignID string, startingStatus Status, opts ...TriggerOption[Type, Status]) (runID string, err error) {
 	if !w.calledRun {
 		return "", errors.Wrap(ErrWorkflowNotRunning, "ensure Run() is called before attempting to trigger the workflow")
 	}
@@ -33,7 +37,7 @@ func (w *Workflow[Type, Status]) Trigger(ctx context.Context, foreignID string, 
 		return "", err
 	}
 
-	lastRecord, err := w.recordStore.Latest(ctx, w.Name, foreignID)
+	lastRecord, err := lookup(ctx, w.Name, foreignID)
 	if errors.Is(err, ErrRecordNotFound) {
 		lastRecord = &Record{}
 	} else if err != nil {
