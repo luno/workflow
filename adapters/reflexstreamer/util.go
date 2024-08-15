@@ -1,7 +1,6 @@
 package reflexstreamer
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/luno/reflex"
@@ -21,7 +20,7 @@ func DefaultReflexTranslator(e *reflex.Event) (*workflow.ConnectorEvent, error) 
 	return &workflow.ConnectorEvent{
 		ID:        e.ID,
 		ForeignID: e.ForeignID,
-		Type:      fmt.Sprintf("%v", e.Type.ReflexType()),
+		Type:      strconv.FormatInt(int64(e.Type.ReflexType()), 10),
 		Headers: map[string]string{
 			HeaderMeta: string(e.MetaData),
 		},

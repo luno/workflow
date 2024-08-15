@@ -2,7 +2,7 @@ package workflow
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/luno/workflow/internal/metrics"
@@ -37,9 +37,9 @@ func connectorConsumer[Type any, Status StatusType](w *Workflow[Type, Status], c
 		"to",
 		w.Name,
 		"consumer",
-		fmt.Sprintf("%v", shard),
+		strconv.FormatInt(int64(shard), 10),
 		"of",
-		fmt.Sprintf("%v", totalShards),
+		strconv.FormatInt(int64(totalShards), 10),
 	)
 
 	errBackOff := w.defaultOpts.errBackOff

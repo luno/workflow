@@ -2,7 +2,7 @@ package workflow
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 
 	"github.com/luno/jettison/errors"
 	"github.com/luno/jettison/j"
@@ -41,7 +41,7 @@ func (rs RunState) String() string {
 	case RunStateRequestedDataDeleted:
 		return "RequestedDataDeleted"
 	default:
-		return fmt.Sprintf("RunState(%d)", rs)
+		return "RunState(" + strconv.FormatInt(int64(rs), 10) + ")"
 	}
 }
 
@@ -142,7 +142,7 @@ func validateRunStateTransition(record *Record, runState RunState, sentinelErr e
 	}
 
 	if !valid[runState] {
-		msg := fmt.Sprintf("current run state cannot transition to %v", runState.String())
+		msg := "Current run state cannot transition to " + runState.String()
 		return errors.Wrap(sentinelErr, msg, j.MKV{
 			"record_id":           record.ID,
 			"workflow_name":       record.WorkflowName,

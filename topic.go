@@ -1,7 +1,7 @@
 package workflow
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -14,7 +14,7 @@ func Topic(workflowName string, statusType int) string {
 	name := strings.ReplaceAll(workflowName, " ", emptySpaceReplacement)
 	return strings.Join([]string{
 		name,
-		fmt.Sprintf("%v", statusType),
+		strconv.FormatInt(int64(statusType), 10),
 	}, topicSeparator)
 }
 

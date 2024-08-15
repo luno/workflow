@@ -2,7 +2,6 @@ package kafkastreamer
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -58,7 +57,7 @@ func (p *Producer) Send(ctx context.Context, recordID int64, statusType int, hea
 			})
 		}
 
-		key := fmt.Sprintf("%v", recordID)
+		key := strconv.FormatInt(int64(recordID), 10)
 		msg := kafka.Message{
 			Key:     []byte(key),
 			Value:   []byte(strconv.FormatInt(int64(statusType), 10)),

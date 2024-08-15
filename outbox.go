@@ -2,7 +2,7 @@ package workflow
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/luno/jettison/errors"
@@ -18,9 +18,9 @@ func outboxConsumer[Type any, Status StatusType](w *Workflow[Type, Status], conf
 		w.Name,
 		"outbox",
 		"consumer",
-		fmt.Sprintf("%v", shard),
+		strconv.FormatInt(int64(shard), 10),
 		"of",
-		fmt.Sprintf("%v", totalShards),
+		strconv.FormatInt(int64(totalShards), 10),
 	)
 
 	// processName can change in value if the string value of the status enum is changed. It should not be used for
@@ -28,9 +28,9 @@ func outboxConsumer[Type any, Status StatusType](w *Workflow[Type, Status], conf
 	processName := makeRole(
 		"outbox",
 		"consumer",
-		fmt.Sprintf("%v", shard),
+		strconv.FormatInt(int64(shard), 10),
 		"of",
-		fmt.Sprintf("%v", totalShards),
+		strconv.FormatInt(int64(totalShards), 10),
 	)
 
 	errBackOff := w.outboxConfig.errBackOff

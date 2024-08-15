@@ -1,7 +1,7 @@
 package workflow
 
 import (
-	"fmt"
+	"strconv"
 
 	"github.com/luno/workflow/internal/metrics"
 )
@@ -28,7 +28,7 @@ func (s State) String() string {
 		return val
 	}
 
-	return fmt.Sprintf("State(%d)", s)
+	return "State(" + strconv.FormatInt(int64(s), 10) + ")"
 }
 
 func (w *Workflow[Type, Status]) updateState(processName string, s State) {

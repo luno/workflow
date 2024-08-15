@@ -2,7 +2,6 @@ package workflow
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"k8s.io/utils/clock"
@@ -42,7 +41,7 @@ type Builder[Type any, Status StatusType] struct {
 
 func (b *Builder[Type, Status]) AddStep(from Status, c ConsumerFunc[Type, Status], allowedDestinations ...Status) *stepUpdater[Type, Status] {
 	if _, exists := b.workflow.consumers[from]; exists {
-		panic(fmt.Sprintf("'AddStep(%v,' already exists. Only one Step can be configured to consume the status", from.String()))
+		panic("'AddStep(" + from.String() + ",' already exists. Only one Step can be configured to consume the status")
 	}
 
 	for _, to := range allowedDestinations {

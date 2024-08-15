@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/luno/jettison/errors"
@@ -29,7 +30,7 @@ func (w *Workflow[Type, Status]) Schedule(foreignID string, startingStatus Statu
 		return err
 	}
 
-	role := makeRole(w.Name, fmt.Sprintf("%v", int(startingStatus)), foreignID, "scheduler", spec)
+	role := makeRole(w.Name, strconv.FormatInt(int64(startingStatus), 10), foreignID, "scheduler", spec)
 	processName := makeRole(startingStatus.String(), foreignID, "scheduler", spec)
 
 	w.run(role, processName, func(ctx context.Context) error {

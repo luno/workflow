@@ -2,7 +2,7 @@ package workflow
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/luno/jettison/errors"
@@ -32,21 +32,21 @@ type consumerConfig[Type any, Status StatusType] struct {
 func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentStatus Status, p consumerConfig[Type, Status], shard, totalShards int) {
 	role := makeRole(
 		w.Name,
-		fmt.Sprintf("%v", int(currentStatus)),
+		strconv.FormatInt(int64(currentStatus), 10),
 		"consumer",
-		fmt.Sprintf("%v", shard),
+		strconv.FormatInt(int64(shard), 10),
 		"of",
-		fmt.Sprintf("%v", totalShards),
+		strconv.FormatInt(int64(totalShards), 10),
 	)
 
 	// processName can change in value if the string value of the status enum is changed. It should not be used for
 	// storing in the record store, event streamer, timeoutstore, or offset store.
 	processName := makeRole(
-		fmt.Sprintf("%v", currentStatus.String()),
+		currentStatus.String(),
 		"consumer",
-		fmt.Sprintf("%v", shard),
+		strconv.FormatInt(int64(shard), 10),
 		"of",
-		fmt.Sprintf("%v", totalShards),
+		strconv.FormatInt(int64(totalShards), 10),
 	)
 
 	topic := Topic(w.Name, int(currentStatus))
