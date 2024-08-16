@@ -23,7 +23,7 @@ type TimeoutRecord struct {
 	CreatedAt    time.Time
 }
 
-// pollTimeouts attempts to find the very next
+// pollTimeouts attempts to find the very next expired timeout and execute it
 func pollTimeouts[Type any, Status StatusType](
 	ctx context.Context,
 	w *Workflow[Type, Status],
