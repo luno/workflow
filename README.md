@@ -165,7 +165,7 @@ if err != nil {
 ```
 
 ### Detailed examples
-Head on over to [./examples](./examples) to get familiar with **callbacks**, **timeouts**, **testing**, **connectors** and
+Head on over to [./_examples](./_examples) to get familiar with **callbacks**, **timeouts**, **testing**, **connectors** and
  more about the syntax in depth 😊
 
 ---
