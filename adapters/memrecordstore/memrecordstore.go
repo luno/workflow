@@ -28,14 +28,15 @@ func New(opts ...Option) *Store {
 		store:            make(map[int64]*workflow.Record),
 		snapshots:        make(map[string][]*workflow.Record),
 		snapshotsOffsets: make(map[string]int),
-		clock:            opt.clock,
+		options:          opt,
 	}
 
 	return s
 }
 
 type options struct {
-	clock clock.Clock
+	clock            clock.Clock
+	snapshotDisabled bool
 }
 
 type Option func(o *options)
@@ -46,13 +47,19 @@ func WithClock(clock clock.Clock) Option {
 	}
 }
 
+func WithoutSnapShots() Option {
+	return func(o *options) {
+		o.snapshotDisabled = true
+	}
+}
+
 var _ workflow.RecordStore = (*Store)(nil)
 
 type Store struct {
 	mu          sync.Mutex
 	idIncrement int64
 
-	clock clock.Clock
+	options options
 
 	keyIndex map[string]*workflow.Record
 	store    map[int64]*workflow.Record
@@ -112,11 +119,13 @@ func (s *Store) Store(ctx context.Context, record *workflow.Record, maker workfl
 		ID:           s.outboxIDIncrement,
 		WorkflowName: eventData.WorkflowName,
 		Data:         eventData.Data,
-		CreatedAt:    s.clock.Now(),
+		CreatedAt:    s.options.clock.Now(),
 	})
 
-	snapshotKey := fmt.Sprintf("%v-%v-%v", record.WorkflowName, record.ForeignID, record.RunID)
-	s.snapshots[snapshotKey] = append(s.snapshots[snapshotKey], record)
+	if !s.options.snapshotDisabled {
+		snapshotKey := fmt.Sprintf("%v-%v-%v", record.WorkflowName, record.ForeignID, record.RunID)
+		s.snapshots[snapshotKey] = append(s.snapshots[snapshotKey], record)
+	}
 
 	return nil
 }
