@@ -1,0 +1,39 @@
+name: Mirror to CodeCommit
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  mirror_to_codecommit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Mirror to CodeCommit
+        env:
+          AWS_HTTPS_USERNAME: ${{secrets.AWS_HTTPS_USERNAME}}
+          AWS_HTTPS_PASSWORD: ${{secrets.AWS_HTTPS_PASSWORD}}
+          AWS_REGION: ${{secrets.AWS_REGION}}
+        run: |
+          
+          # URL encode the username and password
+          USERNAME_ENCODED=$(python -c "import urllib.parse; print(urllib.parse.quote('$AWS_HTTPS_USERNAME', safe=''))")
+          PASSWORD_ENCODED=$(python -c "import urllib.parse; print(urllib.parse.quote('$AWS_HTTPS_PASSWORD', safe=''))")
+          
+          # Set up the remote with encoded credentials
+          CODECOMMIT_URL="https://${USERNAME_ENCODED}:${PASSWORD_ENCODED}@git-codecommit.${AWS_REGION}.amazonaws.com/v1/repos/workflow"
+          
+          git remote add codecommit "$CODECOMMIT_URL"
+          
+          # Push all branches and tags
+          git push codecommit --all --force
+          git push codecommit --tags --force
+          
+          # Clean up to avoid leaking credentials
+          git remote remove codecommit
