@@ -2,7 +2,7 @@ package workflow
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/luno/jettison/errors"
@@ -19,7 +19,7 @@ func (w *Workflow[Type, Status]) Await(ctx context.Context, foreignID, runID str
 		pollFrequency = opt.pollFrequency
 	}
 
-	role := makeRole("await", w.Name, fmt.Sprintf("%v", int(status)), foreignID)
+	role := makeRole("await", w.Name, strconv.FormatInt(int64(status), 10), foreignID)
 	return awaitWorkflowStatusByForeignID[Type, Status](ctx, w, status, foreignID, runID, role, pollFrequency)
 }
 

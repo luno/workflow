@@ -115,8 +115,8 @@ func (s *Store) Store(ctx context.Context, record *workflow.Record, maker workfl
 		CreatedAt:    s.clock.Now(),
 	})
 
-	snapshotKey := fmt.Sprintf("%v-%v-%v", record.WorkflowName, record.ForeignID, record.RunID)
-	s.snapshots[snapshotKey] = append(s.snapshots[snapshotKey], record)
+	skey := snapShotKey(record.WorkflowName, record.ForeignID, record.RunID)
+	s.snapshots[skey] = append(s.snapshots[skey], record)
 
 	return nil
 }
@@ -250,7 +250,7 @@ func (s *Store) Snapshots(workflowName, foreignID, runID string) []*workflow.Rec
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	key := fmt.Sprintf("%v-%v-%v", workflowName, foreignID, runID)
+	key := snapShotKey(workflowName, foreignID, runID)
 	return s.snapshots[key]
 }
 
@@ -258,7 +258,7 @@ func (s *Store) SetSnapshotOffset(workflowName, foreignID, runID string, offset 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	key := fmt.Sprintf("%v-%v-%v", workflowName, foreignID, runID)
+	key := snapShotKey(workflowName, foreignID, runID)
 	s.snapshotsOffsets[key] = offset
 }
 
@@ -266,10 +266,14 @@ func (s *Store) SnapshotOffset(workflowName, foreignID, runID string) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	key := fmt.Sprintf("%v-%v-%v", workflowName, foreignID, runID)
+	key := snapShotKey(workflowName, foreignID, runID)
 	return s.snapshotsOffsets[key]
 }
 
+func snapShotKey(workflowName, foreignID, runID string) string {
+	return workflowName + "-" + foreignID + "-" + runID
+}
+
 func uniqueKey(s1, s2 string) string {
-	return fmt.Sprintf("%v-%v", s1, s2)
+	return s1 + "-" + s2
 }

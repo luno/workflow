@@ -2,7 +2,7 @@ package workflow
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/luno/jettison/errors"
@@ -187,7 +187,7 @@ type timeout[Type any, Status StatusType] struct {
 }
 
 func timeoutPoller[Type any, Status StatusType](w *Workflow[Type, Status], status Status, timeouts timeouts[Type, Status]) {
-	role := makeRole(w.Name, fmt.Sprintf("%v", int(status)), "timeout-consumer")
+	role := makeRole(w.Name, strconv.FormatInt(int64(status), 10), "timeout-consumer")
 	// readableRole can change in value if the string value of the status enum is changed. It should not be used for
 	// storing in the record store, event streamer, timeout store, or offset store.
 	processName := makeRole(status.String(), "timeout-consumer")
@@ -222,7 +222,7 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](
 	status Status,
 	timeouts timeouts[Type, Status],
 ) {
-	role := makeRole(w.Name, fmt.Sprintf("%v", int(status)), "timeout-auto-inserter-consumer")
+	role := makeRole(w.Name, strconv.FormatInt(int64(status), 10), "timeout-auto-inserter-consumer")
 	processName := makeRole(status.String(), "timeout-auto-inserter-consumer")
 
 	pauseAfterErrCount := w.defaultOpts.pauseAfterErrCount
