@@ -130,7 +130,11 @@ func (c *Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, err
 	for ctx.Err() == nil {
 		reflexEvent, err := c.streamClient.Recv()
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, errors.Wrap(err, "failed to receive event")
+		}
+
+		if len(reflexEvent.MetaData) == 0 {
+			continue
 		}
 
 		headers := make(map[workflow.Header]string)
