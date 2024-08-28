@@ -2,12 +2,9 @@ package workflow
 
 import (
 	"context"
+	internal_errors "github.com/luno/workflow/internal/errors"
 	"strconv"
 	"time"
-
-	"github.com/luno/jettison/errors"
-	"github.com/luno/jettison/j"
-	"github.com/luno/jettison/log"
 
 	"github.com/luno/workflow/internal/metrics"
 )
@@ -65,12 +62,12 @@ func pollTimeouts[Type any, Status StatusType](
 
 			if r.RunState.Stopped() {
 				if w.debugMode {
-					log.Info(ctx, "Skipping processing of timeout of stopped workflow record", j.MKV{
+					w.logger.Debug(ctx, "Skipping processing of timeout of stopped workflow record", MKV{
 						"workflow":       r.WorkflowName,
 						"run_id":         r.RunID,
 						"foreign_id":     r.ForeignID,
 						"process_name":   processName,
-						"current_status": r.Status,
+						"current_status": strconv.FormatInt(int64(r.Status), 10),
 						"run_state":      r.RunState.String(),
 					})
 				}
@@ -126,11 +123,11 @@ func processTimeout[Type any, Status StatusType](
 				originalErr := err
 				_, err := record.Pause(ctx)
 				if err != nil {
-					return errors.Wrap(err, "failed to pause record after exceeding allowed error count", j.MKV{
+					return internal_errors.Wrap(err, "failed to pause record after exceeding allowed error count", map[string]string{
 						"workflow_name":      record.WorkflowName,
 						"foreign_id":         record.ForeignID,
 						"current_status":     record.Status.String(),
-						"current_status_int": record.Status,
+						"current_status_int": strconv.FormatInt(int64(record.Status), 10),
 					})
 				}
 
@@ -139,19 +136,19 @@ func processTimeout[Type any, Status StatusType](
 				return nil
 			}
 		}
-		return errors.Wrap(err, "failed to process timeout", j.MKV{
+		return internal_errors.Wrap(err, "failed to process timeout", map[string]string{
 			"workflow_name":      record.WorkflowName,
 			"foreign_id":         record.ForeignID,
 			"current_status":     record.Status.String(),
-			"current_status_int": record.Status,
+			"current_status_int": strconv.FormatInt(int64(record.Status), 10),
 		})
 	}
 
 	if skipUpdate(next) {
 		if w.debugMode {
-			log.Info(ctx, "skipping update", j.MKV{
+			w.logger.Debug(ctx, "skipping update", MKV{
 				"description":   skipUpdateDescription(next),
-				"record_id":     record.ID,
+				"record_id":     strconv.FormatInt(record.ID, 10),
 				"workflow_name": w.Name,
 				"foreign_id":    record.ForeignID,
 				"run_id":        record.RunID,

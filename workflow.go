@@ -2,13 +2,11 @@ package workflow
 
 import (
 	"context"
+	"errors"
 	"io"
 	"sync"
 	"time"
 
-	"github.com/luno/jettison/errors"
-	"github.com/luno/jettison/j"
-	"github.com/luno/jettison/log"
 	"k8s.io/utils/clock"
 
 	"github.com/luno/workflow/internal/errorcounter"
@@ -58,6 +56,7 @@ type Workflow[Type any, Status StatusType] struct {
 	clock     clock.Clock
 	calledRun bool
 	once      sync.Once
+	logger    Logger
 
 	eventStreamer EventStreamer
 	recordStore   RecordStore
@@ -167,11 +166,12 @@ func (w *Workflow[Type, Status]) run(role, processName string, process func(ctx 
 		err := runOnce(w, role, processName, process, errBackOff)
 		if err != nil {
 			if w.debugMode {
-				log.Info(w.ctx, "shutting down process", j.MKV{
+				w.logger.Debug(w.ctx, "shutting down process", MKV{
 					"role":         role,
 					"process_name": processName,
 				})
 			}
+
 			return
 		}
 	}
@@ -181,14 +181,14 @@ func runOnce[Type any, Status StatusType](w *Workflow[Type, Status], role, proce
 	w.updateState(processName, StateIdle)
 
 	ctx, cancel, err := w.scheduler.Await(w.ctx, role)
-	if errors.IsAny(err, context.Canceled) {
+	if errors.Is(err, context.Canceled) {
 		// Exit cleanly if error returned is cancellation of context
 		return err
 	} else if err != nil {
-		log.Error(ctx, errors.Wrap(err, "error awaiting role", j.MKV{
+		w.logger.Error(ctx, err, MKV{
 			"role":         role,
 			"process_name": processName,
-		}))
+		})
 
 		// Return nil to try again
 		return nil
@@ -203,9 +203,9 @@ func runOnce[Type any, Status StatusType](w *Workflow[Type, Status], role, proce
 		// and if the parent context was cancelled then that will exit safely.
 		return nil
 	} else if err != nil {
-		log.Error(ctx, errors.Wrap(err, "process error", j.MKV{
+		w.logger.Error(ctx, errors.Join(errors.New("process error"), err), MKV{
 			"role": role,
-		}))
+		})
 		metrics.ProcessErrors.WithLabelValues(w.Name, processName).Inc()
 
 		select {

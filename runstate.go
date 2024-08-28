@@ -2,10 +2,8 @@ package workflow
 
 import (
 	"context"
+	internal_errors "github.com/luno/workflow/internal/errors"
 	"strconv"
-
-	"github.com/luno/jettison/errors"
-	"github.com/luno/jettison/j"
 )
 
 type RunState int
@@ -133,21 +131,21 @@ func (rsc *runStateControllerImpl) update(ctx context.Context, rs RunState, inva
 func validateRunStateTransition(record *Record, runState RunState, sentinelErr error) error {
 	valid, ok := runStateTransitions[record.RunState]
 	if !ok {
-		return errors.Wrap(sentinelErr, "current run state is terminal", j.MKV{
-			"record_id":           record.ID,
+		return internal_errors.Wrap(sentinelErr, "current run state is terminal", map[string]string{
+			"record_id":           strconv.FormatInt(record.ID, 10),
 			"workflow_name":       record.WorkflowName,
 			"run_state":           record.RunState.String(),
-			"run_state_int_value": int(record.RunState),
+			"run_state_int_value": strconv.FormatInt(int64(record.RunState), 10),
 		})
 	}
 
 	if !valid[runState] {
 		msg := "Current run state cannot transition to " + runState.String()
-		return errors.Wrap(sentinelErr, msg, j.MKV{
-			"record_id":           record.ID,
+		return internal_errors.Wrap(sentinelErr, msg, map[string]string{
+			"record_id":           strconv.FormatInt(record.ID, 10),
 			"workflow_name":       record.WorkflowName,
 			"run_state":           record.RunState.String(),
-			"run_state_int_value": int(record.RunState),
+			"run_state_int_value": strconv.FormatInt(int64(record.RunState), 10),
 		})
 	}
 

@@ -18,3 +18,7 @@ var (
 	ErrUnableToDelete              = errors.New("cannot delete data as run has not finished", j.C("ERR_2dec819246977dd9"))
 	ErrUnableToMarkAsRunning       = errors.New("run is unable to be marked as Running", j.C("ERR_704b88a1eddad3dc"))
 )
+
+type Error interface {
+	error
+}

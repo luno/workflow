@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	internal_errors "github.com/luno/workflow/internal/errors"
 	"time"
 
 	"github.com/luno/jettison/errors"
@@ -90,7 +91,7 @@ func DeleteForever(
 		record.RunState = RunStateDataDeleted
 		err = updateWireRecord(ctx, store, record, RunStateRequestedDataDeleted)
 		if err != nil {
-			return errors.Wrap(err, "unable to delete record data")
+			return internal_errors.Wrap(err, "unable to delete record data", map[string]string{})
 		}
 
 		metrics.ProcessLatency.WithLabelValues(workflowName, processName).Observe(clock.Since(t2).Seconds())

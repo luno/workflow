@@ -4,10 +4,9 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"strconv"
 
-	"github.com/luno/jettison/errors"
-	"github.com/luno/jettison/j"
-	"github.com/luno/jettison/log"
+	internal_errors "github.com/luno/workflow/internal/errors"
 )
 
 type callback[Type any, Status StatusType] struct {
@@ -44,7 +43,8 @@ func processCallback[Type any, Status StatusType](
 ) error {
 	wr, err := latest(ctx, w.Name, foreignID)
 	if err != nil {
-		return errors.Wrap(err, "failed to latest record for callback", j.MKV{
+
+		return internal_errors.Wrap(err, "failed to latest record for callback", map[string]string{
 			"foreign_id": foreignID,
 		})
 	}
@@ -72,9 +72,9 @@ func processCallback[Type any, Status StatusType](
 
 	if skipUpdate(next) {
 		if w.debugMode {
-			log.Info(ctx, "skipping update", j.MKV{
+			w.logger.Debug(ctx, "skipping update", MKV{
 				"description":   skipUpdateDescription(next),
-				"record_id":     record.ID,
+				"record_id":     strconv.FormatInt(record.ID, 10),
 				"workflow_name": w.Name,
 				"foreign_id":    record.ForeignID,
 				"run_id":        record.RunID,
@@ -82,6 +82,7 @@ func processCallback[Type any, Status StatusType](
 				"record_status": record.Status.String(),
 			})
 		}
+
 		return nil
 	}
 

@@ -2,10 +2,10 @@ package workflow
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
-	"github.com/luno/jettison/errors"
 	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 	clock_testing "k8s.io/utils/clock/testing"

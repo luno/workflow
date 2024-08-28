@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"fmt"
+	internal_errors "github.com/luno/workflow/internal/errors"
 	"strconv"
 	"time"
 
@@ -13,11 +14,11 @@ import (
 
 func (w *Workflow[Type, Status]) Schedule(foreignID string, startingStatus Status, spec string, opts ...ScheduleOption[Type, Status]) error {
 	if !w.calledRun {
-		return errors.Wrap(ErrWorkflowNotRunning, "ensure Run() is called before attempting to trigger the workflow")
+		return internal_errors.Wrap(ErrWorkflowNotRunning, "ensure Run() is called before attempting to trigger the workflow", map[string]string{})
 	}
 
 	if !w.statusGraph.IsValid(int(startingStatus)) {
-		return errors.Wrap(ErrStatusProvidedNotConfigured, fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name))
+		return internal_errors.Wrap(ErrStatusProvidedNotConfigured, fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name), map[string]string{})
 	}
 
 	var options scheduleOpts[Type, Status]
