@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/luno/jettison/errors"
@@ -25,14 +26,15 @@ func New(writer, reader *sql.DB, table *rsql.EventsTableInt, cursorStore reflex.
 }
 
 type constructor struct {
-	writer      *sql.DB
-	reader      *sql.DB
-	stream      reflex.StreamFunc
-	eventsTable *rsql.EventsTableInt
-	cursorStore reflex.CursorStore
+	writer            *sql.DB
+	reader            *sql.DB
+	stream            reflex.StreamFunc
+	eventsTable       *rsql.EventsTableInt
+	cursorStore       reflex.CursorStore
+	registerGapFiller sync.Once
 }
 
-func (c constructor) NewProducer(ctx context.Context, topic string) (workflow.Producer, error) {
+func (c *constructor) NewProducer(ctx context.Context, topic string) (workflow.Producer, error) {
 	return &Producer{
 		topic:       topic,
 		writer:      c.writer,
@@ -46,7 +48,7 @@ type Producer struct {
 	eventsTable *rsql.EventsTableInt
 }
 
-func (p Producer) Send(ctx context.Context, recordID int64, statusType int, headers map[workflow.Header]string) error {
+func (p *Producer) Send(ctx context.Context, recordID int64, statusType int, headers map[workflow.Header]string) error {
 	tx, err := p.writer.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -73,11 +75,11 @@ func (p Producer) Send(ctx context.Context, recordID int64, statusType int, head
 	return nil
 }
 
-func (p Producer) Close() error {
+func (p *Producer) Close() error {
 	return nil
 }
 
-func (c constructor) NewConsumer(ctx context.Context, topic string, name string, opts ...workflow.ConsumerOption) (workflow.Consumer, error) {
+func (c *constructor) NewConsumer(ctx context.Context, topic string, name string, opts ...workflow.ConsumerOption) (workflow.Consumer, error) {
 	var copts workflow.ConsumerOptions
 	for _, opt := range opts {
 		opt(&copts)
@@ -89,6 +91,11 @@ func (c constructor) NewConsumer(ctx context.Context, topic string, name string,
 	}
 
 	table := c.eventsTable.Clone(rsql.WithEventsBackoff(pollFrequency))
+
+	// Only attempt to fill gaps on one consumer.
+	c.registerGapFiller.Do(func() {
+		rsql.FillGaps(c.writer, table)
+	})
 
 	cursor, err := c.cursorStore.GetCursor(ctx, name)
 	if err != nil {
@@ -119,7 +126,7 @@ type Consumer struct {
 	options      workflow.ConsumerOptions
 }
 
-func (c Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, error) {
+func (c *Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, error) {
 	for ctx.Err() == nil {
 		reflexEvent, err := c.streamClient.Recv()
 		if err != nil {
@@ -173,7 +180,7 @@ func (c Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, erro
 	return nil, nil, ctx.Err()
 }
 
-func (c Consumer) Close() error {
+func (c *Consumer) Close() error {
 	// Provide new context for flushing of cursor values to underlying store
 	err := c.cursor.Flush(context.Background())
 	if err != nil {
