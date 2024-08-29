@@ -54,7 +54,7 @@ func ExampleWorkflow(d Deps) *workflow.Workflow[Example, Status] {
 	b := workflow.NewBuilder[Example, Status]("schedule trigger example")
 
 	b.AddStep(StatusStarted,
-		func(ctx context.Context, r *workflow.Record[Example, Status]) (Status, error) {
+		func(ctx context.Context, r *workflow.Run[Example, Status]) (Status, error) {
 			return StatusFollowedTheExample, nil
 		},
 		StatusFollowedTheExample,
