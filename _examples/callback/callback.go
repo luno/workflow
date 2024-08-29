@@ -50,7 +50,7 @@ type Deps struct {
 func ExampleWorkflow(d Deps) *workflow.Workflow[Example, Status] {
 	b := workflow.NewBuilder[Example, Status]("callback example")
 
-	b.AddCallback(StatusStarted, func(ctx context.Context, r *workflow.Record[Example, Status], reader io.Reader) (Status, error) {
+	b.AddCallback(StatusStarted, func(ctx context.Context, r *workflow.Run[Example, Status], reader io.Reader) (Status, error) {
 		b, err := io.ReadAll(reader)
 		if err != nil {
 			return 0, err

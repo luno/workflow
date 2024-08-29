@@ -63,7 +63,7 @@ func Workflow(d Deps) *workflow.Workflow[GettingStarted, Status] {
 	)
 
 	builder.AddStep(StatusStarted,
-		func(ctx context.Context, r *workflow.Record[GettingStarted, Status]) (Status, error) {
+		func(ctx context.Context, r *workflow.Run[GettingStarted, Status]) (Status, error) {
 			r.Object.FollowAnExample = "✅"
 
 			return StatusFollowedTheExample, nil

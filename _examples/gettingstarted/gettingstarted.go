@@ -47,17 +47,17 @@ type Deps struct {
 func Workflow(d Deps) *workflow.Workflow[GettingStarted, Status] {
 	b := workflow.NewBuilder[GettingStarted, Status]("getting started")
 
-	b.AddStep(StatusStarted, func(ctx context.Context, r *workflow.Record[GettingStarted, Status]) (Status, error) {
+	b.AddStep(StatusStarted, func(ctx context.Context, r *workflow.Run[GettingStarted, Status]) (Status, error) {
 		r.Object.ReadTheDocs = "✅"
 		return StatusReadTheDocs, nil
 	}, StatusReadTheDocs)
 
-	b.AddStep(StatusReadTheDocs, func(ctx context.Context, r *workflow.Record[GettingStarted, Status]) (Status, error) {
+	b.AddStep(StatusReadTheDocs, func(ctx context.Context, r *workflow.Run[GettingStarted, Status]) (Status, error) {
 		r.Object.FollowAnExample = "✅"
 		return StatusFollowedTheExample, nil
 	}, StatusFollowedTheExample)
 
-	b.AddStep(StatusFollowedTheExample, func(ctx context.Context, r *workflow.Record[GettingStarted, Status]) (Status, error) {
+	b.AddStep(StatusFollowedTheExample, func(ctx context.Context, r *workflow.Run[GettingStarted, Status]) (Status, error) {
 		r.Object.CreateAFunExample = "✅"
 		return StatusCreatedAFunExample, nil
 	}, StatusCreatedAFunExample)

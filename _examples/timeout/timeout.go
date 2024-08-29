@@ -55,11 +55,11 @@ func ExampleWorkflow(d Deps) *workflow.Workflow[Example, Status] {
 	b := workflow.NewBuilder[Example, Status]("timeout example")
 
 	b.AddTimeout(StatusStarted,
-		func(ctx context.Context, r *workflow.Record[Example, Status], now time.Time) (time.Time, error) {
+		func(ctx context.Context, r *workflow.Run[Example, Status], now time.Time) (time.Time, error) {
 			// Using "now" over time.Now() allows for you to specify a clock for testing.
 			return now.Add(time.Hour), nil
 		},
-		func(ctx context.Context, r *workflow.Record[Example, Status], now time.Time) (Status, error) {
+		func(ctx context.Context, r *workflow.Run[Example, Status], now time.Time) (Status, error) {
 			r.Object.Now = now
 			return StatusFollowedTheExample, nil
 		},
