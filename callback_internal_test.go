@@ -2,12 +2,11 @@ package workflow
 
 import (
 	"context"
+	"errors"
 	"io"
 	"testing"
 	"time"
 
-	"github.com/luno/jettison/errors"
-	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 	clock_testing "k8s.io/utils/clock/testing"
 
@@ -27,7 +26,7 @@ func TestProcessCallback(t *testing.T) {
 
 	value := "data"
 	b, err := Marshal(&value)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	current := &Record{
 		ID:           1,
@@ -79,7 +78,7 @@ func TestProcessCallback(t *testing.T) {
 		}
 
 		err := processCallback(ctx, w, testStatus(current.Status), callbackFn, current.ForeignID, nil, latestLookup, store, updater)
-		jtest.RequireNil(t, err)
+		require.Nil(t, err)
 
 		expectedCalls := map[string]int{
 			"callbackFunc": 1,
@@ -119,7 +118,7 @@ func TestProcessCallback(t *testing.T) {
 		}
 
 		err := processCallback(ctx, w, testStatus(current.Status), callbackFn, current.ForeignID, nil, latestLookup, store, updater)
-		jtest.RequireNil(t, err)
+		require.Nil(t, err)
 
 		expectedCalls := map[string]int{
 			"callbackFunc": 1,
@@ -157,7 +156,7 @@ func TestProcessCallback(t *testing.T) {
 		}
 
 		err := processCallback(ctx, w, testStatus(current.Status), callbackFn, current.ForeignID, nil, latestLookup, store, updater)
-		jtest.RequireNil(t, err)
+		require.Nil(t, err)
 
 		expectedCalls := map[string]int{
 			"callbackFunc": 1,
@@ -168,12 +167,13 @@ func TestProcessCallback(t *testing.T) {
 	})
 
 	t.Run("Return on lookup error", func(t *testing.T) {
+		testErr := errors.New("test error")
 		latestLookup := func(ctx context.Context, workflowName, foreignID string) (*Record, error) {
-			return nil, errors.New("test error")
+			return nil, testErr
 		}
 
 		err := processCallback(ctx, w, testStatus(current.Status), nil, current.ForeignID, nil, latestLookup, nil, nil)
-		jtest.Require(t, errors.New("failed to latest record for callback"), err)
+		require.Truef(t, errors.Is(err, testErr), "actual: %s", err.Error())
 	})
 
 	t.Run("Return on callbackFunc error", func(t *testing.T) {
@@ -186,7 +186,7 @@ func TestProcessCallback(t *testing.T) {
 		})
 
 		err := processCallback(ctx, w, testStatus(current.Status), callbackFn, current.ForeignID, nil, latestLookup, nil, nil)
-		jtest.Require(t, errors.New("test error"), err)
+		require.Equal(t, errors.New("test error"), err)
 	})
 
 	t.Run("Ignore if record is in different state", func(t *testing.T) {
@@ -199,6 +199,6 @@ func TestProcessCallback(t *testing.T) {
 		}
 
 		err := processCallback(ctx, w, statusStart, nil, current.ForeignID, nil, latestLookup, nil, nil)
-		jtest.RequireNil(t, err)
+		require.Nil(t, err)
 	})
 }

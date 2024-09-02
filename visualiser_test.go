@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/luno/jettison/jtest"
+	"github.com/stretchr/testify/require"
 
 	"github.com/luno/workflow"
 )
@@ -23,5 +23,5 @@ func TestVisualiser(t *testing.T) {
 	wf := b.Build(nil, nil, nil)
 
 	err := workflow.MermaidDiagram(wf, "./testdata/graph-visualisation.md", workflow.LeftToRightDirection)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 }

@@ -3,10 +3,9 @@ package workflow
 import (
 	"context"
 
-	"github.com/luno/jettison/errors"
-	"github.com/luno/jettison/j"
 	"k8s.io/utils/clock"
 
+	"github.com/luno/workflow/internal/errors"
 	"github.com/luno/workflow/internal/graph"
 	"github.com/luno/workflow/internal/metrics"
 )
@@ -74,7 +73,7 @@ func validateTransition[Status StatusType](current, next Status, graph *graph.Gr
 	// Lookup all available transitions from the current status
 	nodes := graph.Transitions(int(current))
 	if len(nodes) == 0 {
-		return errors.New("current status not predefined", j.MKV{
+		return errors.WrapWithMeta(errors.New("current status not predefined"), "", map[string]string{
 			"current_status": current.String(),
 		})
 	}
@@ -90,7 +89,7 @@ func validateTransition[Status StatusType](current, next Status, graph *graph.Gr
 
 	// If no valid transition matches that of the next status then error.
 	if !found {
-		return errors.New("invalid transition attempted", j.MKV{
+		return errors.WrapWithMeta(errors.New("invalid transition attempted"), "", map[string]string{
 			"current_status": current.String(),
 			"next_status":    next.String(),
 		})

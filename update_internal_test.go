@@ -2,14 +2,14 @@ package workflow
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
-	"github.com/luno/jettison/errors"
-	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 	clock_testing "k8s.io/utils/clock/testing"
 
+	werrors "github.com/luno/workflow/internal/errors"
 	"github.com/luno/workflow/internal/graph"
 )
 
@@ -94,9 +94,9 @@ func TestUpdater(t *testing.T) {
 		{
 			name: "Return error on lookup",
 			lookup: func(ctx context.Context, id int64) (*Record, error) {
-				return nil, errors.New("lookup error")
+				return nil, werrors.New("lookup error")
 			},
-			expectedErr: errors.New("lookup error"),
+			expectedErr: werrors.New("lookup error"),
 		},
 		{
 			name: "Exit early if lookup record status has changed",
@@ -129,7 +129,7 @@ func TestUpdater(t *testing.T) {
 					To:   int(statusEnd),
 				},
 			},
-			expectedErr: errors.New("invalid transition attempted"),
+			expectedErr: werrors.New("invalid transition attempted"),
 		},
 	}
 	for _, tc := range testCases {
@@ -144,13 +144,13 @@ func TestUpdater(t *testing.T) {
 			store := func(ctx context.Context, r *Record, maker OutboxEventDataMaker) error {
 				require.Equal(t, tc.expectedRunState, r.RunState)
 				_, err := maker(1)
-				jtest.RequireNil(t, err)
+				require.Nil(t, err)
 				return nil
 			}
 
 			updater := newUpdater[string, testStatus](tc.lookup, store, g, c)
 			err := updater(ctx, tc.current, tc.update.Status, &tc.update)
-			jtest.Require(t, tc.expectedErr, err)
+			require.True(t, errors.Is(err, tc.expectedErr))
 		})
 	}
 }

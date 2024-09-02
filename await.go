@@ -2,10 +2,9 @@ package workflow
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"time"
-
-	"github.com/luno/jettison/errors"
 )
 
 func (w *Workflow[Type, Status]) Await(ctx context.Context, foreignID, runID string, status Status, opts ...AwaitOption) (*Run[Type, Status], error) {

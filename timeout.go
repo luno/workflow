@@ -2,10 +2,10 @@ package workflow
 
 import (
 	"context"
-	internal_errors "github.com/luno/workflow/internal/errors"
 	"strconv"
 	"time"
 
+	werrors "github.com/luno/workflow/internal/errors"
 	"github.com/luno/workflow/internal/metrics"
 )
 
@@ -123,7 +123,7 @@ func processTimeout[Type any, Status StatusType](
 				originalErr := err
 				_, err := record.Pause(ctx)
 				if err != nil {
-					return internal_errors.Wrap(err, "failed to pause record after exceeding allowed error count", map[string]string{
+					return werrors.WrapWithMeta(err, "failed to pause record after exceeding allowed error count", map[string]string{
 						"workflow_name":      record.WorkflowName,
 						"foreign_id":         record.ForeignID,
 						"current_status":     record.Status.String(),
@@ -136,7 +136,7 @@ func processTimeout[Type any, Status StatusType](
 				return nil
 			}
 		}
-		return internal_errors.Wrap(err, "failed to process timeout", map[string]string{
+		return werrors.WrapWithMeta(err, "failed to process timeout", map[string]string{
 			"workflow_name":      record.WorkflowName,
 			"foreign_id":         record.ForeignID,
 			"current_status":     record.Status.String(),

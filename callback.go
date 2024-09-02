@@ -6,7 +6,7 @@ import (
 	"io"
 	"strconv"
 
-	internal_errors "github.com/luno/workflow/internal/errors"
+	werrors "github.com/luno/workflow/internal/errors"
 )
 
 type callback[Type any, Status StatusType] struct {
@@ -43,8 +43,7 @@ func processCallback[Type any, Status StatusType](
 ) error {
 	wr, err := latest(ctx, w.Name, foreignID)
 	if err != nil {
-
-		return internal_errors.Wrap(err, "failed to latest record for callback", map[string]string{
+		return werrors.WrapWithMeta(err, "failed to find latest record for callback", map[string]string{
 			"foreign_id": foreignID,
 		})
 	}

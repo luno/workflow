@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 
 	"github.com/luno/workflow"
@@ -26,10 +25,10 @@ func TestProtoMarshalAndUnmarshal(t *testing.T) {
 	}
 
 	protoBytes, err := workflowpb.ProtoMarshal(&wireRecord)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	deserialised, err := workflowpb.UnmarshalRecord(protoBytes)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	require.Equal(t, wireRecord, *deserialised)
 }

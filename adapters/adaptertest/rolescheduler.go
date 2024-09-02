@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 
 	"github.com/luno/workflow"
@@ -30,7 +29,7 @@ func testReturnedContext(t *testing.T, factory func() workflow.RoleScheduler) {
 		ctxWithValue := context.WithValue(ctx, "parent", "context")
 
 		ctx2, cancel, err := rs.Await(ctxWithValue, "leader")
-		jtest.RequireNil(t, err)
+		require.Nil(t, err)
 
 		t.Cleanup(cancel)
 
@@ -45,14 +44,14 @@ func testLocking(t *testing.T, factory func() workflow.RoleScheduler) {
 		ctxWithValue := context.WithValue(ctx, "parent", "context")
 
 		ctx2, cancel, err := rs.Await(ctxWithValue, "leader")
-		jtest.RequireNil(t, err)
+		require.Nil(t, err)
 
 		t.Cleanup(cancel)
 
 		roleReleased := make(chan bool, 1)
 		go func(done chan bool) {
 			_, _, err := rs.Await(ctxWithValue, "leader")
-			jtest.RequireNil(t, err)
+			require.Nil(t, err)
 
 			roleReleased <- true
 
@@ -78,7 +77,7 @@ func testReleasing(t *testing.T, factory func() workflow.RoleScheduler) {
 		ctx := context.Background()
 
 		_, cancel, err := rs.Await(ctx, "leader")
-		jtest.RequireNil(t, err)
+		require.Nil(t, err)
 
 		t.Cleanup(cancel)
 
@@ -88,7 +87,7 @@ func testReleasing(t *testing.T, factory func() workflow.RoleScheduler) {
 		roleReleased := make(chan bool, 1)
 		go func(ctx context.Context, done chan bool) {
 			_, _, err := rs.Await(ctx2, "leader")
-			jtest.RequireNil(t, err)
+			require.Nil(t, err)
 
 			roleReleased <- true
 		}(ctx2, roleReleased)

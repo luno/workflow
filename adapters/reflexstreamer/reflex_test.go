@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/luno/jettison/jtest"
 	"github.com/luno/reflex"
 	"github.com/luno/reflex/rpatterns"
 	"github.com/luno/reflex/rsql"
@@ -100,7 +99,7 @@ func TestStreamFunc(t *testing.T) {
 
 	fid := "23847923847"
 	_, err := wf.Trigger(ctx, fid, statusStart)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	workflow.Require(t, wf, fid, statusEnd, "Started and Completed in a Workflow")
 
@@ -131,7 +130,7 @@ func TestStreamFunc(t *testing.T) {
 	)
 
 	err = reflex.Run(ctx, spec)
-	jtest.Require(t, context.Canceled, err)
+	require.Equal(t, context.Canceled, err)
 }
 
 func TestConnector(t *testing.T) {
@@ -142,14 +141,14 @@ func TestConnector(t *testing.T) {
 
 		ctx := context.Background()
 		tx, err := dbc.BeginTx(ctx, nil)
-		jtest.RequireNil(t, err)
+		require.Nil(t, err)
 
 		for _, event := range seedEvents {
 			notify, err := eventsTable.Insert(ctx, tx, event.ForeignID, reflexstreamer.EventType(1))
 			if err != nil {
 				originalErr := err
 				err = tx.Rollback()
-				jtest.RequireNil(t, err)
+				require.Nil(t, err)
 				t.Fatal("failed to insert event", event.ForeignID, originalErr.Error())
 			}
 
@@ -157,7 +156,7 @@ func TestConnector(t *testing.T) {
 		}
 
 		err = tx.Commit()
-		jtest.RequireNil(t, err)
+		require.Nil(t, err)
 
 		return reflexstreamer.NewConnector(eventsTable.ToStream(dbc), cTable.ToStore(dbc), reflexstreamer.DefaultReflexTranslator)
 	})

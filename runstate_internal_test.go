@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/luno/jettison/jtest"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNoopRunStateController(t *testing.T) {
@@ -12,14 +12,14 @@ func TestNoopRunStateController(t *testing.T) {
 
 	ctx := context.Background()
 	err := ctrl.Pause(ctx)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	err = ctrl.Resume(ctx)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	err = ctrl.Cancel(ctx)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	err = ctrl.DeleteData(ctx)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 }

@@ -2,8 +2,9 @@ package workflow
 
 import (
 	"context"
-	internal_errors "github.com/luno/workflow/internal/errors"
 	"strconv"
+
+	werrors "github.com/luno/workflow/internal/errors"
 )
 
 type RunState int
@@ -131,7 +132,7 @@ func (rsc *runStateControllerImpl) update(ctx context.Context, rs RunState, inva
 func validateRunStateTransition(record *Record, runState RunState, sentinelErr error) error {
 	valid, ok := runStateTransitions[record.RunState]
 	if !ok {
-		return internal_errors.Wrap(sentinelErr, "current run state is terminal", map[string]string{
+		return werrors.WrapWithMeta(sentinelErr, "current run state is terminal", map[string]string{
 			"record_id":           strconv.FormatInt(record.ID, 10),
 			"workflow_name":       record.WorkflowName,
 			"run_state":           record.RunState.String(),
@@ -141,7 +142,7 @@ func validateRunStateTransition(record *Record, runState RunState, sentinelErr e
 
 	if !valid[runState] {
 		msg := "Current run state cannot transition to " + runState.String()
-		return internal_errors.Wrap(sentinelErr, msg, map[string]string{
+		return werrors.WrapWithMeta(sentinelErr, msg, map[string]string{
 			"record_id":           strconv.FormatInt(record.ID, 10),
 			"workflow_name":       record.WorkflowName,
 			"run_state":           record.RunState.String(),

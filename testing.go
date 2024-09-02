@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"testing"
 
-	"github.com/luno/jettison/errors"
-	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,13 +19,13 @@ func TriggerCallbackOn[Type any, Status StatusType, Payload any](t testing.TB, w
 	ctx := context.TODO()
 
 	_, err := w.Await(ctx, foreignID, runID, waitFor)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	b, err := json.Marshal(p)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	err = w.Callback(ctx, foreignID, waitFor, bytes.NewReader(b))
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 }
 
 func AwaitTimeoutInsert[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status], foreignID, runID string, waitFor Status) {
@@ -41,7 +40,7 @@ func AwaitTimeoutInsert[Type any, Status StatusType](t testing.TB, w *Workflow[T
 		}
 
 		ls, err := w.timeoutStore.List(w.ctx, w.Name)
-		jtest.RequireNil(t, err)
+		require.Nil(t, err)
 
 		for _, l := range ls {
 			if l.Status != int(waitFor) {
@@ -83,7 +82,7 @@ func Require[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status
 		if errors.Is(err, ErrRecordNotFound) {
 			continue
 		} else {
-			jtest.RequireNil(t, err)
+			require.Nil(t, err)
 		}
 
 		runID = latest.RunID
@@ -108,7 +107,7 @@ func Require[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status
 
 	var typ Type
 	err := json.Unmarshal(wr.Object, &typ)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	actual := &Run[Type, Status]{
 		Record: *wr,

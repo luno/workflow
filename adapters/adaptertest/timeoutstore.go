@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 
 	"github.com/luno/workflow"
@@ -28,16 +27,16 @@ func testCancelTimeout(t *testing.T, factory func() workflow.TimeoutStore) {
 	ctx := context.Background()
 
 	err := store.Create(ctx, "example", "andrew", "1", int(statusStarted), time.Now().Add(-time.Hour))
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	err = store.Create(ctx, "example", "andrew", "2", int(statusStarted), time.Now().Add(-time.Hour))
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	err = store.Create(ctx, "example", "andrew", "3", int(statusStarted), time.Now().Add(-time.Hour))
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	timeout, err := store.ListValid(ctx, "example", int(statusStarted), time.Now())
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	require.Equal(t, 3, len(timeout))
 
@@ -63,10 +62,10 @@ func testCancelTimeout(t *testing.T, factory func() workflow.TimeoutStore) {
 	require.WithinDuration(t, time.Now(), timeout[2].CreatedAt, time.Second)
 
 	err = store.Cancel(ctx, 2)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	timeout, err = store.ListValid(ctx, "example", int(statusStarted), time.Now())
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	require.Equal(t, 2, len(timeout))
 
@@ -90,16 +89,16 @@ func testCompleteTimeout(t *testing.T, factory func() workflow.TimeoutStore) {
 	ctx := context.Background()
 
 	err := store.Create(ctx, "example", "andrew", "1", int(statusStarted), time.Now().Add(-time.Hour))
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	err = store.Create(ctx, "example", "andrew", "2", int(statusStarted), time.Now().Add(-time.Hour))
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	err = store.Create(ctx, "example", "andrew", "3", int(statusStarted), time.Now().Add(-time.Hour))
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	timeout, err := store.ListValid(ctx, "example", int(statusStarted), time.Now())
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	require.Equal(t, 3, len(timeout))
 
@@ -125,10 +124,10 @@ func testCompleteTimeout(t *testing.T, factory func() workflow.TimeoutStore) {
 	require.WithinDuration(t, time.Now(), timeout[2].CreatedAt, time.Second)
 
 	err = store.Complete(ctx, 2)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	timeout, err = store.ListValid(ctx, "example", int(statusStarted), time.Now())
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	require.Equal(t, 2, len(timeout))
 
@@ -152,16 +151,16 @@ func testListTimeout(t *testing.T, factory func() workflow.TimeoutStore) {
 	ctx := context.Background()
 
 	err := store.Create(ctx, "example", "andrew", "1", int(statusStarted), time.Now().Add(-time.Hour))
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	err = store.Create(ctx, "example", "andrew", "2", int(statusMiddle), time.Now().Add(time.Hour))
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	err = store.Create(ctx, "example", "andrew", "3", int(statusEnd), time.Now().Add(time.Hour*2))
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	timeout, err := store.List(ctx, "example")
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	require.Equal(t, 3, len(timeout))
 }

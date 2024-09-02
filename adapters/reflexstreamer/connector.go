@@ -4,11 +4,9 @@ import (
 	"context"
 	"io"
 
-	"github.com/luno/jettison/errors"
-	"github.com/luno/jettison/j"
 	"github.com/luno/reflex"
-
 	"github.com/luno/workflow"
+	werrors "github.com/luno/workflow/internal/errors"
 )
 
 func NewConnector(streamFn reflex.StreamFunc, cursorStore reflex.CursorStore, t ReflexTranslator) *connector {
@@ -30,7 +28,7 @@ type connector struct {
 func (c *connector) Make(ctx context.Context, name string) (workflow.ConnectorConsumer, error) {
 	cursor, err := c.cursorStore.GetCursor(ctx, name)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to collect cursor")
+		return nil, werrors.Wrap(err, "failed to collect cursor")
 	}
 
 	streamClient, err := c.streamFn(ctx, cursor)
@@ -68,7 +66,7 @@ func (c consumer) Recv(ctx context.Context) (*workflow.ConnectorEvent, workflow.
 		return event, func() error {
 			// Increment cursor for consumer only if ack function is called.
 			if err := c.cursorStore.SetCursor(ctx, c.cursorName, event.ID); err != nil {
-				return errors.Wrap(err, "failed to set cursor", j.MKV{
+				return werrors.WrapWithMeta(err, "failed to set cursor", map[string]string{
 					"cursor_name": c.cursorName,
 					"event_id":    reflexEvent.ID,
 					"event_fid":   reflexEvent.ForeignID,
@@ -87,7 +85,7 @@ func (c consumer) Close() error {
 	// Provide new context for flushing of cursor values to underlying store
 	err := c.cursorStore.Flush(context.Background())
 	if err != nil {
-		return errors.Wrap(err, "failed here")
+		return werrors.Wrap(err, "failed to flush cursor")
 	}
 
 	if closer, ok := c.streamClient.(io.Closer); ok {

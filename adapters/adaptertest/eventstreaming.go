@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 	clock_testing "k8s.io/utils/clock/testing"
 
@@ -91,14 +90,14 @@ func RunEventStreamerTest(t *testing.T, constructor workflow.EventStreamer) {
 		CountryCode: "GB",
 	}
 	runId, err := wf.Trigger(ctx, foreignID, SyncStatusStarted, workflow.WithInitialValue[User, SyncStatus](&u))
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	workflow.AwaitTimeoutInsert(t, wf, foreignID, runId, SyncStatusEmailSet)
 
 	clock.Step(time.Hour)
 
 	record, err := wf.Await(ctx, foreignID, runId, SyncStatusCompleted)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	require.Equal(t, "andrew@workflow.com", record.Object.Email)
 	require.Equal(t, SyncStatusCompleted.String(), record.Status.String())

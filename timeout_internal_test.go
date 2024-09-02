@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 	clock_testing "k8s.io/utils/clock/testing"
 
@@ -24,7 +23,7 @@ func TestProcessTimeout(t *testing.T) {
 
 	value := "data"
 	b, err := Marshal(&value)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	type calls struct {
 		updater      func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error
@@ -193,7 +192,7 @@ func TestProcessTimeout(t *testing.T) {
 			}
 
 			err := processTimeout(ctx, w, timeout, tc.record, tr, tc.caller(calls).completeFunc, tc.caller(calls).store, tc.caller(calls).updater, "processName", 1)
-			jtest.RequireNil(t, err)
+			require.Nil(t, err)
 
 			require.Equal(t, tc.expectedCalls, calls)
 		})

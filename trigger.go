@@ -2,12 +2,12 @@ package workflow
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	internal_errors "github.com/luno/workflow/internal/errors"
 
 	"github.com/google/uuid"
-	"github.com/luno/jettison/errors"
-	"github.com/luno/jettison/j"
+
+	werrors "github.com/luno/workflow/internal/errors"
 )
 
 func (w *Workflow[Type, Status]) Trigger(ctx context.Context, foreignID string, startingStatus Status, opts ...TriggerOption[Type, Status]) (runID string, err error) {
@@ -16,11 +16,11 @@ func (w *Workflow[Type, Status]) Trigger(ctx context.Context, foreignID string, 
 
 func trigger[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], lookup latestLookup, foreignID string, startingStatus Status, opts ...TriggerOption[Type, Status]) (runID string, err error) {
 	if !w.calledRun {
-		return "", internal_errors.Wrap(ErrWorkflowNotRunning, "ensure Run() is called before attempting to trigger the workflow", map[string]string{})
+		return "", werrors.Wrap(ErrWorkflowNotRunning, "ensure Run() is called before attempting to trigger the workflow")
 	}
 
 	if !w.statusGraph.IsValid(int(startingStatus)) {
-		return "", internal_errors.Wrap(ErrStatusProvidedNotConfigured, fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name), map[string]string{})
+		return "", werrors.Wrap(ErrStatusProvidedNotConfigured, fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name))
 	}
 
 	var o triggerOpts[Type, Status]
@@ -48,7 +48,7 @@ func trigger[Type any, Status StatusType](ctx context.Context, w *Workflow[Type,
 	// Check that the last run has completed before triggering a new run.
 	if lastRecord.RunState.Valid() && !lastRecord.RunState.Finished() {
 		// Cannot trigger a new run for this foreignID if there is a workflow in progress.
-		return "", errors.Wrap(ErrWorkflowInProgress, "", j.MKV{
+		return "", werrors.WrapWithMeta(ErrWorkflowInProgress, "", map[string]string{
 			"run_id":    lastRecord.RunID,
 			"run_state": lastRecord.RunState.String(),
 			"status":    Status(lastRecord.Status).String(),

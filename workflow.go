@@ -10,6 +10,7 @@ import (
 	"k8s.io/utils/clock"
 
 	"github.com/luno/workflow/internal/errorcounter"
+	werrors "github.com/luno/workflow/internal/errors"
 	"github.com/luno/workflow/internal/graph"
 	"github.com/luno/workflow/internal/metrics"
 )
@@ -203,7 +204,7 @@ func runOnce[Type any, Status StatusType](w *Workflow[Type, Status], role, proce
 		// and if the parent context was cancelled then that will exit safely.
 		return nil
 	} else if err != nil {
-		w.logger.Error(ctx, errors.Join(errors.New("process error"), err), MKV{
+		w.logger.Error(ctx, werrors.Wrap(err, "process error"), MKV{
 			"role": role,
 		})
 		metrics.ProcessErrors.WithLabelValues(w.Name, processName).Inc()

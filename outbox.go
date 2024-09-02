@@ -2,14 +2,13 @@ package workflow
 
 import (
 	"context"
-	internal_errors "github.com/luno/workflow/internal/errors"
 	"strconv"
 	"time"
 
-	"github.com/luno/jettison/errors"
 	"google.golang.org/protobuf/proto"
 	"k8s.io/utils/clock"
 
+	werrors "github.com/luno/workflow/internal/errors"
 	"github.com/luno/workflow/internal/metrics"
 	"github.com/luno/workflow/internal/outboxpb"
 )
@@ -125,7 +124,7 @@ func purgeOutbox[Type any, Status StatusType](
 		var outboxRecord outboxpb.OutboxRecord
 		err := proto.Unmarshal(e.Data, &outboxRecord)
 		if err != nil {
-			return internal_errors.Wrap(err, "Unable to proto unmarshal outbox record", map[string]string)
+			return werrors.Wrap(err, "Unable to proto unmarshal outbox record")
 		}
 
 		headers := make(map[Header]string)
@@ -154,12 +153,12 @@ func purgeOutbox[Type any, Status StatusType](
 		topic := headers[HeaderTopic]
 		producer, err := streamer.NewProducer(ctx, topic)
 		if err != nil {
-			return internal_errors.Wrap(err, "Unable to construct new producer for outbox purging", map[string]string{})
+			return werrors.Wrap(err, "Unable to construct new producer for outbox purging")
 		}
 
 		err = producer.Send(ctx, event.ForeignID, event.Type, event.Headers)
 		if err != nil {
-			return internal_errors.Wrap(err, "Unable to send outbox event to event streamer", map[string]string{})
+			return werrors.Wrap(err, "Unable to send outbox event to event streamer")
 		}
 
 		err = recordStore.DeleteOutboxEvent(ctx, event.ID)

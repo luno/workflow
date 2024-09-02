@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 
 	"github.com/luno/workflow"
@@ -72,7 +71,7 @@ func TestRunState(t *testing.T) {
 
 			// Trigger workflow before it's running to assert that the initial state is workflow.RunStateInitiated
 			runID, err := w.Trigger(ctx, "fid", StatusStart)
-			jtest.RequireNil(t, err)
+			require.Nil(t, err)
 
 			time.Sleep(time.Second)
 
@@ -125,7 +124,7 @@ func TestWorkflowRunStateController(t *testing.T) {
 		Name: "Andrew Wormald",
 		Car:  "Audi",
 	})
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	ctx := context.Background()
 	workflowName := "test-workflow"
@@ -140,49 +139,49 @@ func TestWorkflowRunStateController(t *testing.T) {
 	})
 
 	record, err := recordStore.Latest(ctx, workflowName, foreignID)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	time.Sleep(time.Millisecond * 500)
 
 	record, err = recordStore.Latest(ctx, workflowName, foreignID)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	require.Equal(t, workflow.RunStateInitiated, record.RunState)
 
 	wr, err := recordStore.Lookup(ctx, 1)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	rsc := workflow.NewRunStateController(recordStore.Store, wr)
 
 	err = rsc.Pause(ctx)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	record, err = recordStore.Latest(ctx, workflowName, foreignID)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	require.Equal(t, workflow.RunStatePaused, record.RunState)
 
 	err = rsc.Resume(ctx)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	record, err = recordStore.Latest(ctx, workflowName, foreignID)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	require.Equal(t, workflow.RunStateRunning, record.RunState)
 
 	err = rsc.Cancel(ctx)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	record, err = recordStore.Latest(ctx, workflowName, foreignID)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	require.Equal(t, workflow.RunStateCancelled, record.RunState)
 
 	err = rsc.DeleteData(ctx)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	record, err = recordStore.Latest(ctx, workflowName, foreignID)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	require.Equal(t, workflow.RunStateRequestedDataDeleted, record.RunState)
 }

@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 	clock_testing "k8s.io/utils/clock/testing"
 
@@ -24,7 +23,7 @@ func TestConsume(t *testing.T) {
 
 	value := "data"
 	b, err := Marshal(&value)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	current := &Record{
 		ID:           1,
@@ -76,7 +75,7 @@ func TestConsume(t *testing.T) {
 		}
 
 		err := consume(ctx, w, currentRecord, consumer, ack, store, updater, "processName", 0)
-		jtest.RequireNil(t, err)
+		require.Nil(t, err)
 
 		expectedCalls := map[string]int{
 			"consumerFunc": 1,
@@ -116,7 +115,7 @@ func TestConsume(t *testing.T) {
 		}
 
 		err := consume(ctx, w, current, consumer, ack, store, updater, "processName", 0)
-		jtest.RequireNil(t, err)
+		require.Nil(t, err)
 
 		expectedCalls := map[string]int{
 			"consumerFunc": 1,
@@ -155,7 +154,7 @@ func TestConsume(t *testing.T) {
 		}
 
 		err := consume(ctx, w, current, consumer, ack, store, updater, "processName", 0)
-		jtest.RequireNil(t, err)
+		require.Nil(t, err)
 
 		expectedCalls := map[string]int{
 			"consumerFunc": 1,
@@ -199,13 +198,13 @@ func TestConsume(t *testing.T) {
 		}
 
 		err := consume(ctx, w, current, consumer, ack, store, updater, "processName", 3)
-		jtest.Require(t, testErr, err)
+		require.True(t, errors.Is(err, testErr))
 
 		err = consume(ctx, w, current, consumer, ack, store, updater, "processName", 3)
-		jtest.Require(t, testErr, err)
+		require.True(t, errors.Is(err, testErr))
 
 		err = consume(ctx, w, current, consumer, ack, store, updater, "processName", 3)
-		jtest.RequireNil(t, err)
+		require.Nil(t, err)
 
 		expectedCalls := map[string]int{
 			"consumerFunc": 3,

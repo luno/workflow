@@ -2,11 +2,11 @@ package workflow
 
 import (
 	"context"
-	internal_errors "github.com/luno/workflow/internal/errors"
+	"errors"
 	"strconv"
 	"time"
 
-	"github.com/luno/jettison/errors"
+	werrors "github.com/luno/workflow/internal/errors"
 	"github.com/luno/workflow/internal/metrics"
 )
 
@@ -238,7 +238,7 @@ func consume[Type any, Status StatusType](
 				originalErr := err
 				_, err := record.Pause(ctx)
 				if err != nil {
-					return internal_errors.Wrap(err, "failed to pause record after exceeding allowed error count", map[string]string{
+					return werrors.WrapWithMeta(err, "failed to pause record after exceeding allowed error count", map[string]string{
 						"workflow_name":      record.WorkflowName,
 						"foreign_id":         record.ForeignID,
 						"current_status":     record.Status.String(),
@@ -252,7 +252,7 @@ func consume[Type any, Status StatusType](
 			}
 		}
 
-		return internal_errors.Wrap(err, "failed to consume", map[string]string{
+		return werrors.WrapWithMeta(err, "failed to consume", map[string]string{
 			"workflow_name":      record.WorkflowName,
 			"foreign_id":         record.ForeignID,
 			"current_status":     record.Status.String(),

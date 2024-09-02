@@ -2,23 +2,24 @@ package workflow
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	internal_errors "github.com/luno/workflow/internal/errors"
 	"strconv"
 	"time"
 
-	"github.com/luno/jettison/errors"
 	"github.com/robfig/cron/v3"
 	"k8s.io/utils/clock"
+
+	werrors "github.com/luno/workflow/internal/errors"
 )
 
 func (w *Workflow[Type, Status]) Schedule(foreignID string, startingStatus Status, spec string, opts ...ScheduleOption[Type, Status]) error {
 	if !w.calledRun {
-		return internal_errors.Wrap(ErrWorkflowNotRunning, "ensure Run() is called before attempting to trigger the workflow", map[string]string{})
+		return werrors.Wrap(ErrWorkflowNotRunning, "ensure Run() is called before attempting to trigger the workflow")
 	}
 
 	if !w.statusGraph.IsValid(int(startingStatus)) {
-		return internal_errors.Wrap(ErrStatusProvidedNotConfigured, fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name), map[string]string{})
+		return werrors.Wrap(ErrStatusProvidedNotConfigured, fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name))
 	}
 
 	var options scheduleOpts[Type, Status]
