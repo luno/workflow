@@ -28,18 +28,13 @@ func testCompleteAndCancelTimeout(t *testing.T, factory func() workflow.TimeoutS
 
 	seed(t, store, 3)
 
-	timeouts, err := store.ListValid(ctx, "example", int(statusStarted), time.Now())
-	require.Nil(t, err)
-
-	require.Equal(t, 1, len(timeouts))
-
-	err = store.Complete(ctx, 3)
+	err := store.Complete(ctx, 2)
 	require.Nil(t, err)
 
 	err = store.Cancel(ctx, 3)
 	require.Nil(t, err)
 
-	timeouts, err = store.ListValid(ctx, "example", int(statusStarted), time.Now())
+	timeouts, err := store.ListValid(ctx, "example", int(statusStarted), time.Now())
 	require.Nil(t, err)
 
 	expect(t, 1, timeouts)
@@ -48,7 +43,7 @@ func testCompleteAndCancelTimeout(t *testing.T, factory func() workflow.TimeoutS
 func seed(t *testing.T, store workflow.TimeoutStore, count int) {
 	ctx := context.Background()
 	for i := range count {
-		err := store.Create(ctx, "example", "andrew", fmt.Sprintf("%v", i), int(statusStarted), time.Now().Add(-time.Hour))
+		err := store.Create(ctx, "example", "andrew", fmt.Sprintf("%v", i+1), int(statusStarted), time.Now().Add(-time.Hour))
 		require.Nil(t, err)
 	}
 }
