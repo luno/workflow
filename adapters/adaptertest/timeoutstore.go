@@ -23,21 +23,23 @@ func RunTimeoutStoreTest(t *testing.T, factory func() workflow.TimeoutStore) {
 }
 
 func testCompleteAndCancelTimeout(t *testing.T, factory func() workflow.TimeoutStore) {
-	store := factory()
-	ctx := context.Background()
+	t.Run("Complete and Cancel timeouts", func(t *testing.T) {
+		store := factory()
+		ctx := context.Background()
 
-	seed(t, store, 3)
+		seed(t, store, 3)
 
-	err := store.Complete(ctx, 2)
-	require.Nil(t, err)
+		err := store.Complete(ctx, 2)
+		require.Nil(t, err)
 
-	err = store.Cancel(ctx, 3)
-	require.Nil(t, err)
+		err = store.Cancel(ctx, 3)
+		require.Nil(t, err)
 
-	timeouts, err := store.ListValid(ctx, "example", int(statusStarted), time.Now())
-	require.Nil(t, err)
+		timeouts, err := store.ListValid(ctx, "example", int(statusStarted), time.Now())
+		require.Nil(t, err)
 
-	expect(t, 1, timeouts)
+		expect(t, 1, timeouts)
+	})
 }
 
 func seed(t *testing.T, store workflow.TimeoutStore, count int) {
@@ -64,13 +66,15 @@ func expect(t *testing.T, count int, actual []workflow.TimeoutRecord) {
 }
 
 func testListTimeout(t *testing.T, factory func() workflow.TimeoutStore) {
-	store := factory()
-	ctx := context.Background()
+	t.Run("List timeouts", func(t *testing.T) {
+		store := factory()
+		ctx := context.Background()
 
-	seed(t, store, 3)
+		seed(t, store, 3)
 
-	timeouts, err := store.List(ctx, "example")
-	require.Nil(t, err)
+		timeouts, err := store.List(ctx, "example")
+		require.Nil(t, err)
 
-	expect(t, 3, timeouts)
+		expect(t, 3, timeouts)
+	})
 }
