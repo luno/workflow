@@ -35,7 +35,17 @@ jobs:
       matrix:
         go: [ '1.22']
         adapters: [ 'kafkastreamer', 'reflexstreamer', 'sqlstore', 'sqltimeout' ]
+        mysql: [ 'mysql:8' ]
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: ${{ matrix.mysql }}
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: example
+        ports:
+          - 3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
     steps:
       - uses: actions/checkout@v4
       - name: Set up Go
@@ -46,3 +56,7 @@ jobs:
         run: cd ./adapters/${{ matrix.adapters }} && go vet -v ./...
       - name: Test
         run: cd ./adapters/${{ matrix.adapters }} && go test -v ./...
+        env:
+          DB_TEST_URI: "root:@tcp(localhost:${{ job.services.mysql.ports[3306] }})/"
+          DB_EXAMPLE_CLIENT_URI: "root@tcp(localhost:${{ job.services.mysql.ports[3306] }})/"
+          DB_EXAMPLE_SERVER_URI: "root@tcp(localhost:${{ job.services.mysql.ports[3306] }})/"
