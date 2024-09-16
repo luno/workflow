@@ -1,13 +1,6 @@
 package workflow
 
-import (
-	"errors"
-)
-
-type (
-	ErrorWrapper         func(err error, msg string) error
-	ErrorWrapperWithMeta func(err error, msg string, meta map[string]string) error
-)
+import "errors"
 
 var (
 	ErrRecordNotFound              = errors.New("record not found")
