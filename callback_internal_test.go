@@ -20,6 +20,7 @@ func TestProcessCallback(t *testing.T) {
 		ctx:         ctx,
 		clock:       clock_testing.NewFakeClock(time.Date(2024, time.April, 19, 0, 0, 0, 0, time.UTC)),
 		statusGraph: graph.New(),
+		logger:      &logger{},
 	}
 
 	w.statusGraph.AddTransition(int(statusStart), int(statusEnd))

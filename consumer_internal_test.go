@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 	"time"
 
@@ -10,17 +11,23 @@ import (
 	clock_testing "k8s.io/utils/clock/testing"
 
 	"github.com/luno/workflow/internal/errorcounter"
+	internal_logger "github.com/luno/workflow/internal/logger"
 )
 
 func TestConsume(t *testing.T) {
 	ctx := context.Background()
+	counter := errorcounter.New()
+	processName := "processName"
+	testErr := errors.New("test error")
 	w := &Workflow[string, testStatus]{
 		Name:         "example",
 		ctx:          ctx,
 		clock:        clock_testing.NewFakeClock(time.Date(2024, time.April, 19, 0, 0, 0, 0, time.UTC)),
-		errorCounter: errorcounter.New(),
+		errorCounter: counter,
+		logger: &logger{
+			inner: internal_logger.New(os.Stdout),
+		},
 	}
-
 	value := "data"
 	b, err := Marshal(&value)
 	require.Nil(t, err)
@@ -74,7 +81,7 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		err := consume(ctx, w, currentRecord, consumer, ack, store, updater, "processName", 0)
+		err := consume(ctx, w, currentRecord, consumer, ack, store, updater, processName, 0)
 		require.Nil(t, err)
 
 		expectedCalls := map[string]int{
@@ -114,7 +121,7 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		err := consume(ctx, w, current, consumer, ack, store, updater, "processName", 0)
+		err := consume(ctx, w, current, consumer, ack, store, updater, processName, 0)
 		require.Nil(t, err)
 
 		expectedCalls := map[string]int{
@@ -153,7 +160,7 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		err := consume(ctx, w, current, consumer, ack, store, updater, "processName", 0)
+		err := consume(ctx, w, current, consumer, ack, store, updater, processName, 0)
 		require.Nil(t, err)
 
 		expectedCalls := map[string]int{
@@ -167,6 +174,7 @@ func TestConsume(t *testing.T) {
 
 	t.Run("Pause record after exceeding allowed error count", func(t *testing.T) {
 		t.Parallel()
+		counter.Clear(testErr, processName, current.RunID)
 
 		calls := map[string]int{
 			"consumerFunc": 0,
@@ -174,8 +182,6 @@ func TestConsume(t *testing.T) {
 			"updater":      0,
 			"store":        0,
 		}
-
-		testErr := errors.New("test error")
 
 		consumer := ConsumerFunc[string, testStatus](func(ctx context.Context, r *Run[string, testStatus]) (testStatus, error) {
 			calls["consumerFunc"] += 1
@@ -197,17 +203,20 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		err := consume(ctx, w, current, consumer, ack, store, updater, "processName", 3)
+		err := consume(ctx, w, current, consumer, ack, store, updater, processName, 3)
 		require.True(t, errors.Is(err, testErr))
 
-		err = consume(ctx, w, current, consumer, ack, store, updater, "processName", 3)
+		err = consume(ctx, w, current, consumer, ack, store, updater, processName, 3)
 		require.True(t, errors.Is(err, testErr))
 
-		err = consume(ctx, w, current, consumer, ack, store, updater, "processName", 3)
+		err = consume(ctx, w, current, consumer, ack, store, updater, processName, 3)
+		require.True(t, errors.Is(err, testErr))
+
+		err = consume(ctx, w, current, consumer, ack, store, updater, processName, 3)
 		require.Nil(t, err)
 
 		expectedCalls := map[string]int{
-			"consumerFunc": 3,
+			"consumerFunc": 4,
 			"ack":          1,
 			"updater":      0,
 			"store":        1,

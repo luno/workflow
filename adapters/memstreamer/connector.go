@@ -9,7 +9,6 @@ import (
 	"k8s.io/utils/clock"
 
 	"github.com/luno/workflow"
-	werrors "github.com/luno/workflow/internal/errors"
 )
 
 func NewConnector(events []workflow.ConnectorEvent, opts ...Option) *connector {
@@ -88,7 +87,7 @@ func (c *consumer) next() (*workflow.ConnectorEvent, error) {
 
 	cursorOffset := c.cursorStore.Get(c.cursorName)
 	if len(log)-1 < cursorOffset {
-		return nil, werrors.Wrap(errReachedHeadOfStream, "")
+		return nil, errReachedHeadOfStream
 	}
 
 	return log[cursorOffset], nil

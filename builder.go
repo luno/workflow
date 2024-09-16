@@ -9,7 +9,7 @@ import (
 
 	"github.com/luno/workflow/internal/errorcounter"
 	"github.com/luno/workflow/internal/graph"
-	"github.com/luno/workflow/internal/logger"
+	interal_logger "github.com/luno/workflow/internal/logger"
 )
 
 const (
@@ -33,7 +33,10 @@ func NewBuilder[Type any, Status StatusType](name string) *Builder[Type, Status]
 			statusGraph:   graph.New(),
 			errorCounter:  errorcounter.New(),
 			internalState: make(map[string]State),
-			logger:        logger.New(os.Stdout),
+			logger: &logger{
+				debugMode: false, // Explicit for readability
+				inner:     interal_logger.New(os.Stdout),
+			},
 		},
 	}
 }
@@ -204,7 +207,11 @@ func (b *Builder[Type, Status]) Build(eventStreamer EventStreamer, recordStore R
 	b.workflow.timeoutStore = bo.timeoutStore
 	b.workflow.defaultOpts = bo.defaultOptions
 	b.workflow.outboxConfig = bo.outboxConfig
-	b.workflow.debugMode = bo.debugMode
+	b.workflow.logger.debugMode = bo.debugMode
+
+	if bo.logger != nil {
+		b.workflow.logger.inner = bo.logger
+	}
 
 	if len(b.workflow.timeouts) > 0 && b.workflow.timeoutStore == nil {
 		panic("cannot configure timeouts without providing TimeoutStore for workflow")
@@ -297,21 +304,6 @@ func WithCustomDelete[Type any](fn func(object *Type) error) BuildOption {
 			return Marshal(&t)
 		}
 	}
-}
-
-func (b *Builder[Type, Status]) determineEndPoints(graph map[int][]int) map[Status]bool {
-	endpoints := make(map[Status]bool)
-	for _, destinations := range graph {
-		for _, destination := range destinations {
-			_, ok := graph[destination]
-			if !ok {
-				// end points are nodes that do not have any of their own transitions to transition to.
-				endpoints[Status(destination)] = true
-			}
-		}
-	}
-
-	return endpoints
 }
 
 func DurationTimerFunc[Type any, Status StatusType](duration time.Duration) TimerFunc[Type, Status] {

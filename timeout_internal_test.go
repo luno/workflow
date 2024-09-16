@@ -14,11 +14,15 @@ import (
 
 func TestProcessTimeout(t *testing.T) {
 	ctx := context.Background()
+	counter := errorcounter.New()
+	processName := "processName"
+	testErr := errors.New("test error")
 	w := &Workflow[string, testStatus]{
 		Name:         "example",
 		ctx:          ctx,
 		clock:        clock_testing.NewFakeClock(time.Date(2024, time.April, 19, 0, 0, 0, 0, time.UTC)),
-		errorCounter: errorcounter.New(),
+		errorCounter: counter,
+		logger:       &logger{},
 	}
 
 	value := "data"
@@ -35,12 +39,12 @@ func TestProcessTimeout(t *testing.T) {
 	type caller func(call map[string]int) calls
 
 	testCases := []struct {
-		name          string
-		caller        caller
-		timeout       timeout[string, testStatus]
-		record        *Record
-		expectedCalls map[string]int
-		expectedError error
+		name            string
+		caller          caller
+		timeout         timeout[string, testStatus]
+		record          *Record
+		currentErrCount int
+		expectedCalls   map[string]int
 	}{
 		{
 			name: "Golden path consume - initiated",
@@ -150,7 +154,7 @@ func TestProcessTimeout(t *testing.T) {
 				return calls{
 					timeoutFunc: func(ctx context.Context, r *Run[string, testStatus], now time.Time) (testStatus, error) {
 						call["timeout/TimeoutFunc"] += 1
-						return 0, errors.New("test error")
+						return 0, testErr
 					},
 					store: func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
 						call["store"] += 1
@@ -168,15 +172,20 @@ func TestProcessTimeout(t *testing.T) {
 				Status:       int(statusStart),
 				Object:       b,
 			},
+			currentErrCount: 1,
 			expectedCalls: map[string]int{
 				"timeout/TimeoutFunc": 1,
 				"store":               1,
 			},
-			expectedError: errors.New("test error"),
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			counter.Clear(testErr, processName, tc.record.RunID)
+			for range tc.currentErrCount {
+				counter.Add(testErr, processName, tc.record.RunID)
+			}
+
 			calls := map[string]int{}
 
 			timeout := timeout[string, testStatus]{
@@ -191,7 +200,7 @@ func TestProcessTimeout(t *testing.T) {
 				Status:       tc.record.Status,
 			}
 
-			err := processTimeout(ctx, w, timeout, tc.record, tr, tc.caller(calls).completeFunc, tc.caller(calls).store, tc.caller(calls).updater, "processName", 1)
+			err := processTimeout(ctx, w, timeout, tc.record, tr, tc.caller(calls).completeFunc, tc.caller(calls).store, tc.caller(calls).updater, processName, 1)
 			require.Nil(t, err)
 
 			require.Equal(t, tc.expectedCalls, calls)

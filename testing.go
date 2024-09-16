@@ -117,3 +117,90 @@ func Require[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status
 
 	require.Equal(t, expected, *actual.Object)
 }
+
+// NewTestingRun should be used when testing logic that defines a workflow.Run as a parameter. This is usually the
+// case in unit tests and would not normally be found when doing an Acceptance test for the entire workflow.
+func NewTestingRun[Type any, Status StatusType](t *testing.T, wr Record, object Type, opts ...TestingRunOption) Run[Type, Status] {
+	var options testingRunOpts
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return Run[Type, Status]{
+		Record:     wr,
+		Status:     Status(wr.Status),
+		Object:     &object,
+		controller: &options.controller,
+	}
+}
+
+type testingRunOpts struct {
+	controller testingRunStateController
+}
+
+type TestingRunOption func(*testingRunOpts)
+
+func WithPauseFn(pause func(ctx context.Context) error) TestingRunOption {
+	return func(opts *testingRunOpts) {
+		opts.controller.pause = pause
+	}
+}
+
+func WithResumeFn(resume func(ctx context.Context) error) TestingRunOption {
+	return func(opts *testingRunOpts) {
+		opts.controller.resume = resume
+	}
+}
+
+func WithCancelFn(cancel func(ctx context.Context) error) TestingRunOption {
+	return func(opts *testingRunOpts) {
+		opts.controller.cancel = cancel
+	}
+}
+
+func WithDeleteDataFn(deleteData func(ctx context.Context) error) TestingRunOption {
+	return func(opts *testingRunOpts) {
+		opts.controller.deleteData = deleteData
+	}
+}
+
+type testingRunStateController struct {
+	pause      func(ctx context.Context) error
+	cancel     func(ctx context.Context) error
+	resume     func(ctx context.Context) error
+	deleteData func(ctx context.Context) error
+}
+
+func (c *testingRunStateController) Pause(ctx context.Context) error {
+	if c.pause == nil {
+		return nil
+	}
+
+	return c.pause(ctx)
+}
+
+func (c *testingRunStateController) Cancel(ctx context.Context) error {
+	if c.cancel == nil {
+		return nil
+	}
+
+	return c.cancel(ctx)
+}
+
+func (c *testingRunStateController) Resume(ctx context.Context) error {
+	if c.resume == nil {
+		return nil
+	}
+
+	return c.resume(ctx)
+}
+
+func (c *testingRunStateController) DeleteData(ctx context.Context) error {
+	if c.deleteData == nil {
+		return nil
+	}
+
+	return c.deleteData(ctx)
+}
+
+var _ RunStateController = (*testingRunStateController)(nil)

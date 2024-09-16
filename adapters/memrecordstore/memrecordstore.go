@@ -2,14 +2,12 @@ package memrecordstore
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"sync"
 
 	"k8s.io/utils/clock"
 
 	"github.com/luno/workflow"
-	werrors "github.com/luno/workflow/internal/errors"
 )
 
 func New(opts ...Option) *Store {
@@ -70,7 +68,7 @@ func (s *Store) Lookup(ctx context.Context, id int64) (*workflow.Record, error) 
 
 	record, ok := s.store[id]
 	if !ok {
-		return nil, werrors.Wrap(workflow.ErrRecordNotFound, "")
+		return nil, workflow.ErrRecordNotFound
 	}
 
 	// Return a new pointer so modifications don't affect the store.
@@ -128,7 +126,7 @@ func (s *Store) Latest(ctx context.Context, workflowName, foreignID string) (*wo
 	uk := uniqueKey(workflowName, foreignID)
 	record, ok := s.keyIndex[uk]
 	if !ok {
-		return nil, werrors.Wrap(workflow.ErrRecordNotFound, "")
+		return nil, workflow.ErrRecordNotFound
 	}
 
 	// Return a new pointer so modifications don't affect the store.
@@ -227,7 +225,6 @@ func (s *Store) List(ctx context.Context, workflowName string, offsetID int64, l
 
 		entry, ok := filteredStore[i]
 		if !ok {
-			fmt.Println("cannot find ", i)
 			continue
 		}
 

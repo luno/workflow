@@ -4,8 +4,6 @@ import (
 	"context"
 	"io"
 	"log/slog"
-
-	"github.com/luno/workflow/internal/errors"
 )
 
 type logger struct {
@@ -17,13 +15,6 @@ func (l logger) Debug(ctx context.Context, msg string, meta map[string]string) {
 }
 
 func (l logger) Error(ctx context.Context, err error, meta map[string]string) {
-	e, isInternalError := err.(*errors.Error)
-	if isInternalError {
-		for k, v := range e.Meta() {
-			meta[k] = v
-		}
-	}
-
 	l.log.ErrorContext(ctx, err.Error(), "meta", meta)
 }
 

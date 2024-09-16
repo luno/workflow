@@ -5,8 +5,6 @@ import (
 	"context"
 	"io"
 	"strconv"
-
-	werrors "github.com/luno/workflow/internal/errors"
 )
 
 type callback[Type any, Status StatusType] struct {
@@ -43,9 +41,7 @@ func processCallback[Type any, Status StatusType](
 ) error {
 	wr, err := latest(ctx, w.Name, foreignID)
 	if err != nil {
-		return werrors.WrapWithMeta(err, "failed to find latest record for callback", map[string]string{
-			"foreign_id": foreignID,
-		})
+		return err
 	}
 
 	if Status(wr.Status) != currentStatus {
@@ -53,7 +49,7 @@ func processCallback[Type any, Status StatusType](
 		return nil
 	}
 
-	record, err := buildConsumableRecord[Type, Status](store, wr)
+	run, err := buildRun[Type, Status](store, wr)
 	if err != nil {
 		return err
 	}
@@ -64,26 +60,24 @@ func processCallback[Type any, Status StatusType](
 		payload = bytes.NewReader([]byte{})
 	}
 
-	next, err := fn(ctx, record, payload)
+	next, err := fn(ctx, run, payload)
 	if err != nil {
 		return err
 	}
 
 	if skipUpdate(next) {
-		if w.debugMode {
-			w.logger.Debug(ctx, "skipping update", MKV{
-				"description":   skipUpdateDescription(next),
-				"record_id":     strconv.FormatInt(record.ID, 10),
-				"workflow_name": w.Name,
-				"foreign_id":    record.ForeignID,
-				"run_id":        record.RunID,
-				"run_state":     record.RunState.String(),
-				"record_status": record.Status.String(),
-			})
-		}
+		w.logger.maybeDebug(ctx, "skipping update", MKV{
+			"description":   skipUpdateDescription(next),
+			"record_id":     strconv.FormatInt(run.Record.ID, 10),
+			"workflow_name": w.Name,
+			"foreign_id":    run.ForeignID,
+			"run_id":        run.RunID,
+			"run_state":     run.RunState.String(),
+			"record_status": run.Status.String(),
+		})
 
 		return nil
 	}
 
-	return updater(ctx, currentStatus, next, record)
+	return updater(ctx, currentStatus, next, run)
 }

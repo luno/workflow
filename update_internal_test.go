@@ -9,11 +9,11 @@ import (
 	"github.com/stretchr/testify/require"
 	clock_testing "k8s.io/utils/clock/testing"
 
-	werrors "github.com/luno/workflow/internal/errors"
 	"github.com/luno/workflow/internal/graph"
 )
 
 func TestUpdater(t *testing.T) {
+	testErr := errors.New("lookup error")
 	testCases := []struct {
 		name             string
 		lookup           lookupFunc
@@ -66,7 +66,7 @@ func TestUpdater(t *testing.T) {
 				Status: statusMiddle,
 			},
 			transitions: []graph.Transition{},
-			expectedErr: errors.New("current status not predefined"),
+			expectedErr: ErrCurrentStatusNotDefined,
 		},
 		{
 			name: "Mark as completed",
@@ -94,9 +94,9 @@ func TestUpdater(t *testing.T) {
 		{
 			name: "Return error on lookup",
 			lookup: func(ctx context.Context, id int64) (*Record, error) {
-				return nil, werrors.New("lookup error")
+				return nil, testErr
 			},
-			expectedErr: werrors.New("lookup error"),
+			expectedErr: testErr,
 		},
 		{
 			name: "Exit early if lookup record status has changed",
@@ -129,7 +129,7 @@ func TestUpdater(t *testing.T) {
 					To:   int(statusEnd),
 				},
 			},
-			expectedErr: werrors.New("invalid transition attempted"),
+			expectedErr: ErrInvalidTransition,
 		},
 	}
 	for _, tc := range testCases {

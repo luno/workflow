@@ -9,17 +9,17 @@ import (
 
 	"github.com/robfig/cron/v3"
 	"k8s.io/utils/clock"
-
-	werrors "github.com/luno/workflow/internal/errors"
 )
 
 func (w *Workflow[Type, Status]) Schedule(foreignID string, startingStatus Status, spec string, opts ...ScheduleOption[Type, Status]) error {
 	if !w.calledRun {
-		return werrors.Wrap(ErrWorkflowNotRunning, "ensure Run() is called before attempting to trigger the workflow")
+		return ErrWorkflowNotRunning
 	}
 
 	if !w.statusGraph.IsValid(int(startingStatus)) {
-		return werrors.Wrap(ErrStatusProvidedNotConfigured, fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name))
+		w.logger.maybeDebug(w.ctx, fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name), map[string]string{})
+
+		return ErrStatusProvidedNotConfigured
 	}
 
 	var options scheduleOpts[Type, Status]

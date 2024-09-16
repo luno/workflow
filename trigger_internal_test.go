@@ -3,12 +3,9 @@ package workflow
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	werrors "github.com/luno/workflow/internal/errors"
 )
 
 func Test_trigger(t *testing.T) {
@@ -21,11 +18,6 @@ func Test_trigger(t *testing.T) {
 	t.Run("Expected ErrWorkflowNotRunning when Trigger called before Run()", func(t *testing.T) {
 		ctx := context.Background()
 		_, err := trigger(ctx, w, nil, "1", statusStart)
-
-		eval, is := err.(*werrors.Error)
-		if is {
-			fmt.Println(*eval)
-		}
 
 		require.Truef(t, errors.Is(err, ErrWorkflowNotRunning), "actual: %s", err.Error())
 	})

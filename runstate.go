@@ -3,8 +3,6 @@ package workflow
 import (
 	"context"
 	"strconv"
-
-	werrors "github.com/luno/workflow/internal/errors"
 )
 
 type RunState int
@@ -119,38 +117,14 @@ func (rsc *runStateControllerImpl) DeleteData(ctx context.Context) error {
 }
 
 func (rsc *runStateControllerImpl) update(ctx context.Context, rs RunState, invalidTransitionErr error) error {
-	err := validateRunStateTransition(rsc.record, rs, invalidTransitionErr)
-	if err != nil {
-		return err
+	valid, ok := runStateTransitions[rsc.record.RunState]
+	if !ok || !valid[rs] {
+		return invalidTransitionErr
 	}
 
 	previousRunState := rsc.record.RunState
 	rsc.record.RunState = rs
 	return updateWireRecord(ctx, rsc.store, rsc.record, previousRunState)
-}
-
-func validateRunStateTransition(record *Record, runState RunState, sentinelErr error) error {
-	valid, ok := runStateTransitions[record.RunState]
-	if !ok {
-		return werrors.WrapWithMeta(sentinelErr, "current run state is terminal", map[string]string{
-			"record_id":           strconv.FormatInt(record.ID, 10),
-			"workflow_name":       record.WorkflowName,
-			"run_state":           record.RunState.String(),
-			"run_state_int_value": strconv.FormatInt(int64(record.RunState), 10),
-		})
-	}
-
-	if !valid[runState] {
-		msg := "Current run state cannot transition to " + runState.String()
-		return werrors.WrapWithMeta(sentinelErr, msg, map[string]string{
-			"record_id":           strconv.FormatInt(record.ID, 10),
-			"workflow_name":       record.WorkflowName,
-			"run_state":           record.RunState.String(),
-			"run_state_int_value": strconv.FormatInt(int64(record.RunState), 10),
-		})
-	}
-
-	return nil
 }
 
 var runStateTransitions = map[RunState]map[RunState]bool{
@@ -180,23 +154,3 @@ var runStateTransitions = map[RunState]map[RunState]bool{
 		RunStateRequestedDataDeleted: true,
 	},
 }
-
-type noopRunStateController struct{}
-
-func (c *noopRunStateController) Pause(ctx context.Context) error {
-	return nil
-}
-
-func (c *noopRunStateController) Cancel(ctx context.Context) error {
-	return nil
-}
-
-func (c *noopRunStateController) Resume(ctx context.Context) error {
-	return nil
-}
-
-func (c *noopRunStateController) DeleteData(ctx context.Context) error {
-	return nil
-}
-
-var _ RunStateController = (*noopRunStateController)(nil)

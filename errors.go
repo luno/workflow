@@ -1,7 +1,12 @@
 package workflow
 
 import (
-	"github.com/luno/workflow/internal/errors"
+	"errors"
+)
+
+type (
+	ErrorWrapper         func(err error, msg string) error
+	ErrorWrapperWithMeta func(err error, msg string, meta map[string]string) error
 )
 
 var (
@@ -15,4 +20,6 @@ var (
 	ErrUnableToResume              = errors.New("run is unable to be resumed")
 	ErrUnableToCancel              = errors.New("run is unable to be cancelled")
 	ErrUnableToDelete              = errors.New("cannot delete data as run has not finished")
+	ErrCurrentStatusNotDefined     = errors.New("current status not predefined")
+	ErrInvalidTransition           = errors.New("invalid transition")
 )

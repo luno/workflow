@@ -8,7 +8,7 @@ import (
 )
 
 func TestNoopRunStateController(t *testing.T) {
-	ctrl := noopRunStateController{}
+	ctrl := testingRunStateController{}
 
 	ctx := context.Background()
 	err := ctrl.Pause(ctx)

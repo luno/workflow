@@ -10,7 +10,6 @@ import (
 	"k8s.io/utils/clock"
 
 	"github.com/luno/workflow/internal/errorcounter"
-	werrors "github.com/luno/workflow/internal/errors"
 	"github.com/luno/workflow/internal/graph"
 	"github.com/luno/workflow/internal/metrics"
 )
@@ -57,7 +56,7 @@ type Workflow[Type any, Status StatusType] struct {
 	clock     clock.Clock
 	calledRun bool
 	once      sync.Once
-	logger    Logger
+	logger    *logger
 
 	eventStreamer EventStreamer
 	recordStore   RecordStore
@@ -83,10 +82,6 @@ type Workflow[Type any, Status StatusType] struct {
 	// PauseAfterErrCount. The tracking of errors is done in a way where errors need to be unique per process
 	// (consumer / timeout).
 	errorCounter errorcounter.ErrorCounter
-
-	exporterConsumer Consumer
-
-	debugMode bool
 }
 
 func (w *Workflow[Type, Status]) Run(ctx context.Context) {
@@ -158,37 +153,71 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 	})
 }
 
-// run is a standardise way of running blocking calls forever with retry such as consumers that need to adhere to role scheduling
-func (w *Workflow[Type, Status]) run(role, processName string, process func(ctx context.Context) error, errBackOff time.Duration) {
+// run is a standardise way of running blocking calls with a built-in retry mechanism.
+func (w *Workflow[Type, Status]) run(
+	role string,
+	processName string,
+	process func(ctx context.Context) error,
+	errBackOff time.Duration,
+) {
 	w.updateState(processName, StateIdle)
 	defer w.updateState(processName, StateShutdown)
 
 	for {
-		err := runOnce(w, role, processName, process, errBackOff)
+		err := runOnce(
+			w.ctx,
+			w.Name,
+			role,
+			processName,
+			w.updateState,
+			w.scheduler.Await,
+			process,
+			w.logger,
+			w.clock,
+			errBackOff,
+		)
 		if err != nil {
-			if w.debugMode {
-				w.logger.Debug(w.ctx, "shutting down process", MKV{
-					"role":         role,
-					"process_name": processName,
-				})
-			}
+			w.logger.maybeDebug(w.ctx, "shutting down process", MKV{
+				"role":         role,
+				"process_name": processName,
+			})
 
 			return
 		}
 	}
 }
 
-func runOnce[Type any, Status StatusType](w *Workflow[Type, Status], role, processName string, process func(ctx context.Context) error, errBackOff time.Duration) error {
-	w.updateState(processName, StateIdle)
+type (
+	updateStateFn func(processName string, s State)
+	awaitRoleFn   func(ctx context.Context, role string) (context.Context, context.CancelFunc, error)
+)
 
-	ctx, cancel, err := w.scheduler.Await(w.ctx, role)
+func runOnce(
+	ctx context.Context,
+	workflowName string,
+	role string,
+	processName string,
+	updateState updateStateFn,
+	awaitRole awaitRoleFn,
+	process func(ctx context.Context) error,
+	logger *logger,
+	clock clock.Clock,
+	errBackOff time.Duration,
+) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	updateState(processName, StateIdle)
+
+	ctx, cancel, err := awaitRole(ctx, role)
 	if errors.Is(err, context.Canceled) {
 		// Exit cleanly if error returned is cancellation of context
 		return err
 	} else if err != nil {
-		w.logger.Error(ctx, err, MKV{
-			"role":         role,
-			"process_name": processName,
+		logger.Error(ctx, err, MKV{
+			"role":        role,
+			"retrying_in": errBackOff.String(),
 		})
 
 		// Return nil to try again
@@ -196,7 +225,7 @@ func runOnce[Type any, Status StatusType](w *Workflow[Type, Status], role, proce
 	}
 	defer cancel()
 
-	w.updateState(processName, StateRunning)
+	updateState(processName, StateRunning)
 
 	err = process(ctx)
 	if errors.Is(err, context.Canceled) {
@@ -204,15 +233,17 @@ func runOnce[Type any, Status StatusType](w *Workflow[Type, Status], role, proce
 		// and if the parent context was cancelled then that will exit safely.
 		return nil
 	} else if err != nil {
-		w.logger.Error(ctx, werrors.Wrap(err, "process error"), MKV{
-			"role": role,
+		logger.Error(ctx, err, MKV{
+			"role":        role,
+			"retrying_in": errBackOff.String(),
 		})
-		metrics.ProcessErrors.WithLabelValues(w.Name, processName).Inc()
+		metrics.ProcessErrors.WithLabelValues(workflowName, processName).Inc()
 
+		timer := clock.NewTimer(errBackOff)
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-time.After(errBackOff):
+		case <-timer.C():
 			// Return nil to try again
 			return nil
 		}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/luno/jettison/jtest"
 	"github.com/luno/reflex"
 	"github.com/luno/reflex/rpatterns"
 	"github.com/luno/reflex/rsql"
@@ -130,7 +131,7 @@ func TestStreamFunc(t *testing.T) {
 	)
 
 	err = reflex.Run(ctx, spec)
-	require.Equal(t, context.Canceled, err)
+	jtest.Require(t, context.Canceled, err)
 }
 
 func TestConnector(t *testing.T) {

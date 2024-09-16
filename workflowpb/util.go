@@ -5,13 +5,12 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/luno/workflow"
-	werrors "github.com/luno/workflow/internal/errors"
 )
 
 func ProtoMarshal(r *workflow.Record) ([]byte, error) {
 	pb, err := proto.Marshal(ToProto(r))
 	if err != nil {
-		return nil, werrors.Wrap(err, "failed to proto marshal record")
+		return nil, err
 	}
 
 	return pb, nil
@@ -35,7 +34,7 @@ func UnmarshalRecord(b []byte) (*workflow.Record, error) {
 	var wpb Record
 	err := proto.Unmarshal(b, &wpb)
 	if err != nil {
-		return nil, werrors.Wrap(err, "failed to proto marshal record")
+		return nil, err
 	}
 
 	return &workflow.Record{
