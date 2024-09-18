@@ -1,12 +1,24 @@
 package workflow
 
 import (
+	"errors"
 	"os"
 	"strings"
 	"text/template"
 )
 
-func MermaidDiagram[Type any, Status StatusType](w *Workflow[Type, Status], path string, d MermaidDirection) error {
+// CreateDiagram creates a diagram in a md file for communicating a workflow's set of steps in an easy-to-understand
+// manner.
+func CreateDiagram[Type any, Status StatusType](a API[Type, Status], path string, d MermaidDirection) error {
+	return mermaidDiagram[Type, Status](a, path, d)
+}
+
+func mermaidDiagram[Type any, Status StatusType](a API[Type, Status], path string, d MermaidDirection) error {
+	w, ok := a.(*Workflow[Type, Status])
+	if !ok {
+		return errors.New("cannot create diagram for non-original workflow.Workflow type")
+	}
+
 	breakDown := strings.Split(path, "/")
 	dirPath := strings.Join(breakDown[:len(breakDown)-1], "/")
 
@@ -29,19 +41,19 @@ func MermaidDiagram[Type any, Status StatusType](w *Workflow[Type, Status], path
 
 	var starting []string
 	for _, node := range graphInfo.StartingNodes {
-		starting = append(starting, Status(node).String())
+		starting = append(starting, statusToString(Status(node)))
 	}
 
 	var terminal []string
 	for _, node := range graphInfo.TerminalNodes {
-		terminal = append(terminal, Status(node).String())
+		terminal = append(terminal, statusToString(Status(node)))
 	}
 
 	var transitions []MermaidTransition
 	for _, transition := range graphInfo.Transitions {
 		transitions = append(transitions, MermaidTransition{
-			From: Status(transition.From).String(),
-			To:   Status(transition.To).String(),
+			From: statusToString(Status(transition.From)),
+			To:   statusToString(Status(transition.To)),
 		})
 	}
 
@@ -54,6 +66,12 @@ func MermaidDiagram[Type any, Status StatusType](w *Workflow[Type, Status], path
 	}
 
 	return template.Must(template.New("").Parse("```"+mermaidTemplate+"```")).Execute(file, mf)
+}
+
+func statusToString[Status StatusType](s Status) string {
+	str := strings.ToLower(s.String())
+	str = strings.Replace(str, " ", "_", -1)
+	return str
 }
 
 type MermaidFormat struct {
