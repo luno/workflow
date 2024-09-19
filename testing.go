@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"testing"
 
-	"github.com/luno/jettison/errors"
-	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,13 +19,13 @@ func TriggerCallbackOn[Type any, Status StatusType, Payload any](t testing.TB, w
 	ctx := context.TODO()
 
 	_, err := w.Await(ctx, foreignID, runID, waitFor)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	b, err := json.Marshal(p)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	err = w.Callback(ctx, foreignID, waitFor, bytes.NewReader(b))
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 }
 
 func AwaitTimeoutInsert[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status], foreignID, runID string, waitFor Status) {
@@ -41,7 +40,7 @@ func AwaitTimeoutInsert[Type any, Status StatusType](t testing.TB, w *Workflow[T
 		}
 
 		ls, err := w.timeoutStore.List(w.ctx, w.Name)
-		jtest.RequireNil(t, err)
+		require.Nil(t, err)
 
 		for _, l := range ls {
 			if l.Status != int(waitFor) {
@@ -83,7 +82,7 @@ func Require[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status
 		if errors.Is(err, ErrRecordNotFound) {
 			continue
 		} else {
-			jtest.RequireNil(t, err)
+			require.Nil(t, err)
 		}
 
 		runID = latest.RunID
@@ -108,7 +107,7 @@ func Require[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status
 
 	var typ Type
 	err := json.Unmarshal(wr.Object, &typ)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	actual := &Run[Type, Status]{
 		Record: *wr,
@@ -118,3 +117,90 @@ func Require[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status
 
 	require.Equal(t, expected, *actual.Object)
 }
+
+// NewTestingRun should be used when testing logic that defines a workflow.Run as a parameter. This is usually the
+// case in unit tests and would not normally be found when doing an Acceptance test for the entire workflow.
+func NewTestingRun[Type any, Status StatusType](t *testing.T, wr Record, object Type, opts ...TestingRunOption) Run[Type, Status] {
+	var options testingRunOpts
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return Run[Type, Status]{
+		Record:     wr,
+		Status:     Status(wr.Status),
+		Object:     &object,
+		controller: &options.controller,
+	}
+}
+
+type testingRunOpts struct {
+	controller testingRunStateController
+}
+
+type TestingRunOption func(*testingRunOpts)
+
+func WithPauseFn(pause func(ctx context.Context) error) TestingRunOption {
+	return func(opts *testingRunOpts) {
+		opts.controller.pause = pause
+	}
+}
+
+func WithResumeFn(resume func(ctx context.Context) error) TestingRunOption {
+	return func(opts *testingRunOpts) {
+		opts.controller.resume = resume
+	}
+}
+
+func WithCancelFn(cancel func(ctx context.Context) error) TestingRunOption {
+	return func(opts *testingRunOpts) {
+		opts.controller.cancel = cancel
+	}
+}
+
+func WithDeleteDataFn(deleteData func(ctx context.Context) error) TestingRunOption {
+	return func(opts *testingRunOpts) {
+		opts.controller.deleteData = deleteData
+	}
+}
+
+type testingRunStateController struct {
+	pause      func(ctx context.Context) error
+	cancel     func(ctx context.Context) error
+	resume     func(ctx context.Context) error
+	deleteData func(ctx context.Context) error
+}
+
+func (c *testingRunStateController) Pause(ctx context.Context) error {
+	if c.pause == nil {
+		return nil
+	}
+
+	return c.pause(ctx)
+}
+
+func (c *testingRunStateController) Cancel(ctx context.Context) error {
+	if c.cancel == nil {
+		return nil
+	}
+
+	return c.cancel(ctx)
+}
+
+func (c *testingRunStateController) Resume(ctx context.Context) error {
+	if c.resume == nil {
+		return nil
+	}
+
+	return c.resume(ctx)
+}
+
+func (c *testingRunStateController) DeleteData(ctx context.Context) error {
+	if c.deleteData == nil {
+		return nil
+	}
+
+	return c.deleteData(ctx)
+}
+
+var _ RunStateController = (*testingRunStateController)(nil)

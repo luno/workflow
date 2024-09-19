@@ -2,18 +2,21 @@ package workflow
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"os"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/luno/jettison/errors"
 	"github.com/stretchr/testify/require"
 	clock_testing "k8s.io/utils/clock/testing"
 
 	"github.com/luno/workflow/internal/graph"
+	internal_logger "github.com/luno/workflow/internal/logger"
 )
 
 type testStatus int
@@ -105,6 +108,52 @@ func TestWithClock(t *testing.T) {
 	clock.Step(time.Hour)
 
 	require.Equal(t, now.Add(time.Hour), wf.clock.Now())
+}
+
+func TestBuildOptions(t *testing.T) {
+	now := time.Now()
+	clock := clock_testing.NewFakeClock(now)
+	timeoutStore := (TimeoutStore)(nil)
+	logger := internal_logger.New(os.Stdout)
+	opts := options{
+		parallelCount:      2,
+		pollingFrequency:   time.Millisecond,
+		errBackOff:         time.Second,
+		lag:                time.Minute,
+		lagAlert:           time.Hour,
+		customLagAlertSet:  true,
+		pauseAfterErrCount: 3,
+	}
+	deleter := func(object *string) error {
+		return nil
+	}
+
+	b := NewBuilder[string, testStatus]("determine starting points")
+	w := b.Build(
+		nil,
+		nil,
+		nil,
+		WithTimeoutStore(timeoutStore),
+		WithClock(clock),
+		WithDebugMode(),
+		WithLogger(logger),
+		WithDefaultOptions(
+			ParallelCount(opts.parallelCount),
+			PollingFrequency(opts.pollingFrequency),
+			ErrBackOff(opts.errBackOff),
+			ConsumeLag(opts.lag),
+			LagAlert(opts.lagAlert),
+			PauseAfterErrCount(opts.pauseAfterErrCount),
+		),
+		WithCustomDelete(deleter),
+	)
+
+	require.Equal(t, timeoutStore, w.timeoutStore)
+	require.Equal(t, clock, w.clock)
+	require.True(t, w.logger.debugMode)
+	require.Equal(t, logger, w.logger.inner)
+	require.Equal(t, opts, w.defaultOpts)
+	require.True(t, strings.Contains(runtime.FuncForPC(reflect.ValueOf(w.customDelete).Pointer()).Name(), "github.com/luno/workflow.TestBuildOptions.WithCustomDelete"))
 }
 
 func TestAddingCallbacks(t *testing.T) {

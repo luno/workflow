@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -59,7 +58,7 @@ func TestShardNonNumerical(t *testing.T) {
 	)
 	for i := 0; i < total; i++ {
 		uid, err := uuid.NewUUID()
-		jtest.RequireNil(t, err)
+		require.Nil(t, err)
 
 		e := &ConnectorEvent{
 			ID: uid.String(),

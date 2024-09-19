@@ -2,7 +2,6 @@ package workflow
 
 import (
 	"context"
-	"testing"
 )
 
 // Run is a representation of a workflow run. It incorporates all the fields from the Record as well as
@@ -47,18 +46,7 @@ func (r *Run[Type, Status]) Cancel(ctx context.Context) (Status, error) {
 	return Status(SkipTypeRunStateUpdate), nil
 }
 
-// NewTestingRun should be used when testing logic that defines a workflow.Run as a parameter. This is usually the
-// case in unit tests and would not normally be found when doing an Acceptance test for the entire workflow.
-func NewTestingRun[Type any, Status StatusType](t *testing.T, wr Record, object Type) Run[Type, Status] {
-	return Run[Type, Status]{
-		Record:     wr,
-		Status:     Status(wr.Status),
-		Object:     &object,
-		controller: &noopRunStateController{},
-	}
-}
-
-func buildConsumableRecord[Type any, Status StatusType](store storeFunc, wr *Record) (*Run[Type, Status], error) {
+func buildRun[Type any, Status StatusType](store storeFunc, wr *Record) (*Run[Type, Status], error) {
 	var t Type
 	err := Unmarshal(wr.Object, &t)
 	if err != nil {

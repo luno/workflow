@@ -2,11 +2,10 @@ package workflow
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/luno/jettison/errors"
-	"github.com/luno/jettison/j"
 )
 
 func (w *Workflow[Type, Status]) Trigger(ctx context.Context, foreignID string, startingStatus Status, opts ...TriggerOption[Type, Status]) (runID string, err error) {
@@ -15,11 +14,13 @@ func (w *Workflow[Type, Status]) Trigger(ctx context.Context, foreignID string, 
 
 func trigger[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], lookup latestLookup, foreignID string, startingStatus Status, opts ...TriggerOption[Type, Status]) (runID string, err error) {
 	if !w.calledRun {
-		return "", errors.Wrap(ErrWorkflowNotRunning, "ensure Run() is called before attempting to trigger the workflow")
+		return "", fmt.Errorf("trigger failed: workflow is not running")
 	}
 
 	if !w.statusGraph.IsValid(int(startingStatus)) {
-		return "", errors.Wrap(ErrStatusProvidedNotConfigured, fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name))
+		w.logger.maybeDebug(w.ctx, fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name), map[string]string{})
+
+		return "", fmt.Errorf("trigger failed: status provided is not configured for workflow: %s", startingStatus)
 	}
 
 	var o triggerOpts[Type, Status]
@@ -47,11 +48,7 @@ func trigger[Type any, Status StatusType](ctx context.Context, w *Workflow[Type,
 	// Check that the last run has completed before triggering a new run.
 	if lastRecord.RunState.Valid() && !lastRecord.RunState.Finished() {
 		// Cannot trigger a new run for this foreignID if there is a workflow in progress.
-		return "", errors.Wrap(ErrWorkflowInProgress, "", j.MKV{
-			"run_id":    lastRecord.RunID,
-			"run_state": lastRecord.RunState.String(),
-			"status":    Status(lastRecord.Status).String(),
-		})
+		return "", ErrWorkflowInProgress
 	}
 
 	uid, err := uuid.NewUUID()

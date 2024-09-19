@@ -2,12 +2,10 @@ package workflow
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strconv"
 	"time"
-
-	"github.com/luno/jettison/errors"
-	"github.com/luno/jettison/j"
-	"github.com/luno/jettison/log"
 
 	"github.com/luno/workflow/internal/metrics"
 )
@@ -135,23 +133,23 @@ func consumeForever[Type any, Status StatusType](
 			shardFilter(shard, totalShards),
 		)
 		if shouldFilter {
-			metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName, "filtered out").Inc()
 			err = ack()
 			if err != nil {
 				return err
 			}
 
+			metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName, "filtered out").Inc()
 			continue
 		}
 
 		record, err := w.recordStore.Lookup(ctx, e.ForeignID)
 		if errors.Is(err, ErrRecordNotFound) {
-			metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName, "record not found").Inc()
 			err = ack()
 			if err != nil {
 				return err
 			}
 
+			metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName, "record not found").Inc()
 			continue
 		} else if err != nil {
 			return err
@@ -160,34 +158,32 @@ func consumeForever[Type any, Status StatusType](
 		// Check to see if record is in expected state. If the status isn't in the expected state then skip for
 		// idempotency.
 		if record.Status != int(status) {
-			metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName, "record status not in expected state").Inc()
 			err = ack()
 			if err != nil {
 				return err
 			}
 
+			metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName, "record status not in expected state").Inc()
 			continue
 		}
 
 		if record.RunState.Stopped() {
-			if w.debugMode {
-				log.Info(ctx, "Skipping consumption of stopped workflow record", j.MKV{
-					"event_id":       e.ID,
-					"workflow":       record.WorkflowName,
-					"run_id":         record.RunID,
-					"foreign_id":     record.ForeignID,
-					"process_name":   processName,
-					"current_status": record.Status,
-					"run_state":      record.RunState.String(),
-				})
-			}
+			w.logger.maybeDebug(ctx, "Skipping consumption of stopped workflow record", map[string]string{
+				"event_id":       strconv.FormatInt(e.ID, 10),
+				"workflow":       record.WorkflowName,
+				"run_id":         record.RunID,
+				"foreign_id":     record.ForeignID,
+				"process_name":   processName,
+				"current_status": strconv.FormatInt(int64(record.Status), 10),
+				"run_state":      record.RunState.String(),
+			})
 
-			metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName, "record stopped").Inc()
 			err = ack()
 			if err != nil {
 				return err
 			}
 
+			metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName, "record stopped").Inc()
 			continue
 		}
 
@@ -226,60 +222,51 @@ func consume[Type any, Status StatusType](
 	processName string,
 	pauseAfterErrCount int,
 ) error {
-	record, err := buildConsumableRecord[Type, Status](store, current)
+	run, err := buildRun[Type, Status](store, current)
 	if err != nil {
 		return err
 	}
 
-	next, err := cf(ctx, record)
+	next, err := cf(ctx, run)
 	if err != nil {
-		// Only keep track of errors if we need to
-		if pauseAfterErrCount > 0 {
-			count := w.errorCounter.Add(err, processName, record.RunID)
-			if count >= pauseAfterErrCount {
-				originalErr := err
-				_, err := record.Pause(ctx)
-				if err != nil {
-					return errors.Wrap(err, "failed to pause record after exceeding allowed error count", j.MKV{
-						"workflow_name":      record.WorkflowName,
-						"foreign_id":         record.ForeignID,
-						"current_status":     record.Status.String(),
-						"current_status_int": record.Status,
-					})
-				}
-
-				// Run paused - now clear the error counter.
-				w.errorCounter.Clear(originalErr, processName, record.RunID)
-				return ack()
-			}
+		originalErr := err
+		paused, err := maybePause(ctx, pauseAfterErrCount, w.errorCounter, originalErr, processName, run, w.logger)
+		if err != nil {
+			return fmt.Errorf("pause error: %v, meta: %v", err, map[string]string{
+				"run_id":     current.RunID,
+				"foreign_id": current.ForeignID,
+			})
 		}
 
-		return errors.Wrap(err, "failed to consume", j.MKV{
-			"workflow_name":      record.WorkflowName,
-			"foreign_id":         record.ForeignID,
-			"current_status":     record.Status.String(),
-			"current_status_int": record.Status,
+		if paused {
+			// Move onto the next event as a record has been paused and a new event is emitted
+			// when it is resumed.
+			return ack()
+		}
+
+		// The record was not paused and the original error is not nil. Pass back up for retrying.
+		return fmt.Errorf("consumer error: %v, meta: %v", originalErr, map[string]string{
+			"run_id":     current.RunID,
+			"foreign_id": current.ForeignID,
 		})
 	}
 
 	if skipUpdate(next) {
-		if w.debugMode {
-			log.Info(ctx, "skipping update", j.MKV{
-				"description":   skipUpdateDescription(next),
-				"record_id":     record.ID,
-				"workflow_name": w.Name,
-				"foreign_id":    record.ForeignID,
-				"run_id":        record.RunID,
-				"run_state":     record.RunState.String(),
-				"record_status": record.Status.String(),
-			})
-		}
+		w.logger.maybeDebug(ctx, "skipping update", map[string]string{
+			"description":   skipUpdateDescription(next),
+			"record_id":     strconv.FormatInt(run.Record.ID, 10),
+			"workflow_name": w.Name,
+			"foreign_id":    run.ForeignID,
+			"run_id":        run.RunID,
+			"run_state":     run.RunState.String(),
+			"record_status": run.Status.String(),
+		})
 
 		metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName, "next value specified skip").Inc()
 		return ack()
 	}
 
-	err = updater(ctx, Status(current.Status), next, record)
+	err = updater(ctx, Status(current.Status), next, run)
 	if err != nil {
 		return err
 	}

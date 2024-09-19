@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/luno/jettison/jtest"
 	"github.com/luno/workflow"
 	"github.com/luno/workflow/adapters/memrecordstore"
 	"github.com/luno/workflow/adapters/memrolescheduler"
 	"github.com/luno/workflow/adapters/memstreamer"
+	"github.com/stretchr/testify/require"
 
 	"github.com/luno/workflow/_examples/callback"
 )
@@ -26,7 +26,7 @@ func TestCallbackWorkflow(t *testing.T) {
 
 	foreignID := "andrew"
 	runID, err := wf.Trigger(ctx, foreignID, callback.StatusStarted)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	workflow.TriggerCallbackOn(t, wf, foreignID, runID, callback.StatusStarted, callback.EmailConfirmationResponse{
 		Confirmed: true,

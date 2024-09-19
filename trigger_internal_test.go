@@ -2,9 +2,11 @@ package workflow
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
 
-	"github.com/luno/jettison/jtest"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_trigger(t *testing.T) {
@@ -14,10 +16,11 @@ func Test_trigger(t *testing.T) {
 	}, statusMiddle)
 	w := b.Build(nil, nil, nil, WithDebugMode())
 
-	t.Run("Expected ErrWorkflowNotRunning when Trigger called before Run()", func(t *testing.T) {
+	t.Run("Expected non-nil error when Trigger called before Run()", func(t *testing.T) {
 		ctx := context.Background()
 		_, err := trigger(ctx, w, nil, "1", statusStart)
-		jtest.Require(t, ErrWorkflowNotRunning, err)
+
+		require.Equal(t, "trigger failed: workflow is not running", err.Error())
 	})
 
 	t.Run("Expects ErrStatusProvidedNotConfigured when starting status is not configured", func(t *testing.T) {
@@ -25,7 +28,7 @@ func Test_trigger(t *testing.T) {
 		w.calledRun = true
 
 		_, err := trigger(ctx, w, nil, "1", statusEnd)
-		jtest.Require(t, ErrStatusProvidedNotConfigured, err)
+		require.Equal(t, fmt.Sprintf("trigger failed: status provided is not configured for workflow: %s", statusEnd), err.Error())
 	})
 
 	t.Run("Expects ErrWorkflowInProgress if a workflow run is already in progress", func(t *testing.T) {
@@ -41,6 +44,6 @@ func Test_trigger(t *testing.T) {
 				Status:       int(statusMiddle),
 			}, nil
 		}, "1", statusStart)
-		jtest.Require(t, ErrWorkflowInProgress, err)
+		require.True(t, errors.Is(err, ErrWorkflowInProgress))
 	})
 }

@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/luno/jettison/jtest"
 	"github.com/luno/workflow"
 	"github.com/luno/workflow/adapters/memrecordstore"
 	"github.com/luno/workflow/adapters/memrolescheduler"
 	"github.com/luno/workflow/adapters/memstreamer"
 	"github.com/luno/workflow/adapters/memtimeoutstore"
+	"github.com/stretchr/testify/require"
 	clocktesting "k8s.io/utils/clock/testing"
 
 	"github.com/luno/workflow/_examples/timeout"
@@ -33,7 +33,7 @@ func TestTimeoutWorkflow(t *testing.T) {
 
 	foreignID := "andrew"
 	runID, err := wf.Trigger(ctx, foreignID, timeout.StatusStarted)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	workflow.AwaitTimeoutInsert(t, wf, foreignID, runID, timeout.StatusStarted)
 

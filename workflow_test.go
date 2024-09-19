@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 	clock_testing "k8s.io/utils/clock/testing"
 
@@ -134,7 +133,7 @@ func TestWorkflowAcceptanceTest(t *testing.T) {
 	}
 
 	runID, err := wf.Trigger(ctx, fid, StatusInitiated, workflow.WithInitialValue[MyType, status](&mt))
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	// Once in the correct status, trigger third party callbacks
 	workflow.TriggerCallbackOn(t, wf, fid, runID, StatusEmailConfirmationSent, ExternalEmailVerified{
@@ -156,15 +155,15 @@ func TestWorkflowAcceptanceTest(t *testing.T) {
 	clock.Step(time.Hour)
 
 	_, err = wf.Await(ctx, fid, runID, StatusCompleted)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	r, err := recordStore.Latest(ctx, "user sign up", fid)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 	require.Equal(t, int(expectedFinalStatus), r.Status)
 
 	var actual MyType
 	err = workflow.Unmarshal(r.Object, &actual)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	require.Equal(t, expectedUserID, actual.UserID)
 	require.Equal(t, strconv.FormatInt(expectedUserID, 10), actual.ForeignID())
@@ -223,7 +222,9 @@ func benchmarkWorkflow(b *testing.B, numberOfSteps int) {
 	}
 	for range b.N {
 		_, err := wf.Trigger(ctx, fid, 0, workflow.WithInitialValue[MyType, status](&mt))
-		jtest.RequireNil(b, err)
+		if err != nil {
+			b.Fatal(err)
+		}
 
 		workflow.Require(b, wf, fid, status(numberOfSteps), MyType{
 			UserID: expectedUserID,
@@ -265,7 +266,7 @@ func TestTimeout(t *testing.T) {
 	start := time.Now()
 
 	runID, err := wf.Trigger(ctx, "example", StatusInitiated)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	workflow.AwaitTimeoutInsert(t, wf, "example", runID, StatusProfileCreated)
 
@@ -273,7 +274,7 @@ func TestTimeout(t *testing.T) {
 	clock.Step(time.Hour)
 
 	_, err = wf.Await(ctx, "example", runID, StatusCompleted)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	end := time.Now()
 
@@ -390,10 +391,10 @@ func TestWorkflow_ErrWorkflowNotRunning(t *testing.T) {
 	})
 
 	_, err := wf.Trigger(ctx, "andrew", StatusStart)
-	jtest.Require(t, workflow.ErrWorkflowNotRunning, err)
+	require.Equal(t, "trigger failed: workflow is not running", err.Error())
 
 	err = wf.Schedule("andrew", StatusStart, "@monthly")
-	jtest.Require(t, workflow.ErrWorkflowNotRunning, err)
+	require.Equal(t, "schedule failed: workflow is not running", err.Error())
 }
 
 func TestWorkflow_TestingRequire(t *testing.T) {
@@ -425,7 +426,7 @@ func TestWorkflow_TestingRequire(t *testing.T) {
 
 	foreignID := "andrew"
 	_, err := wf.Trigger(ctx, foreignID, StatusStart)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	expected := MyType{
 		Email: "andrew@workflow.com",
@@ -478,7 +479,7 @@ func TestTimeTimerFunc(t *testing.T) {
 	t.Cleanup(wf.Stop)
 
 	runID, err := wf.Trigger(ctx, "Andrew Wormald", StatusStart)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	workflow.AwaitTimeoutInsert(t, wf, "Andrew Wormald", runID, StatusStart)
 
@@ -592,12 +593,12 @@ func TestStepConsumerLag(t *testing.T) {
 	_, err := wf.Trigger(ctx, foreignID, StatusStart, workflow.WithInitialValue[TimeWatcher, status](&TimeWatcher{
 		StartTime: clock.Now(),
 	}))
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	time.Sleep(time.Second)
 
 	latest, err := recordStore.Latest(ctx, wf.Name, foreignID)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	// Ensure that the record has not been consumer or updated
 	require.Equal(t, int64(1), latest.ID)

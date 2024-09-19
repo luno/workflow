@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/luno/jettison/jtest"
+	"github.com/stretchr/testify/require"
 
 	"github.com/luno/workflow"
 	"github.com/luno/workflow/adapters/memrecordstore"
@@ -43,7 +43,7 @@ func TestRequireForCircularStatus(t *testing.T) {
 
 	fid := "10298309123"
 	_, err := wf.Trigger(ctx, fid, StatusStart)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	workflow.Require(t, wf, fid, StatusStart, Counter{Count: 0})
 	workflow.Require(t, wf, fid, StatusMiddle, Counter{Count: 1})

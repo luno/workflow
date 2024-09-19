@@ -2,10 +2,10 @@ package schedule_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
-	"github.com/luno/jettison/jtest"
 	"github.com/luno/workflow"
 	"github.com/luno/workflow/adapters/memrecordstore"
 	"github.com/luno/workflow/adapters/memrolescheduler"
@@ -37,7 +37,7 @@ func TestExampleWorkflow(t *testing.T) {
 
 	go func() {
 		err := wf.Schedule(foreignID, schedule.StatusStarted, "@hourly")
-		jtest.RequireNil(t, err)
+		require.Nil(t, err)
 	}()
 
 	// Give time for go routine to spin up
@@ -45,7 +45,7 @@ func TestExampleWorkflow(t *testing.T) {
 
 	_, err := recordStore.Latest(ctx, wf.Name, foreignID)
 	// Expect there to be no entries yet
-	jtest.Require(t, workflow.ErrRecordNotFound, err)
+	require.True(t, errors.Is(err, workflow.ErrRecordNotFound))
 
 	clock.Step(time.Hour)
 
@@ -53,7 +53,7 @@ func TestExampleWorkflow(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	firstScheduled, err := recordStore.Latest(ctx, wf.Name, foreignID)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	require.Equal(t, "schedule trigger example", firstScheduled.WorkflowName)
 	require.Equal(t, "hourly-run", firstScheduled.ForeignID)
@@ -64,7 +64,7 @@ func TestExampleWorkflow(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	secondScheduled, err := recordStore.Latest(ctx, wf.Name, foreignID)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	require.Equal(t, "schedule trigger example", secondScheduled.WorkflowName)
 	require.Equal(t, "hourly-run", secondScheduled.ForeignID)

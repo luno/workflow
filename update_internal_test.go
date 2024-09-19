@@ -2,11 +2,11 @@ package workflow
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
 	"time"
 
-	"github.com/luno/jettison/errors"
-	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 	clock_testing "k8s.io/utils/clock/testing"
 
@@ -14,6 +14,7 @@ import (
 )
 
 func TestUpdater(t *testing.T) {
+	testErr := errors.New("lookup error")
 	testCases := []struct {
 		name             string
 		lookup           lookupFunc
@@ -66,7 +67,7 @@ func TestUpdater(t *testing.T) {
 				Status: statusMiddle,
 			},
 			transitions: []graph.Transition{},
-			expectedErr: errors.New("current status not predefined"),
+			expectedErr: fmt.Errorf("current status not defined in graph: current=%s", statusStart),
 		},
 		{
 			name: "Mark as completed",
@@ -94,9 +95,9 @@ func TestUpdater(t *testing.T) {
 		{
 			name: "Return error on lookup",
 			lookup: func(ctx context.Context, id int64) (*Record, error) {
-				return nil, errors.New("lookup error")
+				return nil, testErr
 			},
-			expectedErr: errors.New("lookup error"),
+			expectedErr: testErr,
 		},
 		{
 			name: "Exit early if lookup record status has changed",
@@ -129,7 +130,7 @@ func TestUpdater(t *testing.T) {
 					To:   int(statusEnd),
 				},
 			},
-			expectedErr: errors.New("invalid transition attempted"),
+			expectedErr: fmt.Errorf("current status not defined in graph: current=%s, next=%s", statusStart, statusMiddle),
 		},
 	}
 	for _, tc := range testCases {
@@ -144,13 +145,15 @@ func TestUpdater(t *testing.T) {
 			store := func(ctx context.Context, r *Record, maker OutboxEventDataMaker) error {
 				require.Equal(t, tc.expectedRunState, r.RunState)
 				_, err := maker(1)
-				jtest.RequireNil(t, err)
+				require.Nil(t, err)
 				return nil
 			}
 
 			updater := newUpdater[string, testStatus](tc.lookup, store, g, c)
 			err := updater(ctx, tc.current, tc.update.Status, &tc.update)
-			jtest.Require(t, tc.expectedErr, err)
+			if err != nil {
+				require.Equal(t, tc.expectedErr.Error(), err.Error())
+			}
 		})
 	}
 }

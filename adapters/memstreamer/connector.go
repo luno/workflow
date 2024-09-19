@@ -2,11 +2,10 @@ package memstreamer
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
-	"github.com/luno/jettison/errors"
-	"github.com/luno/jettison/j"
 	"k8s.io/utils/clock"
 
 	"github.com/luno/workflow"
@@ -78,7 +77,7 @@ func (c *consumer) Recv(ctx context.Context) (*workflow.ConnectorEvent, workflow
 	return nil, nil, ctx.Err()
 }
 
-var errReachedHeadOfStream = errors.New("reached head of stream", j.C("ERR_547682425078cf6d"))
+var errReachedHeadOfStream = errors.New("reached head of stream")
 
 func (c *consumer) next() (*workflow.ConnectorEvent, error) {
 	c.mu.Lock()
@@ -88,7 +87,7 @@ func (c *consumer) next() (*workflow.ConnectorEvent, error) {
 
 	cursorOffset := c.cursorStore.Get(c.cursorName)
 	if len(log)-1 < cursorOffset {
-		return nil, errors.Wrap(errReachedHeadOfStream, "")
+		return nil, errReachedHeadOfStream
 	}
 
 	return log[cursorOffset], nil

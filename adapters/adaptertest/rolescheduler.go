@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 
 	"github.com/luno/workflow"
@@ -30,7 +29,7 @@ func testReturnedContext(t *testing.T, factory func(t *testing.T, instances int)
 		ctxWithValue := context.WithValue(ctx, "parent", "context")
 
 		ctx2, cancel, err := rs[0].Await(ctxWithValue, "leader-cancelled-ctx")
-		jtest.RequireNil(t, err)
+		require.Nil(t, err)
 
 		cancel()
 
@@ -48,7 +47,7 @@ func testLocking(t *testing.T, factory func(t *testing.T, instances int) []workf
 		for _, rinkInstance := range rs {
 			go func(rolesObtained chan bool) {
 				_, _, err := rinkInstance.Await(ctxWithValue, "leader-lock")
-				jtest.RequireNil(t, err)
+				require.Nil(t, err)
 				rolesObtained <- true
 			}(rolesObtained)
 		}
@@ -80,7 +79,7 @@ func testReleasing(t *testing.T, factory func(t *testing.T, instances int) []wor
 		passed := make(chan bool)
 		go func() {
 			_, _, err := rs[0].Await(ctx, "leader-releasing")
-			jtest.RequireNil(t, err)
+			require.Nil(t, err)
 
 			ctx2, cancel2 := context.WithCancel(context.Background())
 			go func() {

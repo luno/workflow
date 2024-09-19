@@ -2,11 +2,11 @@ package workflow_test
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 	clock_testing "k8s.io/utils/clock/testing"
 
@@ -47,7 +47,7 @@ func TestSchedule(t *testing.T) {
 
 	go func() {
 		err := wf.Schedule("andrew", StatusStart, "@monthly")
-		jtest.RequireNil(t, err)
+		require.Nil(t, err)
 	}()
 
 	// Allow scheduling to take place
@@ -55,7 +55,7 @@ func TestSchedule(t *testing.T) {
 
 	_, err := recordStore.Latest(ctx, workflowName, "andrew")
 	// Expect there to be no entries yet
-	jtest.Require(t, workflow.ErrRecordNotFound, err)
+	require.True(t, errors.Is(err, workflow.ErrRecordNotFound))
 
 	// Grab the time from the clock for expectation as to the time we expect the entry to have
 	expectedTimestamp := time.Date(2023, time.May, 1, 0, 0, 0, 0, time.UTC)
@@ -65,10 +65,10 @@ func TestSchedule(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	firstScheduled, err := recordStore.Latest(ctx, workflowName, "andrew")
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	_, err = wf.Await(ctx, firstScheduled.ForeignID, firstScheduled.RunID, StatusEnd)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	expectedTimestamp = time.Date(2023, time.June, 1, 0, 0, 0, 0, time.UTC)
 	clock.SetTime(expectedTimestamp)
@@ -77,7 +77,7 @@ func TestSchedule(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	secondScheduled, err := recordStore.Latest(ctx, workflowName, "andrew")
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	require.NotEqual(t, firstScheduled.RunID, secondScheduled.RunID)
 }
@@ -106,7 +106,7 @@ func TestWorkflow_ScheduleShutdown(t *testing.T) {
 	go func() {
 		wg.Done()
 		err := wf.Schedule("andrew", StatusStart, "@monthly")
-		jtest.RequireNil(t, err)
+		require.Nil(t, err)
 	}()
 
 	wg.Wait()
@@ -168,7 +168,7 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 
 	go func() {
 		err := wf.Schedule("andrew", StatusStart, "@monthly", opt)
-		jtest.RequireNil(t, err)
+		require.Nil(t, err)
 	}()
 
 	// Allow scheduling to take place
@@ -176,7 +176,7 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 
 	_, err := recordStore.Latest(ctx, workflowName, "andrew")
 	// Expect there to be no entries yet
-	jtest.Require(t, workflow.ErrRecordNotFound, err)
+	require.True(t, errors.Is(err, workflow.ErrRecordNotFound))
 
 	// Grab the time from the clock for expectation as to the time we expect the entry to have
 	expectedTimestamp := time.Date(2023, time.May, 1, 0, 0, 0, 0, time.UTC)
@@ -187,7 +187,7 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 
 	_, err = recordStore.Latest(ctx, workflowName, "andrew")
 	// Expect there to be no entries yet
-	jtest.Require(t, workflow.ErrRecordNotFound, err)
+	require.True(t, errors.Is(err, workflow.ErrRecordNotFound))
 
 	// Disable the filter to enable scheduling
 	*shouldSkip = true
@@ -199,10 +199,10 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	latest, err := recordStore.Latest(ctx, workflowName, "andrew")
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	resp, err := wf.Await(ctx, latest.ForeignID, latest.RunID, StatusEnd)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	require.Equal(t, expectedTimestamp, resp.CreatedAt)
 }

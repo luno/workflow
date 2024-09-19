@@ -2,22 +2,24 @@ package workflow
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
 
-	"github.com/luno/jettison/errors"
 	"github.com/robfig/cron/v3"
 	"k8s.io/utils/clock"
 )
 
 func (w *Workflow[Type, Status]) Schedule(foreignID string, startingStatus Status, spec string, opts ...ScheduleOption[Type, Status]) error {
 	if !w.calledRun {
-		return errors.Wrap(ErrWorkflowNotRunning, "ensure Run() is called before attempting to trigger the workflow")
+		return fmt.Errorf("schedule failed: workflow is not running")
 	}
 
 	if !w.statusGraph.IsValid(int(startingStatus)) {
-		return errors.Wrap(ErrStatusProvidedNotConfigured, fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name))
+		w.logger.maybeDebug(w.ctx, fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name), map[string]string{})
+
+		return fmt.Errorf("schedule failed: status provided is not configured for workflow: %s", startingStatus)
 	}
 
 	var options scheduleOpts[Type, Status]
