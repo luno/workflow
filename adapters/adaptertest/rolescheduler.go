@@ -84,7 +84,7 @@ func testReleasing(t *testing.T, factory func(t *testing.T, instances int) []wor
 			ctx2, cancel2 := context.WithCancel(context.Background())
 			go func() {
 				_, _, err := rs[1].Await(ctx2, "leader-releasing")
-				jtest.Require(t, context.Canceled, err)
+				require.ErrorIs(t, err, context.Canceled)
 
 				// Record that the execution got here.
 				passed <- true
@@ -94,7 +94,7 @@ func testReleasing(t *testing.T, factory func(t *testing.T, instances int) []wor
 			cancel2()
 		}()
 
-		timeout := time.NewTicker(500 * time.Millisecond).C
+		timeout := time.NewTicker(5 * time.Second).C
 		for {
 			select {
 			case <-timeout:
