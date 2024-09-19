@@ -27,8 +27,7 @@ type API[Type any, Status StatusType] interface {
 	// was run.
 	Trigger(ctx context.Context, foreignID string, startingStatus Status, opts ...TriggerOption[Type, Status]) (runID string, err error)
 
-	// Schedule takes a cron spec and will call Trigger at the specified intervals. Schedule is a blocking call and will
-	// return ErrWorkflowNotRunning or ErrStatusProvidedNotConfigured to indicate that it cannot begin to schedule. All
+	// Schedule takes a cron spec and will call Trigger at the specified intervals. Schedule is a blocking call and all
 	// schedule errors will be retried indefinitely. The same options are available for Schedule as they are
 	// for Trigger.
 	Schedule(foreignID string, startingStatus Status, spec string, opts ...ScheduleOption[Type, Status]) error

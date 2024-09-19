@@ -3,7 +3,6 @@ package workflow_test
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -392,10 +391,10 @@ func TestWorkflow_ErrWorkflowNotRunning(t *testing.T) {
 	})
 
 	_, err := wf.Trigger(ctx, "andrew", StatusStart)
-	require.True(t, errors.Is(err, workflow.ErrWorkflowNotRunning))
+	require.Equal(t, "trigger failed: workflow is not running", err.Error())
 
 	err = wf.Schedule("andrew", StatusStart, "@monthly")
-	require.True(t, errors.Is(err, workflow.ErrWorkflowNotRunning))
+	require.Equal(t, "schedule failed: workflow is not running", err.Error())
 }
 
 func TestWorkflow_TestingRequire(t *testing.T) {

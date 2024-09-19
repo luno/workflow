@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -66,7 +67,7 @@ func TestUpdater(t *testing.T) {
 				Status: statusMiddle,
 			},
 			transitions: []graph.Transition{},
-			expectedErr: ErrCurrentStatusNotDefined,
+			expectedErr: fmt.Errorf("current status not defined in graph: current=%s", statusStart),
 		},
 		{
 			name: "Mark as completed",
@@ -129,7 +130,7 @@ func TestUpdater(t *testing.T) {
 					To:   int(statusEnd),
 				},
 			},
-			expectedErr: ErrInvalidTransition,
+			expectedErr: fmt.Errorf("current status not defined in graph: current=%s, next=%s", statusStart, statusMiddle),
 		},
 	}
 	for _, tc := range testCases {
@@ -150,7 +151,9 @@ func TestUpdater(t *testing.T) {
 
 			updater := newUpdater[string, testStatus](tc.lookup, store, g, c)
 			err := updater(ctx, tc.current, tc.update.Status, &tc.update)
-			require.True(t, errors.Is(err, tc.expectedErr))
+			if err != nil {
+				require.Equal(t, tc.expectedErr.Error(), err.Error())
+			}
 		})
 	}
 }

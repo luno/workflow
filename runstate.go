@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 )
 
@@ -101,25 +102,25 @@ type runStateControllerImpl struct {
 }
 
 func (rsc *runStateControllerImpl) Pause(ctx context.Context) error {
-	return rsc.update(ctx, RunStatePaused, ErrUnableToPause)
+	return rsc.update(ctx, RunStatePaused)
 }
 
 func (rsc *runStateControllerImpl) Resume(ctx context.Context) error {
-	return rsc.update(ctx, RunStateRunning, ErrUnableToResume)
+	return rsc.update(ctx, RunStateRunning)
 }
 
 func (rsc *runStateControllerImpl) Cancel(ctx context.Context) error {
-	return rsc.update(ctx, RunStateCancelled, ErrUnableToCancel)
+	return rsc.update(ctx, RunStateCancelled)
 }
 
 func (rsc *runStateControllerImpl) DeleteData(ctx context.Context) error {
-	return rsc.update(ctx, RunStateRequestedDataDeleted, ErrUnableToDelete)
+	return rsc.update(ctx, RunStateRequestedDataDeleted)
 }
 
-func (rsc *runStateControllerImpl) update(ctx context.Context, rs RunState, invalidTransitionErr error) error {
+func (rsc *runStateControllerImpl) update(ctx context.Context, rs RunState) error {
 	valid, ok := runStateTransitions[rsc.record.RunState]
 	if !ok || !valid[rs] {
-		return invalidTransitionErr
+		return fmt.Errorf("invalid RunState: %s", rsc.record.RunState)
 	}
 
 	previousRunState := rsc.record.RunState

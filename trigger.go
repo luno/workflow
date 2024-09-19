@@ -14,13 +14,13 @@ func (w *Workflow[Type, Status]) Trigger(ctx context.Context, foreignID string, 
 
 func trigger[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], lookup latestLookup, foreignID string, startingStatus Status, opts ...TriggerOption[Type, Status]) (runID string, err error) {
 	if !w.calledRun {
-		return "", ErrWorkflowNotRunning
+		return "", fmt.Errorf("trigger failed: workflow is not running")
 	}
 
 	if !w.statusGraph.IsValid(int(startingStatus)) {
 		w.logger.maybeDebug(w.ctx, fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name), map[string]string{})
 
-		return "", ErrStatusProvidedNotConfigured
+		return "", fmt.Errorf("trigger failed: status provided is not configured for workflow: %s", startingStatus)
 	}
 
 	var o triggerOpts[Type, Status]

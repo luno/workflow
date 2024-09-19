@@ -13,13 +13,13 @@ import (
 
 func (w *Workflow[Type, Status]) Schedule(foreignID string, startingStatus Status, spec string, opts ...ScheduleOption[Type, Status]) error {
 	if !w.calledRun {
-		return ErrWorkflowNotRunning
+		return fmt.Errorf("schedule failed: workflow is not running")
 	}
 
 	if !w.statusGraph.IsValid(int(startingStatus)) {
 		w.logger.maybeDebug(w.ctx, fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name), map[string]string{})
 
-		return ErrStatusProvidedNotConfigured
+		return fmt.Errorf("schedule failed: status provided is not configured for workflow: %s", startingStatus)
 	}
 
 	var options scheduleOpts[Type, Status]

@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/utils/clock"
 
@@ -72,7 +73,7 @@ func validateTransition[Status StatusType](current, next Status, graph *graph.Gr
 	// Lookup all available transitions from the current status
 	nodes := graph.Transitions(int(current))
 	if len(nodes) == 0 {
-		return ErrCurrentStatusNotDefined
+		return fmt.Errorf("current status not defined in graph: current=%s", current)
 	}
 
 	var found bool
@@ -86,7 +87,7 @@ func validateTransition[Status StatusType](current, next Status, graph *graph.Gr
 
 	// If no valid transition matches that of the next status then error.
 	if !found {
-		return ErrInvalidTransition
+		return fmt.Errorf("current status not defined in graph: current=%s, next=%s", current, next)
 	}
 
 	return nil
