@@ -72,8 +72,6 @@ func Test_maybeAutoPause(t *testing.T) {
 				counter.Add(testErr, processName, r.RunID)
 			}
 
-			t.Log(counter.Count(testErr, processName, r.RunID))
-
 			paused, err := maybePause(
 				ctx,
 				tc.countBeforePause,

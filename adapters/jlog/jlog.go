@@ -19,8 +19,8 @@ func (l logger) Debug(ctx context.Context, msg string, meta map[string]string) {
 	log.Debug(ctx, msg, j.MKS(meta))
 }
 
-func (l logger) Error(ctx context.Context, err error, meta map[string]string) {
-	log.Error(ctx, errors.Wrap(err, ""), j.MKS(meta))
+func (l logger) Error(ctx context.Context, err error) {
+	log.Error(ctx, errors.Wrap(err, ""))
 }
 
 var _ workflow.Logger = (*logger)(nil)

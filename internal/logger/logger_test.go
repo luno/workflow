@@ -26,7 +26,7 @@ func TestLogger_Error(t *testing.T) {
 	log := logger.New(&buf)
 
 	ctx := context.Background()
-	log.Error(ctx, errors.New("test error"), map[string]string{"key": "value"})
+	log.Error(ctx, errors.New("test error"))
 
-	require.Contains(t, buf.String(), "\"level\":\"ERROR\",\"msg\":\"test error\",\"meta\":{\"key\":\"value\"}")
+	require.Contains(t, buf.String(), "\"level\":\"ERROR\",\"msg\":\"test error\"")
 }

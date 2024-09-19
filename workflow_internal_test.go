@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"strings"
 	"testing"
 	"time"
 
@@ -79,7 +78,7 @@ func Test_runOnce(t *testing.T) {
 			time.Minute,
 		)
 		require.Nil(t, err)
-		require.True(t, strings.Contains(buf.String(), `"msg":"test error","meta":{"retrying_in":"1m0s","role":"role-1"`))
+		require.Contains(t, buf.String(), `"msg":"run error [role=role-1]: test error"`)
 	})
 
 	t.Run("Cancelled parent context during process execution retries and exits with context.Canceled ", func(t *testing.T) {
@@ -150,7 +149,7 @@ func Test_runOnce(t *testing.T) {
 		)
 
 		require.Nil(t, err)
-		require.True(t, strings.Contains(buf.String(), `"msg":"test error","meta":{"retrying_in":"1ms","role":"role-1"`))
+		require.Contains(t, buf.String(), `"msg":"run error [role=role-1]: test error`)
 	})
 
 	t.Run("Updates process state", func(t *testing.T) {

@@ -66,7 +66,7 @@ func processCallback[Type any, Status StatusType](
 	}
 
 	if skipUpdate(next) {
-		w.logger.maybeDebug(ctx, "skipping update", MKV{
+		w.logger.maybeDebug(ctx, "skipping update", map[string]string{
 			"description":   skipUpdateDescription(next),
 			"record_id":     strconv.FormatInt(run.Record.ID, 10),
 			"workflow_name": w.Name,

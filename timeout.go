@@ -2,10 +2,10 @@ package workflow
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
-	"github.com/luno/workflow/internal/errmeta"
 	"github.com/luno/workflow/internal/metrics"
 )
 
@@ -61,7 +61,7 @@ func pollTimeouts[Type any, Status StatusType](
 			}
 
 			if r.RunState.Stopped() {
-				w.logger.maybeDebug(ctx, "Skipping processing of timeout of stopped workflow record", MKV{
+				w.logger.maybeDebug(ctx, "Skipping processing of timeout of stopped workflow record", map[string]string{
 					"workflow":       r.WorkflowName,
 					"run_id":         r.RunID,
 					"foreign_id":     r.ForeignID,
@@ -116,7 +116,7 @@ func processTimeout[Type any, Status StatusType](
 	if err != nil {
 		_, err := maybePause(ctx, pauseAfterErrCount, w.errorCounter, err, processName, run, w.logger)
 		if err != nil {
-			return errmeta.New(err, map[string]string{
+			return fmt.Errorf("pause error: %v, meta: %v", err, map[string]string{
 				"run_id":     record.RunID,
 				"foreign_id": record.ForeignID,
 			})
@@ -126,7 +126,7 @@ func processTimeout[Type any, Status StatusType](
 	}
 
 	if skipUpdate(next) {
-		w.logger.maybeDebug(ctx, "skipping update", MKV{
+		w.logger.maybeDebug(ctx, "skipping update", map[string]string{
 			"description":   skipUpdateDescription(next),
 			"record_id":     strconv.FormatInt(run.Record.ID, 10),
 			"workflow_name": w.Name,

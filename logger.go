@@ -2,9 +2,6 @@ package workflow
 
 import (
 	"context"
-	"errors"
-
-	"github.com/luno/workflow/internal/errmeta"
 )
 
 // Logger interface allows the user of Workflow to provide a custom logger and not use the default which is provided
@@ -18,11 +15,8 @@ type Logger interface {
 	// Debug will be used by workflow for debug logs when in debug mode.
 	Debug(ctx context.Context, msg string, meta map[string]string)
 	// Error is used when writing errors to the logs.
-	Error(ctx context.Context, err error, meta map[string]string)
+	Error(ctx context.Context, err error)
 }
-
-// MKV is alias for ma[string]string to simplify the passing of Multiple Key Values to the logger.
-type MKV map[string]string
 
 // logger wraps the default logger (internal/logger) or the provided logger (WithLogger) that manages whether a log
 // should be written based on the options that the Workflow was built with such as WithDebugMode.
@@ -41,13 +35,6 @@ func (l *logger) maybeDebug(ctx context.Context, msg string, meta map[string]str
 }
 
 // Error writes the error to the underlying logger
-func (l *logger) Error(ctx context.Context, err error, meta map[string]string) {
-	var errMeta *errmeta.ErrMeta
-	if errors.As(err, &errMeta) {
-		for k, v := range errMeta.Meta() {
-			meta[k] = v
-		}
-	}
-
-	l.inner.Error(ctx, err, meta)
+func (l *logger) Error(ctx context.Context, err error) {
+	l.inner.Error(ctx, err)
 }

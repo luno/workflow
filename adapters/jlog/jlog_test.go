@@ -32,9 +32,9 @@ func TestError(t *testing.T) {
 	logger := jlog.New()
 	ctx := context.Background()
 	testErr := errors.New("test error")
-	logger.Error(ctx, testErr, map[string]string{"testKey": "testValue"})
+	logger.Error(ctx, testErr)
 
-	expected := `E 00:00:00.000 g/l/w/a/jlog/jlog.go:23: error(s) [testkey=testValue]
+	expected := `E 00:00:00.000 g/l/w/a/jlog/jlog.go:23: error(s) 
   test error
   - github.com/luno/workflow/adapters/jlog/jlog_test.go:34 TestError
   - testing/testing.go:1689 tRunner

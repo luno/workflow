@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"sync"
 	"time"
@@ -177,7 +178,7 @@ func (w *Workflow[Type, Status]) run(
 			errBackOff,
 		)
 		if err != nil {
-			w.logger.maybeDebug(w.ctx, "shutting down process", MKV{
+			w.logger.maybeDebug(w.ctx, "shutting down process", map[string]string{
 				"role":         role,
 				"process_name": processName,
 			})
@@ -215,10 +216,7 @@ func runOnce(
 		// Exit cleanly if error returned is cancellation of context
 		return err
 	} else if err != nil {
-		logger.Error(ctx, err, MKV{
-			"role":        role,
-			"retrying_in": errBackOff.String(),
-		})
+		logger.Error(ctx, fmt.Errorf("run error [role=%v]: %v", role, err))
 
 		// Return nil to try again
 		return nil
@@ -233,10 +231,7 @@ func runOnce(
 		// and if the parent context was cancelled then that will exit safely.
 		return nil
 	} else if err != nil {
-		logger.Error(ctx, err, MKV{
-			"role":        role,
-			"retrying_in": errBackOff.String(),
-		})
+		logger.Error(ctx, fmt.Errorf("run error [role=%v]: %v", role, err))
 		metrics.ProcessErrors.WithLabelValues(workflowName, processName).Inc()
 
 		timer := clock.NewTimer(errBackOff)
