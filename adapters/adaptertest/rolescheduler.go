@@ -11,8 +11,8 @@ import (
 	"github.com/luno/workflow"
 )
 
-func RunRoleSchedulerTest(t *testing.T, factory func() workflow.RoleScheduler) {
-	tests := []func(t *testing.T, factory func() workflow.RoleScheduler){
+func RunRoleSchedulerTest(t *testing.T, factory func(t *testing.T, instances int) []workflow.RoleScheduler) {
+	tests := []func(t *testing.T, factory func(t *testing.T, instances int) []workflow.RoleScheduler){
 		testReturnedContext,
 		testLocking,
 		testReleasing,
@@ -23,87 +23,88 @@ func RunRoleSchedulerTest(t *testing.T, factory func() workflow.RoleScheduler) {
 	}
 }
 
-func testReturnedContext(t *testing.T, factory func() workflow.RoleScheduler) {
+func testReturnedContext(t *testing.T, factory func(t *testing.T, instances int) []workflow.RoleScheduler) {
 	t.Run("Ensure that the passed in context is a parent of the returned context", func(t *testing.T) {
-		rs := factory()
+		rs := factory(t, 1)
 		ctx := context.Background()
 		ctxWithValue := context.WithValue(ctx, "parent", "context")
 
-		ctx2, cancel, err := rs.Await(ctxWithValue, "leader")
+		ctx2, cancel, err := rs[0].Await(ctxWithValue, "leader-cancelled-ctx")
 		jtest.RequireNil(t, err)
 
-		t.Cleanup(cancel)
+		cancel()
 
 		require.Equal(t, "context", ctx2.Value("parent"))
 	})
 }
 
-func testLocking(t *testing.T, factory func() workflow.RoleScheduler) {
+func testLocking(t *testing.T, factory func(t *testing.T, instances int) []workflow.RoleScheduler) {
 	t.Run("Ensure role is locked and successive calls are blocked", func(t *testing.T) {
-		rs := factory()
+		rs := factory(t, 5)
 		ctx := context.Background()
 		ctxWithValue := context.WithValue(ctx, "parent", "context")
 
-		ctx2, cancel, err := rs.Await(ctxWithValue, "leader")
-		jtest.RequireNil(t, err)
+		rolesObtained := make(chan bool, len(rs))
+		for _, rinkInstance := range rs {
+			go func(rolesObtained chan bool) {
+				_, _, err := rinkInstance.Await(ctxWithValue, "leader-lock")
+				jtest.RequireNil(t, err)
+				rolesObtained <- true
+			}(rolesObtained)
+		}
 
-		t.Cleanup(cancel)
-
-		roleReleased := make(chan bool, 1)
-		go func(done chan bool) {
-			_, _, err := rs.Await(ctxWithValue, "leader")
-			jtest.RequireNil(t, err)
-
-			roleReleased <- true
-
-			// Ensure that the passed in context is a parent of the returned context
-			require.Equal(t, "context", ctx2.Value("parent"))
-		}(roleReleased)
-
-		timeout := time.NewTicker(1 * time.Second).C
-		select {
-		case <-timeout:
-			// Pass -  timeout expected to return first as the role has not been released
-			return
-		case <-roleReleased:
-			t.Fail()
-			return
+		checkInterval := time.NewTicker(50 * time.Millisecond).C
+		timeout := time.NewTicker(250 * time.Millisecond).C
+		for {
+			select {
+			case <-timeout:
+				// Pass -  timeout expected to return first as the role has not been released
+				return
+			case <-checkInterval:
+				if len(rolesObtained) > 1 {
+					require.FailNow(t, "more than one instance received a role lock")
+				}
+			}
 		}
 	})
 }
 
-func testReleasing(t *testing.T, factory func() workflow.RoleScheduler) {
+func testReleasing(t *testing.T, factory func(t *testing.T, instances int) []workflow.RoleScheduler) {
 	t.Run("Ensure role is released on context cancellation", func(t *testing.T) {
-		rs := factory()
-		ctx := context.Background()
+		instanceCount := 2
+		rs := factory(t, instanceCount)
 
-		_, cancel, err := rs.Await(ctx, "leader")
-		jtest.RequireNil(t, err)
-
+		ctx, cancel := context.WithCancel(context.Background())
 		t.Cleanup(cancel)
 
-		ctx2, cancel2 := context.WithCancel(context.Background())
-		t.Cleanup(cancel2)
-
-		roleReleased := make(chan bool, 1)
-		go func(ctx context.Context, done chan bool) {
-			_, _, err := rs.Await(ctx2, "leader")
+		passed := make(chan bool)
+		go func() {
+			_, _, err := rs[0].Await(ctx, "leader-releasing")
 			jtest.RequireNil(t, err)
 
-			roleReleased <- true
-		}(ctx2, roleReleased)
+			ctx2, cancel2 := context.WithCancel(context.Background())
+			go func() {
+				_, _, err := rs[1].Await(ctx2, "leader-releasing")
+				jtest.Require(t, context.Canceled, err)
 
-		cancel()
+				// Record that the execution got here.
+				passed <- true
+			}()
 
-		timeout := time.NewTicker(3 * time.Second).C
-		select {
-		case <-timeout:
-			t.Fail()
-			return
-		case <-roleReleased:
-			// Pass - context passed into the first attempt at gaining the role is cancelled and should
-			// result in a releasing of the role.
-			return
+			// Cancel the other caller to test that it unlocks on context cancellation
+			cancel2()
+		}()
+
+		timeout := time.NewTicker(500 * time.Millisecond).C
+		for {
+			select {
+			case <-timeout:
+				require.FailNow(t, "not all instances obtained the lock")
+				return
+			case <-passed:
+				// Expected call stack executed
+				return
+			}
 		}
 	})
 }
