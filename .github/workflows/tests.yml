@@ -11,7 +11,7 @@ on:
 
 jobs:
 
-  test and vet core:
+  test-and-vet-core:
     strategy:
       matrix:
         go: [ '1.21', '1.22', '1' ]
@@ -30,7 +30,7 @@ jobs:
     - name: Test
       run: go test -v ./...
 
-  vet adapters:
+  vet-adapters:
     strategy:
       matrix:
         adapters: [ 'kafkastreamer', 'reflexstreamer', 'sqlstore', 'sqltimeout', 'jlog' ]
