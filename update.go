@@ -2,9 +2,8 @@ package workflow
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/luno/jettison/errors"
-	"github.com/luno/jettison/j"
 	"k8s.io/utils/clock"
 
 	"github.com/luno/workflow/internal/graph"
@@ -15,7 +14,7 @@ type (
 	lookupFunc func(ctx context.Context, id int64) (*Record, error)
 	storeFunc  func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error
 
-	updater[Type any, Status StatusType] func(ctx context.Context, current Status, next Status, record *Run[Type, Status]) error
+	updater[Type any, Status StatusType] func(ctx context.Context, current Status, next Status, run *Run[Type, Status]) error
 )
 
 func newUpdater[Type any, Status StatusType](lookup lookupFunc, store storeFunc, graph *graph.Graph, clock clock.Clock) updater[Type, Status] {
@@ -74,9 +73,7 @@ func validateTransition[Status StatusType](current, next Status, graph *graph.Gr
 	// Lookup all available transitions from the current status
 	nodes := graph.Transitions(int(current))
 	if len(nodes) == 0 {
-		return errors.New("current status not predefined", j.MKV{
-			"current_status": current.String(),
-		})
+		return fmt.Errorf("current status not defined in graph: current=%s", current)
 	}
 
 	var found bool
@@ -90,10 +87,7 @@ func validateTransition[Status StatusType](current, next Status, graph *graph.Gr
 
 	// If no valid transition matches that of the next status then error.
 	if !found {
-		return errors.New("invalid transition attempted", j.MKV{
-			"current_status": current.String(),
-			"next_status":    next.String(),
-		})
+		return fmt.Errorf("current status not defined in graph: current=%s, next=%s", current, next)
 	}
 
 	return nil

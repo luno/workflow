@@ -7,7 +7,6 @@ import (
 	"github.com/luno/jettison/errors"
 	"github.com/luno/jettison/j"
 	"github.com/luno/reflex"
-
 	"github.com/luno/workflow"
 )
 
@@ -87,7 +86,7 @@ func (c consumer) Close() error {
 	// Provide new context for flushing of cursor values to underlying store
 	err := c.cursorStore.Flush(context.Background())
 	if err != nil {
-		return errors.Wrap(err, "failed here")
+		return errors.Wrap(err, "failed to flush cursor")
 	}
 
 	if closer, ok := c.streamClient.(io.Closer); ok {

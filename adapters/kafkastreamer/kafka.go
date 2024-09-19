@@ -2,13 +2,12 @@ package kafkastreamer
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"time"
 
-	"github.com/luno/jettison/errors"
-	"github.com/segmentio/kafka-go"
-
 	"github.com/luno/workflow"
+	"github.com/segmentio/kafka-go"
 )
 
 func New(brokers []string) *StreamConstructor {

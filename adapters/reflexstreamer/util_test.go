@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/corverroos/truss"
-	"github.com/luno/jettison/jtest"
 	"github.com/luno/reflex"
 	"github.com/stretchr/testify/require"
 
@@ -63,10 +62,10 @@ func TestDefaultTranslators(t *testing.T) {
 	}
 
 	connectorEvent, err := reflexstreamer.DefaultReflexTranslator(&reflexEvent)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	translated, err := reflexstreamer.DefaultConnectorTranslator(connectorEvent)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	require.Equal(t, reflexEvent.ID, translated.ID)
 	require.Equal(t, reflexEvent.Type.ReflexType(), translated.Type.ReflexType())

@@ -2,9 +2,9 @@ package workflow
 
 import (
 	"context"
+	"errors"
 	"time"
 
-	"github.com/luno/jettison/errors"
 	"k8s.io/utils/clock"
 
 	"github.com/luno/workflow/internal/metrics"
@@ -42,7 +42,7 @@ func DeleteForever(
 	c Consumer,
 	store storeFunc,
 	lookup lookupFunc,
-	deleteFn customDelete,
+	customDeleteFn customDelete,
 	lagAlert time.Duration,
 	clock clock.Clock,
 ) error {
@@ -77,8 +77,8 @@ func DeleteForever(
 		t2 := clock.Now()
 		replacementData := []byte("{'result': 'deleted'}")
 		// If a custom delete has been configured then use the custom delete
-		if deleteFn != nil {
-			bytes, err := deleteFn(record)
+		if customDeleteFn != nil {
+			bytes, err := customDeleteFn(record)
 			if err != nil {
 				return err
 			}
@@ -90,7 +90,7 @@ func DeleteForever(
 		record.RunState = RunStateDataDeleted
 		err = updateWireRecord(ctx, store, record, RunStateRequestedDataDeleted)
 		if err != nil {
-			return errors.Wrap(err, "unable to delete record data")
+			return err
 		}
 
 		metrics.ProcessLatency.WithLabelValues(workflowName, processName).Observe(clock.Since(t2).Seconds())

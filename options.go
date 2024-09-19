@@ -74,8 +74,8 @@ func ConsumeLag(d time.Duration) Option {
 }
 
 // PauseAfterErrCount defines the number of times an error can occur until the record is updated to RunStatePaused
-// which is similar to a Dead Letter Queue in the sense that the record will no longer be processed and wont block
-// workflow consumers and can be investigated and retried.
+// which is similar to a Dead Letter Queue in the sense that the record will no longer be processed and won't block
+// the workflow's consumers and can be investigated and retried later on.
 func PauseAfterErrCount(count int) Option {
 	return func(opt *options) {
 		opt.pauseAfterErrCount = count

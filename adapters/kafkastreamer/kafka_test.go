@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/luno/jettison/jtest"
 	"github.com/luno/workflow"
 	"github.com/luno/workflow/adapters/adaptertest"
 	"github.com/segmentio/kafka-go"
+	"github.com/stretchr/testify/require"
 
 	"github.com/luno/workflow/adapters/kafkastreamer"
 )
@@ -58,7 +58,7 @@ func TestConnector(t *testing.T) {
 				Key: []byte(e.ForeignID),
 			}
 			err := writer.WriteMessages(ctx, m)
-			jtest.RequireNil(t, err)
+			require.Nil(t, err)
 		}
 
 		return constructor

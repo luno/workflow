@@ -2,14 +2,13 @@ package workflow_test
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/luno/jettison/errors"
-	"github.com/luno/jettison/jtest"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
 	clock_testing "k8s.io/utils/clock/testing"
@@ -46,13 +45,13 @@ func runWorkflow(t *testing.T) *workflow.Workflow[string, status] {
 	ctx := context.Background()
 
 	uid, err := uuid.NewUUID()
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	runID := uid.String()
 
 	var s string
 	payload, err := workflow.Marshal(&s)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	err = update(ctx, recordStore, &workflow.Record{
 		WorkflowName: "example",
@@ -63,7 +62,7 @@ func runWorkflow(t *testing.T) *workflow.Workflow[string, status] {
 		Object:       payload,
 		CreatedAt:    clock.Now(),
 	})
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	// 1 hour = 3600 seconds
 	clock.Step(time.Hour)
@@ -89,7 +88,7 @@ workflow_process_lag_seconds{process_name="start-consumer-1-of-1",workflow_name=
 `
 
 	err := testutil.CollectAndCompare(metrics.ConsumerLag, strings.NewReader(expected))
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	metrics.ConsumerLag.Reset()
 }
@@ -123,7 +122,7 @@ workflow_process_states{process_name="start-consumer-1-of-1",workflow_name="exam
 `
 
 	err := testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	w.Stop()
 
@@ -138,7 +137,7 @@ workflow_process_states{process_name="outbox-consumer-2-of-2",workflow_name="exa
 `
 
 	err = testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	metrics.ProcessStates.Reset()
 }
@@ -222,7 +221,7 @@ workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="exa
 `
 
 	err := testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	scheduler.mu.Lock()
 	scheduler.allow = true
@@ -241,7 +240,7 @@ workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="exa
 `
 
 	err = testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	wf.Stop()
 
@@ -256,7 +255,7 @@ workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="exa
 `
 
 	err = testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	metrics.ProcessStates.Reset()
 }
@@ -298,13 +297,13 @@ func TestMetricProcessErrors(t *testing.T) {
 	ctx := context.Background()
 
 	uid, err := uuid.NewUUID()
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	runID := uid.String()
 
 	var s string
 	payload, err := workflow.Marshal(&s)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	err = update(ctx, recordStore, &workflow.Record{
 		WorkflowName: "example",
@@ -315,7 +314,7 @@ func TestMetricProcessErrors(t *testing.T) {
 		Object:       payload,
 		CreatedAt:    clock.Now(),
 	})
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	wf.Run(ctx)
 	t.Cleanup(wf.Stop)
@@ -358,7 +357,7 @@ func TestRunStateChanges(t *testing.T) {
 	t.Cleanup(w.Stop)
 
 	_, err := w.Trigger(ctx, "983467934", StatusStart)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	time.Sleep(time.Millisecond * 500)
 
@@ -391,13 +390,13 @@ func TestMetricProcessSkippedEvents(t *testing.T) {
 	t.Cleanup(w.Stop)
 
 	_, err := w.Trigger(ctx, "9834679343", StatusStart)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	_, err = w.Trigger(ctx, "2349839483", StatusStart)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	_, err = w.Trigger(ctx, "7548702398", StatusStart)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	time.Sleep(time.Millisecond * 500)
 

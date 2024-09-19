@@ -1,9 +1,9 @@
 package errorcounter_test
 
 import (
+	"errors"
 	"testing"
 
-	"github.com/luno/jettison/errors"
 	"github.com/stretchr/testify/require"
 
 	"github.com/luno/workflow/internal/errorcounter"

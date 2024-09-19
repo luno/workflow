@@ -2,12 +2,14 @@ package workflow
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"k8s.io/utils/clock"
 
 	"github.com/luno/workflow/internal/errorcounter"
 	"github.com/luno/workflow/internal/graph"
+	interal_logger "github.com/luno/workflow/internal/logger"
 )
 
 const (
@@ -31,6 +33,10 @@ func NewBuilder[Type any, Status StatusType](name string) *Builder[Type, Status]
 			statusGraph:   graph.New(),
 			errorCounter:  errorcounter.New(),
 			internalState: make(map[string]State),
+			logger: &logger{
+				debugMode: false, // Explicit for readability
+				inner:     interal_logger.New(os.Stdout),
+			},
 		},
 	}
 }
@@ -201,7 +207,11 @@ func (b *Builder[Type, Status]) Build(eventStreamer EventStreamer, recordStore R
 	b.workflow.timeoutStore = bo.timeoutStore
 	b.workflow.defaultOpts = bo.defaultOptions
 	b.workflow.outboxConfig = bo.outboxConfig
-	b.workflow.debugMode = bo.debugMode
+	b.workflow.logger.debugMode = bo.debugMode
+
+	if bo.logger != nil {
+		b.workflow.logger.inner = bo.logger
+	}
 
 	if len(b.workflow.timeouts) > 0 && b.workflow.timeoutStore == nil {
 		panic("cannot configure timeouts without providing TimeoutStore for workflow")
@@ -217,6 +227,7 @@ type buildOptions struct {
 	defaultOptions options
 	outboxConfig   outboxConfig
 	timeoutStore   TimeoutStore
+	logger         Logger
 }
 
 func defaultBuildOptions() buildOptions {
@@ -228,24 +239,40 @@ func defaultBuildOptions() buildOptions {
 
 type BuildOption func(w *buildOptions)
 
+// WithTimeoutStore allows the configuration of a TimeoutStore which is required when using timeouts in a workflow. It is
+// not required by default as timeouts are less common of a feature requirement but when needed the abstraction
+// of complexity of handling scheduling, expiring, and executing are incredibly useful and is included as one of the
+// three key feature offerings of workflow which are sequential steps, callbacks, and timeouts.
 func WithTimeoutStore(s TimeoutStore) BuildOption {
 	return func(w *buildOptions) {
 		w.timeoutStore = s
 	}
 }
 
+// WithClock allows the configuring of workflow's use and access of time. Instead of using time.Now() and other
+// associated functionality from the time package a clock is used instead in order to make it testable.
 func WithClock(c clock.Clock) BuildOption {
 	return func(bo *buildOptions) {
 		bo.clock = c
 	}
 }
 
+// WithDebugMode enabled debug mode for a workflow which results in increased logs such as when processes ar launched,
+// shutdown, events are skipped etc.
 func WithDebugMode() BuildOption {
 	return func(bo *buildOptions) {
 		bo.debugMode = true
 	}
 }
 
+// WithLogger allows for specifying a custom logger. The default is to use a wrapped version of log/slog's Logger.
+func WithLogger(l Logger) BuildOption {
+	return func(bo *buildOptions) {
+		bo.logger = l
+	}
+}
+
+// WithDefaultOptions applies the provided options to the entire workflow and not just to an individual process.
 func WithDefaultOptions(opts ...Option) BuildOption {
 	return func(bo *buildOptions) {
 		var o options
@@ -257,6 +284,9 @@ func WithDefaultOptions(opts ...Option) BuildOption {
 	}
 }
 
+// WithCustomDelete allows for specifying a custom deleter function for scrubbing PII data when a workflow Run enters
+// RunStateRequestedDataDeleted and is the function that once executed successfully allows for the RunState to move to
+// RunStateDataDeleted.
 func WithCustomDelete[Type any](fn func(object *Type) error) BuildOption {
 	return func(bo *buildOptions) {
 		bo.customDelete = func(wr *Record) ([]byte, error) {
@@ -274,21 +304,6 @@ func WithCustomDelete[Type any](fn func(object *Type) error) BuildOption {
 			return Marshal(&t)
 		}
 	}
-}
-
-func (b *Builder[Type, Status]) determineEndPoints(graph map[int][]int) map[Status]bool {
-	endpoints := make(map[Status]bool)
-	for _, destinations := range graph {
-		for _, destination := range destinations {
-			_, ok := graph[destination]
-			if !ok {
-				// end points are nodes that do not have any of their own transitions to transition to.
-				endpoints[Status(destination)] = true
-			}
-		}
-	}
-
-	return endpoints
 }
 
 func DurationTimerFunc[Type any, Status StatusType](duration time.Duration) TimerFunc[Type, Status] {

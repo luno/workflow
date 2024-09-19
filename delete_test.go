@@ -2,11 +2,10 @@ package workflow_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
-	"github.com/luno/jettison/errors"
-	"github.com/luno/jettison/jtest"
 	"github.com/stretchr/testify/require"
 	"k8s.io/utils/clock"
 
@@ -44,7 +43,7 @@ func TestDeleteForever(t *testing.T) {
 				}
 
 				b, err := workflow.Marshal(&o)
-				jtest.RequireNil(t, err)
+				require.Nil(t, err)
 
 				return &workflow.Record{
 					Object:   b,
@@ -55,7 +54,7 @@ func TestDeleteForever(t *testing.T) {
 				var o object
 
 				err := workflow.Unmarshal(wr.Object, &o)
-				jtest.RequireNil(t, err)
+				require.Nil(t, err)
 
 				o.pii = ""
 
@@ -78,7 +77,7 @@ func TestDeleteForever(t *testing.T) {
 				}
 
 				b, err := workflow.Marshal(&o)
-				jtest.RequireNil(t, err)
+				require.Nil(t, err)
 
 				return &workflow.Record{
 					Object:   b,
@@ -115,7 +114,7 @@ func TestDeleteForever(t *testing.T) {
 			workflowName := "example"
 
 			producer, err := streamer.NewProducer(ctx, workflow.DeleteTopic(workflowName))
-			jtest.RequireNil(t, err)
+			require.Nil(t, err)
 			t.Cleanup(func() {
 				producer.Close()
 			})
@@ -128,16 +127,16 @@ func TestDeleteForever(t *testing.T) {
 				workflow.HeaderRunState:         workflow.RunStateRequestedDataDeleted.String(),
 				workflow.HeaderPreviousRunState: workflow.RunStateCompleted.String(),
 			})
-			jtest.RequireNil(t, err)
+			require.Nil(t, err)
 
 			consumer, err := streamer.NewConsumer(ctx, workflow.DeleteTopic(workflowName), "consumer-1")
-			jtest.RequireNil(t, err)
+			require.Nil(t, err)
 			t.Cleanup(func() {
 				consumer.Close()
 			})
 
 			err = workflow.DeleteForever(ctx, workflowName, "process-name", consumer, tc.storeFn, tc.lookupFn, tc.deleteFn, time.Hour, clock.RealClock{})
-			jtest.Require(t, tc.expectedErr, err)
+			require.True(t, errors.Is(err, tc.expectedErr))
 		})
 	}
 }

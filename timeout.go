@@ -2,12 +2,9 @@ package workflow
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
-
-	"github.com/luno/jettison/errors"
-	"github.com/luno/jettison/j"
-	"github.com/luno/jettison/log"
 
 	"github.com/luno/workflow/internal/metrics"
 )
@@ -64,16 +61,14 @@ func pollTimeouts[Type any, Status StatusType](
 			}
 
 			if r.RunState.Stopped() {
-				if w.debugMode {
-					log.Info(ctx, "Skipping processing of timeout of stopped workflow record", j.MKV{
-						"workflow":       r.WorkflowName,
-						"run_id":         r.RunID,
-						"foreign_id":     r.ForeignID,
-						"process_name":   processName,
-						"current_status": r.Status,
-						"run_state":      r.RunState.String(),
-					})
-				}
+				w.logger.maybeDebug(ctx, "Skipping processing of timeout of stopped workflow record", map[string]string{
+					"workflow":       r.WorkflowName,
+					"run_id":         r.RunID,
+					"foreign_id":     r.ForeignID,
+					"process_name":   processName,
+					"current_status": strconv.FormatInt(int64(r.Status), 10),
+					"run_state":      r.RunState.String(),
+				})
 
 				// Continue to next expired timeout
 				continue
@@ -104,7 +99,7 @@ func processTimeout[Type any, Status StatusType](
 	ctx context.Context,
 	w *Workflow[Type, Status],
 	config timeout[Type, Status],
-	r *Record,
+	record *Record,
 	timeout TimeoutRecord,
 	completeFn completeFunc,
 	store storeFunc,
@@ -112,59 +107,40 @@ func processTimeout[Type any, Status StatusType](
 	processName string,
 	pauseAfterErrCount int,
 ) error {
-	record, err := buildConsumableRecord[Type, Status](store, r)
+	run, err := buildRun[Type, Status](store, record)
 	if err != nil {
 		return err
 	}
 
-	next, err := config.TimeoutFunc(ctx, record, w.clock.Now())
+	next, err := config.TimeoutFunc(ctx, run, w.clock.Now())
 	if err != nil {
-		// Only keep track of errors if we need to
-		if pauseAfterErrCount > 0 {
-			count := w.errorCounter.Add(err, processName, record.RunID)
-			if count >= pauseAfterErrCount {
-				originalErr := err
-				_, err := record.Pause(ctx)
-				if err != nil {
-					return errors.Wrap(err, "failed to pause record after exceeding allowed error count", j.MKV{
-						"workflow_name":      record.WorkflowName,
-						"foreign_id":         record.ForeignID,
-						"current_status":     record.Status.String(),
-						"current_status_int": record.Status,
-					})
-				}
-
-				// Run paused - now clear the error counter.
-				w.errorCounter.Clear(originalErr, processName, record.RunID)
-				return nil
-			}
+		_, err := maybePause(ctx, pauseAfterErrCount, w.errorCounter, err, processName, run, w.logger)
+		if err != nil {
+			return fmt.Errorf("pause error: %v, meta: %v", err, map[string]string{
+				"run_id":     record.RunID,
+				"foreign_id": record.ForeignID,
+			})
 		}
-		return errors.Wrap(err, "failed to process timeout", j.MKV{
-			"workflow_name":      record.WorkflowName,
-			"foreign_id":         record.ForeignID,
-			"current_status":     record.Status.String(),
-			"current_status_int": record.Status,
-		})
+
+		return nil
 	}
 
 	if skipUpdate(next) {
-		if w.debugMode {
-			log.Info(ctx, "skipping update", j.MKV{
-				"description":   skipUpdateDescription(next),
-				"record_id":     record.ID,
-				"workflow_name": w.Name,
-				"foreign_id":    record.ForeignID,
-				"run_id":        record.RunID,
-				"run_state":     record.RunState.String(),
-				"record_status": record.Status.String(),
-			})
-		}
+		w.logger.maybeDebug(ctx, "skipping update", map[string]string{
+			"description":   skipUpdateDescription(next),
+			"record_id":     strconv.FormatInt(run.Record.ID, 10),
+			"workflow_name": w.Name,
+			"foreign_id":    run.ForeignID,
+			"run_id":        run.RunID,
+			"run_state":     run.RunState.String(),
+			"record_status": run.Status.String(),
+		})
 
 		metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName, "next value specified skip").Inc()
 		return nil
 	}
 
-	err = updater(ctx, Status(timeout.Status), next, record)
+	err = updater(ctx, Status(timeout.Status), next, run)
 	if err != nil {
 		return err
 	}

@@ -4,12 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/luno/jettison/jtest"
 	"github.com/luno/workflow"
 	"github.com/luno/workflow/adapters/memrecordstore"
 	"github.com/luno/workflow/adapters/memrolescheduler"
 	"github.com/luno/workflow/adapters/memstreamer"
 	"github.com/luno/workflow/adapters/memtimeoutstore"
+	"github.com/stretchr/testify/require"
 
 	"github.com/luno/workflow/_examples/gettingstarted"
 )
@@ -28,7 +28,7 @@ func TestWorkflow(t *testing.T) {
 
 	foreignID := "82347982374982374"
 	_, err := wf.Trigger(ctx, foreignID, gettingstarted.StatusStarted)
-	jtest.RequireNil(t, err)
+	require.Nil(t, err)
 
 	workflow.Require(t, wf, foreignID, gettingstarted.StatusReadTheDocs, gettingstarted.GettingStarted{
 		ReadTheDocs: "✅",

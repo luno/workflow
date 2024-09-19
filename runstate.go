@@ -2,10 +2,8 @@ package workflow
 
 import (
 	"context"
+	"fmt"
 	"strconv"
-
-	"github.com/luno/jettison/errors"
-	"github.com/luno/jettison/j"
 )
 
 type RunState int
@@ -104,54 +102,30 @@ type runStateControllerImpl struct {
 }
 
 func (rsc *runStateControllerImpl) Pause(ctx context.Context) error {
-	return rsc.update(ctx, RunStatePaused, ErrUnableToPause)
+	return rsc.update(ctx, RunStatePaused)
 }
 
 func (rsc *runStateControllerImpl) Resume(ctx context.Context) error {
-	return rsc.update(ctx, RunStateRunning, ErrUnableToResume)
+	return rsc.update(ctx, RunStateRunning)
 }
 
 func (rsc *runStateControllerImpl) Cancel(ctx context.Context) error {
-	return rsc.update(ctx, RunStateCancelled, ErrUnableToCancel)
+	return rsc.update(ctx, RunStateCancelled)
 }
 
 func (rsc *runStateControllerImpl) DeleteData(ctx context.Context) error {
-	return rsc.update(ctx, RunStateRequestedDataDeleted, ErrUnableToDelete)
+	return rsc.update(ctx, RunStateRequestedDataDeleted)
 }
 
-func (rsc *runStateControllerImpl) update(ctx context.Context, rs RunState, invalidTransitionErr error) error {
-	err := validateRunStateTransition(rsc.record, rs, invalidTransitionErr)
-	if err != nil {
-		return err
+func (rsc *runStateControllerImpl) update(ctx context.Context, rs RunState) error {
+	valid, ok := runStateTransitions[rsc.record.RunState]
+	if !ok || !valid[rs] {
+		return fmt.Errorf("invalid RunState: %s", rsc.record.RunState)
 	}
 
 	previousRunState := rsc.record.RunState
 	rsc.record.RunState = rs
 	return updateWireRecord(ctx, rsc.store, rsc.record, previousRunState)
-}
-
-func validateRunStateTransition(record *Record, runState RunState, sentinelErr error) error {
-	valid, ok := runStateTransitions[record.RunState]
-	if !ok {
-		return errors.Wrap(sentinelErr, "current run state is terminal", j.MKV{
-			"record_id":           record.ID,
-			"workflow_name":       record.WorkflowName,
-			"run_state":           record.RunState.String(),
-			"run_state_int_value": int(record.RunState),
-		})
-	}
-
-	if !valid[runState] {
-		msg := "Current run state cannot transition to " + runState.String()
-		return errors.Wrap(sentinelErr, msg, j.MKV{
-			"record_id":           record.ID,
-			"workflow_name":       record.WorkflowName,
-			"run_state":           record.RunState.String(),
-			"run_state_int_value": int(record.RunState),
-		})
-	}
-
-	return nil
 }
 
 var runStateTransitions = map[RunState]map[RunState]bool{
@@ -181,23 +155,3 @@ var runStateTransitions = map[RunState]map[RunState]bool{
 		RunStateRequestedDataDeleted: true,
 	},
 }
-
-type noopRunStateController struct{}
-
-func (c *noopRunStateController) Pause(ctx context.Context) error {
-	return nil
-}
-
-func (c *noopRunStateController) Cancel(ctx context.Context) error {
-	return nil
-}
-
-func (c *noopRunStateController) Resume(ctx context.Context) error {
-	return nil
-}
-
-func (c *noopRunStateController) DeleteData(ctx context.Context) error {
-	return nil
-}
-
-var _ RunStateController = (*noopRunStateController)(nil)
