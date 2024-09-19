@@ -19,8 +19,3 @@ type RoleScheduler struct {
 func (r *RoleScheduler) Await(ctx context.Context, role string) (context.Context, context.CancelFunc, error) {
 	return r.rink.Roles.AwaitRoleContext(ctx, role)
 }
-
-func (r *RoleScheduler) Close() error {
-	r.rink.Shutdown(context.Background())
-	return nil
-}
