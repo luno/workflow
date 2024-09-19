@@ -11,7 +11,7 @@ on:
 
 jobs:
 
-  build:
+  core:
     strategy:
       matrix:
         go: [ '1.21', '1.22', '1' ]
@@ -29,3 +29,19 @@ jobs:
 
     - name: Test
       run: go test -v ./...
+
+  adapters:
+    strategy:
+      matrix:
+        adapters: [ 'kafkastreamer', 'reflexstreamer', 'sqlstore', 'sqltimeout', 'jlog' ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.22'
+
+      - name: Vet
+        run: cd ./adapters/${{ matrix.adapters }} && go vet -v ./...
