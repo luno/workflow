@@ -105,17 +105,23 @@ func Require[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status
 		}
 	}
 
-	var typ Type
-	err := json.Unmarshal(wr.Object, &typ)
+	var actual Type
+	err := Unmarshal(wr.Object, &actual)
 	require.Nil(t, err)
 
-	actual := &Run[Type, Status]{
-		Record: *wr,
-		Status: Status(wr.Status),
-		Object: &typ,
-	}
+	// Due to nuances in encoding libraries such as json with the ability to implement custom
+	// encodings the marshaling and unmarshalling of an object could result in a different output
+	// than the one provided unbeknown to the user. Calling Marshal and Unmarshal on `expected`
+	// means that the same operations take place on the type and thus the unmarshaled versions
+	// should match.
+	encoded, err := Marshal(&expected)
+	require.Nil(t, err)
 
-	require.Equal(t, expected, *actual.Object)
+	var normalisedExpected Type
+	err = Unmarshal(encoded, &normalisedExpected)
+	require.Nil(t, err)
+
+	require.Equal(t, normalisedExpected, actual)
 }
 
 // NewTestingRun should be used when testing logic that defines a workflow.Run as a parameter. This is usually the
