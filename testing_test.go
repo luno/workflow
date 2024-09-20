@@ -15,7 +15,7 @@ import (
 )
 
 func TestRequire(t *testing.T) {
-	b := workflow.NewBuilder[testCustomMarshaler, status]("circular flow")
+	b := workflow.NewBuilder[testCustomMarshaler, status]("test")
 	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Run[testCustomMarshaler, status]) (status, error) {
 		*r.Object = "Lower"
 		return StatusEnd, nil
