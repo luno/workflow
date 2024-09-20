@@ -6,7 +6,7 @@ replace github.com/luno/workflow => ../..
 
 require (
 	github.com/luno/jettison v0.0.0-20240625085333-8727b580c646
-	github.com/luno/workflow v0.0.0-20240716150028-e4650a2adf6a
+	github.com/luno/workflow v0.0.0-20240919144112-a3dd85f86e86
 	github.com/segmentio/kafka-go v0.4.47
 )
 
