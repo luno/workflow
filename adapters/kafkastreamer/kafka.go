@@ -23,6 +23,7 @@ type StreamConstructor struct {
 }
 
 func (s StreamConstructor) NewProducer(ctx context.Context, topic string) (workflow.Producer, error) {
+	laksjdnflknsdflknsdf
 	return &Producer{
 		Topic: topic,
 		Writer: &kafka.Writer{
