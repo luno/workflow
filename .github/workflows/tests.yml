@@ -42,3 +42,16 @@ jobs:
 
       - name: Vet
         run: find ./adapters -type f -name "go.mod" -exec dirname {} \; | while read -r dir; do (cd "$dir" && go vet ./...) done
+
+  _examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.22'
+
+      - name: Vet
+        run: find ./_examples -type f -name "go.mod" -exec dirname {} \; | while read -r dir; do (cd "$dir" && go vet ./...) done
