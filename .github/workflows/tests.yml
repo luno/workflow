@@ -11,7 +11,7 @@ on:
 
 jobs:
 
-  test-and-vet-core:
+  core:
     strategy:
       matrix:
         go: [ '1.21', '1.22', '1' ]
@@ -30,7 +30,7 @@ jobs:
     - name: Test
       run: go test -v ./...
 
-  vet-adapters:
+  adapters:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -41,4 +41,4 @@ jobs:
           go-version: '1.22'
 
       - name: Vet
-        run: go list -f './adapters' -m | xargs go vet
+        run: list -f './adapters' -m | xargs go vet
