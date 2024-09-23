@@ -41,4 +41,4 @@ jobs:
           go-version: '1.22'
 
       - name: Vet
-        run: find ./adapters -type f -name "go.mod" -exec dirname {} \; | while read -r dir; do (cd "$dir" && go vet ./... -v) done
+        run: find ./adapters -type f -name "go.mod" -exec dirname {} \; | while read -r dir; do (cd "$dir" && go vet ./...) done
