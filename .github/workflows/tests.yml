@@ -31,9 +31,6 @@ jobs:
       run: go test -v ./...
 
   adapters:
-    strategy:
-      matrix:
-        adapters: [ 'kafkastreamer', 'reflexstreamer', 'sqlstore', 'sqltimeout', 'jlog' ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -44,4 +41,4 @@ jobs:
           go-version: '1.22'
 
       - name: Vet
-        run: cd ./adapters/${{ matrix.adapters }} && go vet -v ./...
+        run: find ./adapters -type f -name "go.mod" -exec dirname {} \; | while read -r dir; do (cd "$dir" && go vet ./... -v) done
