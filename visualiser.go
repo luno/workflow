@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"text/template"
+
+	"github.com/luno/workflow/internal/util"
 )
 
 // CreateDiagram creates a diagram in a md file for communicating a workflow's set of steps in an easy-to-understand
@@ -39,21 +41,21 @@ func mermaidDiagram[Type any, Status StatusType](a API[Type, Status], path strin
 
 	graphInfo := w.statusGraph.Info()
 
-	var starting []string
+	var starting []int
 	for _, node := range graphInfo.StartingNodes {
-		starting = append(starting, statusToString(Status(node)))
+		starting = append(starting, node)
 	}
 
-	var terminal []string
+	var terminal []int
 	for _, node := range graphInfo.TerminalNodes {
-		terminal = append(terminal, statusToString(Status(node)))
+		terminal = append(terminal, node)
 	}
 
 	var transitions []MermaidTransition
 	for _, transition := range graphInfo.Transitions {
 		transitions = append(transitions, MermaidTransition{
-			From: statusToString(Status(transition.From)),
-			To:   statusToString(Status(transition.To)),
+			From: transition.From,
+			To:   transition.To,
 		})
 	}
 
@@ -63,22 +65,25 @@ func mermaidDiagram[Type any, Status StatusType](a API[Type, Status], path strin
 		StartingPoints: starting,
 		TerminalPoints: terminal,
 		Transitions:    transitions,
+		Nodes:          w.statusGraph.Nodes(),
 	}
 
-	return template.Must(template.New("").Parse("```"+mermaidTemplate+"```")).Execute(file, mf)
+	return template.Must(template.New("").Funcs(map[string]any{
+		"Description": description[Status],
+	}).Parse("```"+mermaidTemplate+"```")).Execute(file, mf)
 }
 
-func statusToString[Status StatusType](s Status) string {
-	str := strings.ToLower(s.String())
-	str = strings.Replace(str, " ", "_", -1)
-	return str
+func description[Status StatusType](val int) string {
+	s := Status(val).String()
+	return util.CamelToSpacing(s)
 }
 
 type MermaidFormat struct {
 	WorkflowName   string
 	Direction      MermaidDirection
-	StartingPoints []string
-	TerminalPoints []string
+	Nodes          []int
+	StartingPoints []int
+	TerminalPoints []int
 	Transitions    []MermaidTransition
 }
 
@@ -93,8 +98,8 @@ const (
 )
 
 type MermaidTransition struct {
-	From string
-	To   string
+	From int
+	To   int
 }
 
 var mermaidTemplate = `mermaid
@@ -103,6 +108,10 @@ title: Diagram of {{.WorkflowName}} Workflow
 ---
 stateDiagram-v2
 	direction {{.Direction}}
+	{{range $key, $value := .Nodes }}
+	{{$value}}: {{Description $value}}
+	{{- end }}
+
 	{{range $key, $value := .Transitions }}
 	{{$value.From}}-->{{$value.To}}
 	{{- end }}
