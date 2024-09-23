@@ -9,7 +9,7 @@ import (
 	"github.com/luno/workflow/internal/util"
 )
 
-func TestCamelToSpacing(t *testing.T) {
+func TestCamelCaseToSpacing(t *testing.T) {
 	tests := []struct {
 		input    string
 		expected string
@@ -24,7 +24,7 @@ func TestCamelToSpacing(t *testing.T) {
 
 	for i, test := range tests {
 		t.Run(fmt.Sprintf("case %v: %v", i+1, test.input), func(t *testing.T) {
-			result := util.CamelToSpacing(test.input)
+			result := util.CamelCaseToSpacing(test.input)
 			require.Equal(t, test.expected, result)
 		})
 	}

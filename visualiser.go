@@ -75,7 +75,7 @@ func mermaidDiagram[Type any, Status StatusType](a API[Type, Status], path strin
 
 func description[Status StatusType](val int) string {
 	s := Status(val).String()
-	return util.CamelToSpacing(s)
+	return util.CamelCaseToSpacing(s)
 }
 
 type MermaidFormat struct {

@@ -2,7 +2,7 @@ package util
 
 import "unicode"
 
-func CamelToSpacing(s string) string {
+func CamelCaseToSpacing(s string) string {
 	var result []rune
 	for i, r := range s {
 		if unicode.IsUpper(r) && i > 0 {
