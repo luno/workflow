@@ -4,11 +4,7 @@ import (
 	"encoding/json"
 )
 
+// Marshal create a single point of change if the encoding changes.
 func Marshal[T any](t *T) ([]byte, error) {
-	b, err := json.Marshal(t)
-	if err != nil {
-		return nil, err
-	}
-
-	return b, nil
+	return json.Marshal(t)
 }

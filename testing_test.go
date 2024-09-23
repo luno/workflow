@@ -2,6 +2,8 @@ package workflow_test
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -12,24 +14,12 @@ import (
 	"github.com/luno/workflow/adapters/memstreamer"
 )
 
-func TestRequireForCircularStatus(t *testing.T) {
-	type Counter struct {
-		Count int
-	}
-
-	b := workflow.NewBuilder[Counter, status]("circular flow")
-	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Run[Counter, status]) (status, error) {
-		r.Object.Count += 1
-		return StatusMiddle, nil
-	}, StatusMiddle)
-	b.AddStep(StatusMiddle, func(ctx context.Context, r *workflow.Run[Counter, status]) (status, error) {
-		if r.Object.Count < 2 {
-			return StatusStart, nil
-		}
-
-		r.Object.Count += 1
+func TestRequire(t *testing.T) {
+	b := workflow.NewBuilder[testCustomMarshaler, status]("test")
+	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Run[testCustomMarshaler, status]) (status, error) {
+		*r.Object = "Lower"
 		return StatusEnd, nil
-	}, StatusStart, StatusEnd)
+	}, StatusEnd)
 
 	wf := b.Build(
 		memstreamer.New(),
@@ -45,9 +35,14 @@ func TestRequireForCircularStatus(t *testing.T) {
 	_, err := wf.Trigger(ctx, fid, StatusStart)
 	require.Nil(t, err)
 
-	workflow.Require(t, wf, fid, StatusStart, Counter{Count: 0})
-	workflow.Require(t, wf, fid, StatusMiddle, Counter{Count: 1})
-	workflow.Require(t, wf, fid, StatusStart, Counter{Count: 1})
-	workflow.Require(t, wf, fid, StatusMiddle, Counter{Count: 2})
-	workflow.Require(t, wf, fid, StatusEnd, Counter{Count: 3})
+	workflow.Require(t, wf, fid, StatusEnd, "Lower")
+}
+
+// testCustomMarshaler is for testing and implements custom and weird behaviour via the
+// MarshalJSON method and this is to test that the Require function can successfully compare
+// the actual and expected by running them through the same encoding / decoding process.
+type testCustomMarshaler string
+
+func (t testCustomMarshaler) MarshalJSON() ([]byte, error) {
+	return json.Marshal(strings.ToLower(string(t)))
 }
