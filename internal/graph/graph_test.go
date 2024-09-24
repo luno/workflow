@@ -53,4 +53,8 @@ func TestGraph(t *testing.T) {
 		},
 	}
 	require.Equal(t, expected, actual)
+
+	actualNodes := g.Nodes()
+	expectedNodes := []int{1, 2, 3, 4, 5}
+	require.Equal(t, expectedNodes, actualNodes)
 }

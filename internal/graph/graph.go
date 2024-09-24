@@ -1,5 +1,7 @@
 package graph
 
+import "slices"
+
 func New() *Graph {
 	return &Graph{
 		graph:      make(map[int][]int),
@@ -73,6 +75,21 @@ type Info struct {
 	StartingNodes []int
 	TerminalNodes []int
 	Transitions   []Transition
+}
+
+func (g *Graph) Nodes() []int {
+	var nodes []int
+	for node, ok := range g.validNodes {
+		if !ok {
+			continue
+		}
+
+		nodes = append(nodes, node)
+	}
+
+	slices.Sort(nodes)
+
+	return nodes
 }
 
 func (g *Graph) Info() Info {
