@@ -8,9 +8,11 @@ stateDiagram-v2
 	9: Start
 	10: Middle
 	11: End
-
 	
-	9-->10
-	9-->11
+    state if_state <<choice>>
+    9 --> if_state
+    if_state --> 10
+    if_state --> 11 
+	
 	10-->11
 ```
