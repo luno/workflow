@@ -52,11 +52,18 @@ func mermaidDiagram[Type any, Status StatusType](a API[Type, Status], path strin
 	}
 
 	var transitions []MermaidTransition
+	dedupe := make(map[int]bool)
 	for _, transition := range graphInfo.Transitions {
+		if dedupe[transition.From] {
+			continue
+		}
+
 		transitions = append(transitions, MermaidTransition{
 			From: transition.From,
-			To:   transition.To,
+			To:   w.statusGraph.Transitions(transition.From),
 		})
+
+		dedupe[transition.From] = true
 	}
 
 	mf := MermaidFormat{
@@ -99,20 +106,27 @@ const (
 
 type MermaidTransition struct {
 	From int
-	To   int
+	To   []int
 }
 
 var mermaidTemplate = `mermaid
 ---
-title: Diagram of {{.WorkflowName}} Workflow
+title: Workflow diagram of {{.WorkflowName}}
 ---
 stateDiagram-v2
 	direction {{.Direction}}
 	{{range $key, $value := .Nodes }}
 	{{$value}}: {{Description $value}}
 	{{- end }}
-
-	{{range $key, $value := .Transitions }}
-	{{$value.From}}-->{{$value.To}}
+	{{ range $key, $value := .Transitions }}
+	{{- if gt (len $value.To) 1 }}
+    state if_state <<choice>>
+    {{$value.From}} --> if_state
+	{{- range $index, $to := $value.To }}
+    if_state --> {{$to}}
+	{{- end}} 
+	{{ else }}
+	{{$value.From}}-->{{index $value.To 0}}
+	{{- end}}
 	{{- end }}
 `
