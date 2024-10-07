@@ -6,7 +6,7 @@ replace github.com/luno/workflow => ../..
 
 require (
 	github.com/luno/jettison v0.0.0-20240722160230-b42bd507a5f6
-	github.com/luno/workflow v0.0.0-20240919144112-a3dd85f86e86
+	github.com/luno/workflow v0.0.0-20240930132210-ae308f007bf6
 	github.com/stretchr/testify v1.9.0
 )
 
@@ -27,7 +27,6 @@ require (
 	golang.org/x/sys v0.19.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/utils v0.0.0-20230505201702-9f6742963106 // indirect
 )
