@@ -1,6 +1,6 @@
 ```mermaid
 ---
-title: Diagram of example Workflow
+title: Workflow diagram of example
 ---
 stateDiagram-v2
 	direction LR
@@ -9,10 +9,10 @@ stateDiagram-v2
 	10: Middle
 	11: End
 	
-    state if_state <<choice>>
-    9 --> if_state
-    if_state --> 10
-    if_state --> 11 
+    state 9_branching <<choice>>
+    9 --> 9_branching
+    9_branching --> 10
+    9_branching --> 11 
 	
 	10-->11
 ```
