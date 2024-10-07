@@ -120,10 +120,10 @@ stateDiagram-v2
 	{{- end }}
 	{{ range $key, $value := .Transitions }}
 	{{- if gt (len $value.To) 1 }}
-    state if_state <<choice>>
-    {{$value.From}} --> if_state
+    state {{$value.From}}_branching <<choice>>
+    {{$value.From}} --> {{$value.From}}_branching
 	{{- range $index, $to := $value.To }}
-    if_state --> {{$to}}
+    {{$value.From}}_branching --> {{$to}}
 	{{- end}} 
 	{{ else }}
 	{{$value.From}}-->{{index $value.To 0}}
