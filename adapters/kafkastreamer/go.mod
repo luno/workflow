@@ -5,16 +5,15 @@ go 1.22.3
 replace github.com/luno/workflow => ../..
 
 require (
-	github.com/luno/jettison v0.0.0-20240625085333-8727b580c646
-	github.com/luno/workflow v0.0.0-20240919144112-a3dd85f86e86
+	github.com/luno/workflow v0.0.0-20240930132210-ae308f007bf6
 	github.com/segmentio/kafka-go v0.4.47
+	github.com/stretchr/testify v1.9.0
 )
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/klauspost/compress v1.15.9 // indirect
@@ -26,11 +25,9 @@ require (
 	github.com/prometheus/common v0.42.0 // indirect
 	github.com/prometheus/procfs v0.9.0 // indirect
 	github.com/robfig/cron/v3 v3.0.0 // indirect
-	github.com/stretchr/testify v1.9.0 // indirect
+	golang.org/x/net v0.24.0 // indirect
 	golang.org/x/sys v0.19.0 // indirect
-	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/utils v0.0.0-20230505201702-9f6742963106 // indirect
 )
