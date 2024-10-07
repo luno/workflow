@@ -5,7 +5,7 @@ go 1.22.3
 replace github.com/luno/workflow => ../..
 
 require (
-	github.com/luno/jettison v0.0.0-20240722160230-b42bd507a5f6
+	github.com/luno/jettison v0.0.0-20241003145233-25be6c50d0ec
 	github.com/luno/workflow v0.0.0-20240930132210-ae308f007bf6
 	github.com/stretchr/testify v1.9.0
 )
