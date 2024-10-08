@@ -5,7 +5,7 @@ go 1.22.3
 replace github.com/luno/workflow => ../..
 
 require (
-	github.com/luno/workflow v0.0.0-20241007150536-d9c09aad3144
+	github.com/luno/workflow v0.0.0-20241008084350-fd7fff3171ea
 	github.com/segmentio/kafka-go v0.4.47
 	github.com/stretchr/testify v1.9.0
 )
