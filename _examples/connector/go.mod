@@ -4,7 +4,7 @@ go 1.22.3
 
 replace github.com/luno/workflow => ../..
 
-require github.com/luno/workflow v0.0.0-20241008084350-fd7fff3171ea
+require github.com/luno/workflow v0.0.0-20241010092111-6566f5486aee
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
