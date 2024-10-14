@@ -67,7 +67,7 @@ type OutboxEventData struct {
 	Data []byte
 }
 
-func WireRecordToOutboxEventData(record Record, previousRunState RunState) (OutboxEventData, error) {
+func RecordToOutboxEventData(record Record, previousRunState RunState) (OutboxEventData, error) {
 	topic := Topic(record.WorkflowName, record.Status)
 
 	// Any record that is updated with a RunState of RunStateRequestedDataDeleted has it's events pushed into
@@ -75,6 +75,17 @@ func WireRecordToOutboxEventData(record Record, previousRunState RunState) (Outb
 	// topics as it usually is
 	if record.RunState == RunStateRequestedDataDeleted {
 		topic = DeleteTopic(record.WorkflowName)
+	}
+
+	// Records being updated to any of the following RunStates means that the event should be directed to the
+	// RunStateChangeTopic. This is because normal consumers in workflow should not consume events that relate
+	// to any of the below RunStates. The separate topic allows for hooks to consume the RunState changes and
+	// respond to changes in RunState.
+	if record.RunState == RunStatePaused ||
+		record.RunState == RunStateCancelled ||
+		record.RunState == RunStateDataDeleted ||
+		record.RunState == RunStateCompleted {
+		topic = RunStateChangeTopic(record.WorkflowName)
 	}
 
 	headers := make(map[string]string)

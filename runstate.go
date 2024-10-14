@@ -120,7 +120,7 @@ func (rsc *runStateControllerImpl) DeleteData(ctx context.Context) error {
 func (rsc *runStateControllerImpl) update(ctx context.Context, rs RunState) error {
 	valid, ok := runStateTransitions[rsc.record.RunState]
 	if !ok || !valid[rs] {
-		return fmt.Errorf("invalid RunState: %s", rsc.record.RunState)
+		return fmt.Errorf("invalid RunState: from %s | to %s", rsc.record.RunState, rs)
 	}
 
 	previousRunState := rsc.record.RunState

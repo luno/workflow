@@ -24,6 +24,12 @@ func (w *Workflow[Type, Status]) Await(ctx context.Context, foreignID, runID str
 
 func awaitWorkflowStatusByForeignID[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], status Status, foreignID, runID string, role string, pollFrequency time.Duration) (*Run[Type, Status], error) {
 	topic := Topic(w.Name, int(status))
+	// Terminal statuses result in the RunState changing to Completed and are stored in the RunStateChangeTopic
+	// as it is a key event in the Workflow Run's lifecycle.
+	if w.statusGraph.IsTerminal(int(status)) {
+		topic = RunStateChangeTopic(w.Name)
+	}
+
 	stream, err := w.eventStreamer.NewConsumer(
 		ctx,
 		topic,
@@ -77,9 +83,11 @@ func awaitWorkflowStatusByForeignID[Type any, Status StatusType](ctx context.Con
 		}
 
 		return &Run[Type, Status]{
-			Record:     *r,
-			Status:     Status(r.Status),
-			Object:     &t,
+			TypedRecord: TypedRecord[Type, Status]{
+				Record: *r,
+				Status: Status(r.Status),
+				Object: &t,
+			},
 			controller: NewRunStateController(w.recordStore.Store, r),
 		}, ack()
 	}

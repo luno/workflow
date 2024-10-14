@@ -24,7 +24,7 @@ var _ workflow.API[MyType, status] = (*workflow.Workflow[MyType, status])(nil)
 
 type MyType struct {
 	UserID      int64
-	Profile     string
+	Name        string
 	Email       string
 	Cellphone   string
 	OTP         int
@@ -58,7 +58,7 @@ func (s status) String() string {
 	case StatusInitiated:
 		return "Initiated"
 	case StatusProfileCreated:
-		return "Profile Created"
+		return "Name Created"
 	case StatusEmailConfirmationSent:
 		return "Email Confirmation Sent"
 	case StatusEmailVerified:
@@ -111,6 +111,10 @@ func TestWorkflowAcceptanceTest(t *testing.T) {
 	b.AddStep(StatusCellphoneNumberSubmitted, sendOTP, StatusOTPSent).WithOptions(workflow.ParallelCount(2))
 	b.AddCallback(StatusOTPSent, otpCallback, StatusOTPVerified)
 	b.AddTimeout(StatusOTPVerified, workflow.DurationTimerFunc[MyType, status](time.Hour), waitForAccountCoolDown, StatusCompleted)
+	b.OnComplete(func(ctx context.Context, record *workflow.TypedRecord[MyType, status]) error {
+		fmt.Println(fmt.Sprintf("Welcome %v 👋", record.Object.Name))
+		return nil
+	})
 
 	recordStore := memrecordstore.New()
 	clock := clock_testing.NewFakeClock(time.Now())
@@ -167,7 +171,7 @@ func TestWorkflowAcceptanceTest(t *testing.T) {
 
 	require.Equal(t, expectedUserID, actual.UserID)
 	require.Equal(t, strconv.FormatInt(expectedUserID, 10), actual.ForeignID())
-	require.Equal(t, expectedProfile, actual.Profile)
+	require.Equal(t, expectedProfile, actual.Name)
 	require.Equal(t, expectedEmail, actual.Email)
 	require.Equal(t, expectedCellphone, actual.Cellphone)
 	require.Equal(t, expectedOTP, actual.OTP)
@@ -292,7 +296,7 @@ var (
 )
 
 func createProfile(ctx context.Context, mt *workflow.Run[MyType, status]) (status, error) {
-	mt.Object.Profile = "Andrew Wormald"
+	mt.Object.Name = "Andrew Wormald"
 	return StatusProfileCreated, nil
 }
 

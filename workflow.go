@@ -68,9 +68,10 @@ type Workflow[Type any, Status StatusType] struct {
 	timeouts         map[Status]timeouts[Type, Status]
 	connectorConfigs []*connectorConfig[Type, Status]
 
-	defaultOpts  options
-	outboxConfig outboxConfig
-	customDelete customDelete
+	defaultOpts         options
+	outboxConfig        outboxConfig
+	customDelete        customDelete
+	runStateChangeHooks map[RunState]RunStateChangeHookFunc[Type, Status]
 
 	internalStateMu sync.Mutex
 	// internalState holds the State of all expected consumers and timeout go routines using their role names
@@ -146,6 +147,12 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 					go connectorConsumer(w, config, i, config.parallelCount)
 				}
 			}
+		}
+
+		// Launch all the run state change hooks that consume run state changes and respond according to the user's
+		// configuration.
+		for state, hook := range w.runStateChangeHooks {
+			go runStateChangeHookConsumer(w, state, hook)
 		}
 
 		// Launch the delete consumer which will manage all data deletion requests.

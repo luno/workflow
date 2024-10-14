@@ -25,3 +25,11 @@ func DeleteTopic(workflowName string) string {
 		"delete",
 	}, topicSeparator)
 }
+
+func RunStateChangeTopic(workflowName string) string {
+	name := strings.ReplaceAll(workflowName, " ", emptySpaceReplacement)
+	return strings.Join([]string{
+		name,
+		"run-state-change",
+	}, topicSeparator)
+}

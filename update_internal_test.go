@@ -33,11 +33,13 @@ func TestUpdater(t *testing.T) {
 			},
 			current: statusStart,
 			update: Run[string, testStatus]{
-				Record: Record{
-					RunState: RunStateRunning,
-					Status:   int(statusMiddle),
+				TypedRecord: TypedRecord[string, testStatus]{
+					Record: Record{
+						RunState: RunStateRunning,
+						Status:   int(statusMiddle),
+					},
+					Status: statusMiddle,
 				},
-				Status: statusMiddle,
 			},
 			transitions: []graph.Transition{
 				{
@@ -60,11 +62,13 @@ func TestUpdater(t *testing.T) {
 			},
 			current: statusStart,
 			update: Run[string, testStatus]{
-				Record: Record{
-					RunState: RunStateRunning,
-					Status:   int(statusMiddle),
+				TypedRecord: TypedRecord[string, testStatus]{
+					Record: Record{
+						RunState: RunStateRunning,
+						Status:   int(statusMiddle),
+					},
+					Status: statusMiddle,
 				},
-				Status: statusMiddle,
 			},
 			transitions: []graph.Transition{},
 			expectedErr: fmt.Errorf("current status not defined in graph: current=%s", statusStart),
@@ -78,11 +82,13 @@ func TestUpdater(t *testing.T) {
 			},
 			current: statusStart,
 			update: Run[string, testStatus]{
-				Record: Record{
-					RunState: RunStateRunning,
-					Status:   int(statusMiddle),
+				TypedRecord: TypedRecord[string, testStatus]{
+					Record: Record{
+						RunState: RunStateRunning,
+						Status:   int(statusMiddle),
+					},
+					Status: statusMiddle,
 				},
-				Status: statusMiddle,
 			},
 			transitions: []graph.Transition{
 				{
@@ -118,11 +124,13 @@ func TestUpdater(t *testing.T) {
 			},
 			current: statusStart,
 			update: Run[string, testStatus]{
-				Record: Record{
-					RunState: RunStateRunning,
-					Status:   int(statusMiddle),
+				TypedRecord: TypedRecord[string, testStatus]{
+					Record: Record{
+						RunState: RunStateRunning,
+						Status:   int(statusMiddle),
+					},
+					Status: statusMiddle,
 				},
-				Status: statusMiddle,
 			},
 			transitions: []graph.Transition{
 				{
