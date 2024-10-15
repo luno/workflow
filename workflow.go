@@ -215,7 +215,7 @@ func runOnce(
 		// Exit cleanly if error returned is cancellation of context
 		return err
 	} else if err != nil {
-		logger.Error(ctx, fmt.Errorf("run error [role=%v], [process=%v]: %v", role, processName, err))
+		logger.Error(ctx, fmt.Errorf("run error [role=%s], [process=%s]: %v", role, processName, err))
 
 		// Return nil to try again
 		return nil
@@ -230,7 +230,7 @@ func runOnce(
 		// and if the parent context was cancelled then that will exit safely.
 		return nil
 	} else if err != nil {
-		logger.Error(ctx, fmt.Errorf("run error [role=%v], [process=%v]: %v", role, processName, err))
+		logger.Error(ctx, fmt.Errorf("run error [role=%s], [process=%s]: %v", role, processName, err))
 		metrics.ProcessErrors.WithLabelValues(workflowName, processName).Inc()
 
 		timer := clock.NewTimer(errBackOff)
