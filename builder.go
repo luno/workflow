@@ -199,10 +199,6 @@ func (b *Builder[Type, Status]) OnComplete(hook RunStateChangeHookFunc[Type, Sta
 	b.workflow.runStateChangeHooks[RunStateCompleted] = hook
 }
 
-func (b *Builder[Type, Status]) OnDeleted(hook RunStateChangeHookFunc[Type, Status]) {
-	b.workflow.runStateChangeHooks[RunStateDataDeleted] = hook
-}
-
 func (b *Builder[Type, Status]) Build(eventStreamer EventStreamer, recordStore RecordStore, roleScheduler RoleScheduler, opts ...BuildOption) *Workflow[Type, Status] {
 	b.workflow.eventStreamer = eventStreamer
 	b.workflow.recordStore = recordStore
