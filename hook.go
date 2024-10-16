@@ -3,7 +3,6 @@ package workflow
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -105,7 +104,6 @@ func runHooks[Type any, Status StatusType](
 		var t Type
 		err = Unmarshal(record.Object, &t)
 		if err != nil {
-			fmt.Println(err)
 			metrics.ProcessSkippedEvents.WithLabelValues(workflowName, processName, "unable to unmarshal object").Inc()
 			err = ack()
 			if err != nil {
