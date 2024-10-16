@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -36,11 +37,11 @@ func runStateChangeHookConsumer[Type any, Status StatusType](w *Workflow[Type, S
 		}
 		defer consumerStream.Close()
 
-		return RunStateChangeHookForever(ctx, w.Name, processName, consumerStream, runState, w.recordStore.Lookup, hook, w.defaultOpts.lagAlert, w.clock)
+		return runHooks(ctx, w.Name, processName, consumerStream, runState, w.recordStore.Lookup, hook, w.defaultOpts.lagAlert, w.clock)
 	}, w.defaultOpts.errBackOff)
 }
 
-func RunStateChangeHookForever[Type any, Status StatusType](
+func runHooks[Type any, Status StatusType](
 	ctx context.Context,
 	workflowName string,
 	processName string,
@@ -63,7 +64,13 @@ func RunStateChangeHookForever[Type any, Status StatusType](
 
 		rs, err := strconv.ParseInt(e.Headers[HeaderRunState], 10, 64)
 		if err != nil {
-			return err
+			metrics.ProcessSkippedEvents.WithLabelValues(workflowName, processName, "invalid or missing HeaderRunState").Inc()
+			err = ack()
+			if err != nil {
+				return err
+			}
+
+			continue
 		}
 
 		if RunState(rs) != runState {
@@ -98,7 +105,14 @@ func RunStateChangeHookForever[Type any, Status StatusType](
 		var t Type
 		err = Unmarshal(record.Object, &t)
 		if err != nil {
-			return err
+			fmt.Println(err)
+			metrics.ProcessSkippedEvents.WithLabelValues(workflowName, processName, "unable to unmarshal object").Inc()
+			err = ack()
+			if err != nil {
+				return err
+			}
+
+			continue
 		}
 
 		err = hook(ctx, &TypedRecord[Type, Status]{
