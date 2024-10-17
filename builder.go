@@ -37,6 +37,7 @@ func NewBuilder[Type any, Status StatusType](name string) *Builder[Type, Status]
 				debugMode: false, // Explicit for readability
 				inner:     interal_logger.New(os.Stdout),
 			},
+			runStateChangeHooks: make(map[RunState]RunStateChangeHookFunc[Type, Status]),
 		},
 	}
 }
@@ -184,6 +185,18 @@ func (c *connectorUpdater[Type, Status]) WithOptions(opts ...Option) {
 	c.config.errBackOff = connectorOpts.errBackOff
 	c.config.lag = connectorOpts.lag
 	c.config.lagAlert = connectorOpts.lagAlert
+}
+
+func (b *Builder[Type, Status]) OnPause(hook RunStateChangeHookFunc[Type, Status]) {
+	b.workflow.runStateChangeHooks[RunStatePaused] = hook
+}
+
+func (b *Builder[Type, Status]) OnCancel(hook RunStateChangeHookFunc[Type, Status]) {
+	b.workflow.runStateChangeHooks[RunStateCancelled] = hook
+}
+
+func (b *Builder[Type, Status]) OnComplete(hook RunStateChangeHookFunc[Type, Status]) {
+	b.workflow.runStateChangeHooks[RunStateCompleted] = hook
 }
 
 func (b *Builder[Type, Status]) Build(eventStreamer EventStreamer, recordStore RecordStore, roleScheduler RoleScheduler, opts ...BuildOption) *Workflow[Type, Status] {

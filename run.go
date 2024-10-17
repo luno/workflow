@@ -8,9 +8,7 @@ import (
 // having defined types for the Status and Object fields along with access to the RunStateController which
 // controls the state of the run aka "RunState".
 type Run[Type any, Status StatusType] struct {
-	Record
-	Status Status
-	Object *Type
+	TypedRecord[Type, Status]
 
 	// stopper provides controls over the run state of the record. Run is not serializable and is not
 	// intended to be and thus Record exists as a serializable representation of a record.
@@ -53,19 +51,21 @@ func buildRun[Type any, Status StatusType](store storeFunc, wr *Record) (*Run[Ty
 		return nil, err
 	}
 
-	controller := NewRunStateController(store, wr)
-	record := Run[Type, Status]{
-		Record:     *wr,
-		Status:     Status(wr.Status),
-		Object:     &t,
-		controller: controller,
-	}
-
 	// The first time the record is consumed, it needs to be marked as RunStateRunning to represent that the record
 	// has begun being processed. Even if the consumer errors then this should update should remain in place and
 	// not be executed on the subsequent retries.
-	if record.RunState == RunStateInitiated {
-		record.RunState = RunStateRunning
+	if wr.RunState == RunStateInitiated {
+		wr.RunState = RunStateRunning
+	}
+
+	controller := NewRunStateController(store, wr)
+	record := Run[Type, Status]{
+		TypedRecord: TypedRecord[Type, Status]{
+			Record: *wr,
+			Status: Status(wr.Status),
+			Object: &t,
+		},
+		controller: controller,
 	}
 
 	return &record, nil

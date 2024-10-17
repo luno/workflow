@@ -64,7 +64,7 @@ func newUpdater[Type any, Status StatusType](lookup lookupFunc, store storeFunc,
 		return store(ctx, updatedRecord, func(recordID int64) (OutboxEventData, error) {
 			// Run ID would not have been set if it is a new record. Assign the recordID that the Store provides
 			updatedRecord.ID = recordID
-			return WireRecordToOutboxEventData(*updatedRecord, record.RunState)
+			return RecordToOutboxEventData(*updatedRecord, record.RunState)
 		})
 	}
 }
@@ -100,6 +100,6 @@ func updateWireRecord(ctx context.Context, store storeFunc, record *Record, prev
 	return store(ctx, record, func(recordID int64) (OutboxEventData, error) {
 		// Run ID would not have been set if it is a new record. Assign the recordID that the Store provides
 		record.ID = recordID
-		return WireRecordToOutboxEventData(*record, previousRunState)
+		return RecordToOutboxEventData(*record, previousRunState)
 	})
 }

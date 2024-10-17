@@ -171,8 +171,8 @@ Head on over to [./_examples](./_examples) to get familiar with **callbacks**, *
 ---
 
 ## Workflow's RunState
-RunState is the state of a workflow run and can only exist in one state at any given time. RunState is a
- finite state machine and allows for control over the workflow run. A workflow run is every instance of
+RunState is the state of a Run and can only exist in one state at any given time. RunState is a
+ finite state machine and allows for control over the Run. A Run is every instance of
  a triggered workflow.
 ```mermaid
 ---
@@ -199,6 +199,27 @@ stateDiagram-v2
         RequestedDataDeleted-->DataDeleted
     }
 ```
+---
+## Hooks
+
+Hooks allow for you to write some functionality for Runs that enter a specific RunState. For example when
+using `PauseAfterErrCount` the usage of the OnPause hook can be used to send a notification to a team to notify
+them that a specific Run has errored to the threshold and now has been paused and should be investigated. Another
+example is handling a known sentinel error in a Workflow Run and cancelling the Run by calling (where r is *Run)
+r.Cancel(ctx) or if a Workflow Run is manually cancelled from a UI then a notifgication can be sent to the team for visibility.
+
+Hooks run in an event consumer. This means that it will retry until a nil error has been returned and is durable
+across deploys and interruptions. At-least-once delivery is guaranteed, and it is advised to use the RunID as an
+idempotency key to ensure that the operation is idempotent.
+
+### Available Hooks:
+
+| Hook          | Parameter(s)                    | Return(s) | Description                               | Is Event Driven? |
+|---------------|---------------------------------|-----------|-------------------------------------------|------------------|
+| OnPause       | workflow.RunStateChangeHookFunc | error     | Fired when a Run enters RunStatePaused    | Yes              |
+| OnCancelled   | workflow.RunStateChangeHookFunc | error     | Fired when a Run enters RunStateCancelled | Yes              |
+| OnDataDeleted | workflow.RunStateChangeHookFunc | error     | Fired when a Run enters RunStateDeleted   | Yes              |
+| OnCompleted   | workflow.RunStateChangeHookFunc | error     | Fired when a Run enters RunStateCompleted | Yes              |
 
 ---
 
@@ -326,18 +347,19 @@ b.AddStep(
 
 ## Glossary
 
-| **Term**         | **Description**                                                                                                                                                                                                       |
-|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Builder**      | A struct type that facilitates the construction of workflows. It provides methods for adding steps, callbacks, timeouts, and connecting workflows.                                                                    |
-| **Callback**     | A method in the workflow API that can be used to trigger a callback function for a specified status. It passes data from a reader to the specified callback function.                                                 |
-| **Consumer**     | A component that consumes events from an event stream. In this context, it refers to the background consumer goroutines launched by the workflow.                                                                     |
-| **EventStreamer**| An interface representing a stream for workflow events. It includes methods for producing and consuming events.                                                                                                       |
-| **Graph**        | A representation of the workflow's structure, showing the relationships between different statuses and transitions.                                                                                                   |
-| **Producer**     | A component that produces events to an event stream. It is responsible for sending events to the stream.                                                                                                              |
-| **Record**  | Is the wire format and representation of a run that can be stored and retrieved. The RecordStore is used for storing and retrieving records.                                                                          |
-| **RecordStore**  | An interface representing a store for Record(s). It defines the methods needed for storing and retrieving records. The RecordStore's underlying technology must support transactions in order to prevent dual-writes. |
-| **RoleScheduler**| An interface representing a scheduler for roles in the workflow. It is responsible for coordinating the execution of different roles.                                                                                 |
-| **Topic**        | A method that generates a topic for producing events in the event streamer based on the workflow name and status.                                                                                                     |
-| **Trigger**      | A method in the workflow API that initiates a workflow for a specified foreignID and starting status. It returns a runID and allows for additional configuration options.                                             |
-| **WireFormat**   | A format used for serializing and deserializing data for communication between workflow components. It refers to the wire format of the WireRecord.                                                                   |
-| **WireRecord**   | A struct representing a record with additional metadata used for communication between workflow components. It can be marshaled to a wire format for storage and transmission.                                        |
+| **Term**          | **Description**                                                                                                                                                                                                       |
+|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Builder**       | A struct type that facilitates the construction of workflows. It provides methods for adding steps, callbacks, timeouts, and connecting workflows.                                                                    |
+| **Callback**      | A method in the workflow API that can be used to trigger a callback function for a specified status. It passes data from a reader to the specified callback function.                                                 |
+| **Consumer**      | A component that consumes events from an event stream. In this context, it refers to the background consumer goroutines launched by the workflow.                                                                     |
+| **EventStreamer** | An interface representing a stream for workflow events. It includes methods for producing and consuming events.                                                                                                       |
+| **Graph**         | A representation of the workflow's structure, showing the relationships between different statuses and transitions.                                                                                                   |
+| **Hooks**         | An event driven process that take place on a Workflow's Run's lifecycle defined in a finite number of states called RunState.                                                                                         |
+| **Producer**      | A component that produces events to an event stream. It is responsible for sending events to the stream.                                                                                                              |
+| **Record**        | Is the "wire format" and representation of a Run that can be stored and retrieved. The RecordStore is used for storing and retrieving records.                                                                        |
+| **RecordStore**   | An interface representing a store for Record(s). It defines the methods needed for storing and retrieving records. The RecordStore's underlying technology must support transactions in order to prevent dual-writes. |
+| **RoleScheduler** | An interface representing a scheduler for roles in the workflow. It is responsible for coordinating the execution of different roles.                                                                                 |
+| **Run**           | A Run is the representation of the instance that is created and processed by the Workflow. Each time Trigger is called a new "Run" is created.                                                                        |
+| **RunState**      | RunState defines the finite number of states that a Run can be in. This is used to control and monitor the lifecycle of Runs.                                                                                         |
+| **Topic**         | A method that generates a topic for producing events in the event streamer based on the workflow name and status.                                                                                                     |
+| **Trigger**       | A method in the workflow API that initiates a workflow for a specified foreignID and starting status. It returns a Run ID and allows for additional configuration options.                                            |

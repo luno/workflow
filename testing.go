@@ -133,9 +133,11 @@ func NewTestingRun[Type any, Status StatusType](t *testing.T, wr Record, object 
 	}
 
 	return Run[Type, Status]{
-		Record:     wr,
-		Status:     Status(wr.Status),
-		Object:     &object,
+		TypedRecord: TypedRecord[Type, Status]{
+			Record: wr,
+			Status: Status(wr.Status),
+			Object: &object,
+		},
 		controller: &options.controller,
 	}
 }

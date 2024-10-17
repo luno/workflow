@@ -258,3 +258,7 @@ func TestRunStateStopped(t *testing.T) {
 		require.Equal(t, expected, state.Stopped())
 	}
 }
+
+func TestRunStateOutOfBoundsString(t *testing.T) {
+	require.Equal(t, "RunState(999)", workflow.RunState(999).String())
+}

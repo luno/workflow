@@ -409,7 +409,7 @@ func update(ctx context.Context, store workflow.RecordStore, wr *workflow.Record
 	return store.Store(ctx, wr, func(recordID int64) (workflow.OutboxEventData, error) {
 		// Run ID would not have been set if it is a new record. Assign the recordID that the Store provides
 		wr.ID = recordID
-		return workflow.WireRecordToOutboxEventData(*wr, workflow.RunStateUnknown)
+		return workflow.RecordToOutboxEventData(*wr, workflow.RunStateUnknown)
 	})
 }
 
