@@ -11,26 +11,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TriggerCallbackOn[Type any, Status StatusType, Payload any](t testing.TB, w *Workflow[Type, Status], foreignID, runID string, waitFor Status, p Payload) {
+func TriggerCallbackOn[Type any, Status StatusType, Payload any](t testing.TB, w *Workflow[Type, Status], foreignID, runID string, waitForStatus Status, p Payload) {
 	if t == nil {
 		panic("TriggerCallbackOn can only be used for testing")
 	}
 
-	ctx := context.TODO()
-
-	_, err := w.Await(ctx, foreignID, runID, waitFor)
-	require.Nil(t, err)
+	_ = waitFor(t, w, foreignID, func(r *Record) (bool, error) {
+		return r.Status == int(waitForStatus), nil
+	})
 
 	b, err := json.Marshal(p)
 	require.Nil(t, err)
 
-	err = w.Callback(ctx, foreignID, waitFor, bytes.NewReader(b))
+	err = w.Callback(w.ctx, foreignID, waitForStatus, bytes.NewReader(b))
 	require.Nil(t, err)
 }
 
 func AwaitTimeoutInsert[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status], foreignID, runID string, waitFor Status) {
 	if t == nil {
-		panic("AwaitTimeout can only be used for testing")
+		panic("AwaitTimeoutInsert can only be used for testing")
 	}
 
 	var found bool
@@ -61,49 +60,19 @@ func AwaitTimeoutInsert[Type any, Status StatusType](t testing.TB, w *Workflow[T
 	}
 }
 
-func Require[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status], foreignID string, waitFor Status, expected Type) {
+func Require[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status], foreignID string, waitForStatus Status, expected Type) {
 	if t == nil {
 		panic("Require can only be used for testing")
 	}
 
-	if !w.statusGraph.IsValid(int(waitFor)) {
-		t.Error(fmt.Sprintf(`Status provided is not configured for workflow: "%v" (Workflow: %v)`, waitFor, w.Name))
+	if !w.statusGraph.IsValid(int(waitForStatus)) {
+		t.Error(fmt.Sprintf(`Status provided is not configured for workflow: "%v" (Workflow: %v)`, waitForStatus, w.Name))
 		return
 	}
 
-	testingStore, ok := w.recordStore.(TestingRecordStore)
-	if !ok {
-		panic("Require function requires TestingRecordStore implementation for record store dependency")
-	}
-
-	var runID string
-	for runID == "" {
-		latest, err := w.recordStore.Latest(context.Background(), w.Name, foreignID)
-		if errors.Is(err, ErrRecordNotFound) {
-			continue
-		} else {
-			require.Nil(t, err)
-		}
-
-		runID = latest.RunID
-	}
-
-	var wr *Record
-	for wr == nil {
-		offset := testingStore.SnapshotOffset(w.Name, foreignID, runID)
-		snapshots := testingStore.Snapshots(w.Name, foreignID, runID)
-		for i, r := range snapshots {
-			if offset > i {
-				continue
-			}
-
-			if r.Status == int(waitFor) {
-				wr = r
-			}
-
-			testingStore.SetSnapshotOffset(w.Name, foreignID, runID, offset+1)
-		}
-	}
+	wr := waitFor(t, w, foreignID, func(r *Record) (bool, error) {
+		return r.Status == int(waitForStatus), nil
+	})
 
 	var actual Type
 	err := Unmarshal(wr.Object, &actual)
@@ -122,6 +91,61 @@ func Require[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status
 	require.Nil(t, err)
 
 	require.Equal(t, normalisedExpected, actual)
+}
+
+func WaitFor[Type any, Status StatusType](
+	t testing.TB,
+	w *Workflow[Type, Status],
+	foreignID string,
+	fn func(r *Run[Type, Status]) (bool, error),
+) {
+	if t == nil {
+		panic("WaitFor can only be used for testing")
+	}
+
+	waitFor(t, w, foreignID, func(r *Record) (bool, error) {
+		run, err := buildRun[Type, Status](w.recordStore.Store, r)
+		require.Nil(t, err)
+
+		return fn(run)
+	})
+}
+
+func waitFor[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status], foreignID string, fn func(r *Record) (bool, error)) *Record {
+	testingStore, ok := w.recordStore.(TestingRecordStore)
+	if !ok {
+		panic("TestingRecordStore implementation for record store dependency required")
+	}
+
+	var runID string
+	for runID == "" {
+		latest, err := w.recordStore.Latest(context.Background(), w.Name, foreignID)
+		if errors.Is(err, ErrRecordNotFound) {
+			continue
+		} else {
+			require.Nil(t, err)
+		}
+
+		runID = latest.RunID
+	}
+
+	// Reset the offset run through all the changes and not just from the offset
+	// testingStore.SetSnapshotOffset(w.Name, foreignID, runID, 0)
+
+	var wr *Record
+	for wr == nil {
+		snapshots := testingStore.Snapshots(w.Name, foreignID, runID)
+		for _, r := range snapshots {
+			ok, err := fn(r)
+			require.Nil(t, err)
+
+			if ok {
+				wr = r
+			}
+		}
+	}
+
+	return wr
 }
 
 // NewTestingRun should be used when testing logic that defines a workflow.Run as a parameter. This is usually the

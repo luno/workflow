@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -13,6 +14,64 @@ import (
 	"github.com/luno/workflow/adapters/memrolescheduler"
 	"github.com/luno/workflow/adapters/memstreamer"
 )
+
+func TestTriggerCallbackOn_validation(t *testing.T) {
+	t.Run("TriggerCallbackOn must be used in tests", func(t *testing.T) {
+		require.PanicsWithValue(t,
+			"TriggerCallbackOn can only be used for testing",
+			func() {
+				workflow.TriggerCallbackOn[string, status](nil, nil, "", "", StatusStart, "")
+			}, "Not providing a testing.T or testing.B should panic")
+	})
+
+	t.Run("TriggerCallbackOn must be provided with a workflow that is using a record store that implements TestingRecordStore", func(t *testing.T) {
+		require.PanicsWithValue(t,
+			"TestingRecordStore implementation for record store dependency required",
+			func() {
+				b := workflow.NewBuilder[string, status]("test")
+				b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
+					return r.Cancel(ctx)
+				}, StatusEnd)
+
+				wf := b.Build(
+					memstreamer.New(),
+					nil,
+					memrolescheduler.New(),
+				)
+
+				workflow.Require(t, wf, "", StatusEnd, "")
+			}, "Not providing a workflow using a TestingRecordStore implemented record store should panic")
+	})
+}
+
+func TestAwaitTimeoutInsert_validation(t *testing.T) {
+	t.Run("AwaitTimeoutInsert must be used in tests", func(t *testing.T) {
+		require.PanicsWithValue(t,
+			"AwaitTimeoutInsert can only be used for testing",
+			func() {
+				workflow.AwaitTimeoutInsert[string, status](nil, nil, "", "", StatusStart)
+			}, "Not providing a testing.T or testing.B should panic")
+	})
+
+	t.Run("AwaitTimeoutInsert must be provided with a workflow that is using a record store that implements TestingRecordStore", func(t *testing.T) {
+		require.PanicsWithValue(t,
+			"TestingRecordStore implementation for record store dependency required",
+			func() {
+				b := workflow.NewBuilder[string, status]("test")
+				b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
+					return r.Cancel(ctx)
+				}, StatusEnd)
+
+				wf := b.Build(
+					memstreamer.New(),
+					nil,
+					memrolescheduler.New(),
+				)
+
+				workflow.Require(t, wf, "", StatusEnd, "")
+			}, "Not providing a workflow using a TestingRecordStore implemented record store should panic")
+	})
+}
 
 func TestRequire(t *testing.T) {
 	b := workflow.NewBuilder[testCustomMarshaler, status]("test")
@@ -38,6 +97,35 @@ func TestRequire(t *testing.T) {
 	workflow.Require(t, wf, fid, StatusEnd, "Lower")
 }
 
+func TestRequire_validation(t *testing.T) {
+	t.Run("Require must be provided with testing and will panic without", func(t *testing.T) {
+		require.PanicsWithValue(t,
+			"Require can only be used for testing",
+			func() {
+				workflow.Require[string, status](nil, nil, "", StatusEnd, "")
+			}, "Not providing a testing.T or testing.B should panic")
+	})
+
+	t.Run("Require must be provided with a workflow that is using a record store that implements TestingRecordStore", func(t *testing.T) {
+		require.PanicsWithValue(t,
+			"TestingRecordStore implementation for record store dependency required",
+			func() {
+				b := workflow.NewBuilder[string, status]("test")
+				b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
+					return r.Cancel(ctx)
+				}, StatusEnd)
+
+				wf := b.Build(
+					memstreamer.New(),
+					nil,
+					memrolescheduler.New(),
+				)
+
+				workflow.Require(t, wf, "", StatusEnd, "")
+			}, "Not providing a workflow using a TestingRecordStore implemented record store should panic")
+	})
+}
+
 // testCustomMarshaler is for testing and implements custom and weird behaviour via the
 // MarshalJSON method and this is to test that the Require function can successfully compare
 // the actual and expected by running them through the same encoding / decoding process.
@@ -45,4 +133,30 @@ type testCustomMarshaler string
 
 func (t testCustomMarshaler) MarshalJSON() ([]byte, error) {
 	return json.Marshal(strings.ToLower(string(t)))
+}
+
+func TestWaitFor(t *testing.T) {
+	b := workflow.NewBuilder[string, status]("test")
+	b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
+		return StatusEnd, nil
+	}, StatusEnd)
+
+	wf := b.Build(
+		memstreamer.New(),
+		memrecordstore.New(),
+		memrolescheduler.New(),
+	)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	t.Cleanup(cancel)
+	wf.Run(ctx)
+	t.Cleanup(wf.Stop)
+
+	fid := "10298309123"
+	_, err := wf.Trigger(ctx, fid, StatusStart)
+	require.Nil(t, err)
+
+	workflow.WaitFor(t, wf, fid, func(r *workflow.Run[string, status]) (bool, error) {
+		return r.RunState == workflow.RunStateCompleted, nil
+	})
 }
