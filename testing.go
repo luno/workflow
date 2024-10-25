@@ -124,6 +124,40 @@ func Require[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status
 	require.Equal(t, normalisedExpected, actual)
 }
 
+func WaitFor[Type any, Status StatusType](
+	t testing.TB,
+	w *Workflow[Type, Status],
+	foreignID string,
+	fn func(r *Run[Type, Status]) (bool, error),
+) {
+	if t == nil {
+		panic("WaitFor can only be used for testing")
+	}
+
+	var found bool
+	for !found {
+		if w.ctx.Err() != nil {
+			return
+		}
+
+		latest, err := w.recordStore.Latest(w.ctx, w.Name, foreignID)
+		require.Nil(t, err)
+
+		run, err := buildRun[Type, Status](w.recordStore.Store, latest)
+		require.Nil(t, err)
+
+		ok, err := fn(run)
+		require.Nil(t, err)
+
+		if !ok {
+			continue
+		}
+
+		found = true
+		break
+	}
+}
+
 // NewTestingRun should be used when testing logic that defines a workflow.Run as a parameter. This is usually the
 // case in unit tests and would not normally be found when doing an Acceptance test for the entire workflow.
 func NewTestingRun[Type any, Status StatusType](t *testing.T, wr Record, object Type, opts ...TestingRunOption) Run[Type, Status] {
