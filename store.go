@@ -33,8 +33,6 @@ type TestingRecordStore interface {
 	RecordStore
 
 	Snapshots(workflowName, foreignID, runID string) []*Record
-	SetSnapshotOffset(workflowName, foreignID, runID string, offset int)
-	SnapshotOffset(workflowName, foreignID, runID string) int
 }
 
 // OutboxEventDataMaker is a function that constructs the expected structure of an outbox event used for creating an
