@@ -14,7 +14,7 @@ jobs:
   core:
     strategy:
       matrix:
-        go: [ '1.21', '1.22', '1' ]
+        go: [ '1.22', '1' ]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -38,7 +38,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.23'
 
       - name: Vet
         run: find ./adapters -type f -name "go.mod" -exec dirname {} \; | while read -r dir; do (cd "$dir" && go vet ./...) done
@@ -51,7 +51,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.23'
 
       - name: Vet
         run: find ./_examples -type f -name "go.mod" -exec dirname {} \; | while read -r dir; do (cd "$dir" && go vet ./...) done
