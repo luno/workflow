@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Workflow | Search Filters and Records</title>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900">
+
+<div class="p-4">
+    <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-4">Search Filters</h2>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Workflow Name Input -->
+        <div class="flex flex-col">
+            <label class="text-gray-600 dark:text-gray-400 font-medium mb-2">Workflow Name</label>
+            <input type="text" id="workflowName" placeholder="Enter Workflow Name" class="border border-gray-300 dark:border-gray-700 rounded-lg w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-gray-300">
+        </div>
+
+        <!-- Foreign ID Input -->
+        <div class="flex flex-col">
+            <label class="text-gray-600 dark:text-gray-400 font-medium mb-2">Foreign ID</label>
+            <input type="text" id="foreignID" placeholder="Enter Foreign ID" class="border border-gray-300 dark:border-gray-700 rounded-lg w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-gray-300">
+        </div>
+
+        <!-- Run State Selector -->
+        <div class="flex flex-col">
+            <label class="text-gray-600 dark:text-gray-400 font-medium mb-2">Run State</label>
+            <select id="runState" class="h-10 border border-gray-300 dark:border-gray-700 rounded-lg w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-gray-300">
+                <option value="0">Select Run State</option>
+                <option value="1">Initiated</option>
+                <option value="2">Running</option>
+                <option value="3">Paused</option>
+                <option value="4">Cancelled</option>
+                <option value="5">Completed</option>
+                <option value="7">Requested Data Deleted</option>
+                <option value="6">Data Deleted</option>
+                <!-- Add specific options for Run State here -->
+            </select>
+        </div>
+
+        <!-- Status Selector -->
+        <div class="flex flex-col">
+            <label class="text-gray-600 dark:text-gray-400 font-medium mb-2">Status</label>
+            <input type="text" id="status" placeholder="Enter Status (int value)" class="border border-gray-300 dark:border-gray-700 rounded-lg w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-gray-300">
+        </div>
+
+        <!-- Offset Input -->
+        <div class="flex flex-col">
+            <label class="text-gray-600 dark:text-gray-400 font-medium mb-2">Offset</label>
+            <input type="number" id="offset" placeholder="0" class="border border-gray-300 dark:border-gray-700 rounded-lg w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-gray-300">
+        </div>
+
+        <!-- Limit Input -->
+        <div class="flex flex-col">
+            <label class="text-gray-600 dark:text-gray-400 font-medium mb-2">Limit</label>
+            <input type="number" id="limit" placeholder="25" class="border border-gray-300 dark:border-gray-700 rounded-lg w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-gray-300">
+        </div>
+
+        <!-- Order Selector -->
+        <div class="flex flex-col">
+            <label class="text-gray-600 dark:text-gray-400 font-medium mb-2">Order</label>
+            <select id="order" class="h-10 border border-gray-300 dark:border-gray-700 rounded-lg w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-gray-300">
+                <option value="desc">DESC</option>
+                <option value="asc">ASC</option>
+            </select>
+        </div>
+
+        <!-- Search Button -->
+        <div class="flex flex-col justify-end">
+            <button onclick="collectAndUpdateTable()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150 ease-in-out">
+                <div>Search</div>
+            </button>
+        </div>
+    </div>
+
+    <div class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md mt-6">
+        <div class="flex justify-between py-5 px-4">
+            <h2 class="flex items-center text-xl font-semibold text-gray-800 dark:text-gray-200 mb-0">Workflow Records</h2>
+            <button id="pollButton" onclick="togglePolling()" class="bg-blue-500 hover:bg-blue-700 text-sm text-white py-2 px-4 rounded">
+                Enable Polling
+            </button>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white dark:bg-gray-900 rounded-lg shadow-sm">
+                <thead class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-600">
+                <tr>
+                    <th class="py-3 px-4 text-center font-medium text-sm">ID</th>
+                    <th class="py-3 px-4 text-center font-medium text-sm">Foreign ID</th>
+                    <th class="py-3 px-4 text-center font-medium text-sm">Run ID</th>
+                    <th class="py-3 px-4 text-center font-medium text-sm">Run State</th>
+                    <th class="py-3 px-4 text-center font-medium text-sm">Status</th>
+                    <th class="py-3 px-4 text-center font-medium text-sm">Created At</th>
+                    <th class="py-3 px-4 text-center font-medium text-sm">Updated At</th>
+                    <th class="py-3 px-4 text-center font-medium text-sm">Object</th>
+                    <th class="py-3 px-4 text-center font-medium text-sm">Actions</th>
+                </tr>
+                </thead>
+                <tbody id="tableBody" class="divide-y divide-gray-100 dark:divide-gray-700">
+                <!-- Dynamic rows will be populated here by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div id="jsonModal" class="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-lg min-h-[50vh] min-w-[50vw] overflow-auto">
+            <h2 class="text-xl font-semibold mb-4">Object</h2>
+            <div id="jsonContainer" class="bg-gray-100 p-4 rounded text-sm"></div>
+            <button onclick="closeModal()" class="bg-red-500 text-white px-4 py-2 mt-4 rounded">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        collectAndUpdateTable();
+        pollForUpdates();
+    });
+
+    async function collectAndUpdateTable() {
+        const data = await collectRecords();
+        const tableBody = document.getElementById('tableBody');
+        tableBody.innerHTML = ''; // Clear previous data
+
+        if (!data) {
+            return;
+        }
+
+        if (!data.items) {
+            return;
+        }
+
+        data.items.forEach(record => {
+            const green = 'text-center bg-green-50 dark:bg-green-800 text-green-600 dark:text-green-300 text-sm py-4 px-4 rounded-full';
+            const red = 'text-center bg-red-50 dark:bg-red-800 text-red-600 dark:text-red-300 text-sm py-4 px-4 rounded-full';
+            const yellow = 'text-center bg-yellow-50 dark:bg-yellow-800 text-yellow-600 dark:text-yellow-300 text-sm py-4 px-4 rounded-full';
+            const gray = 'text-center bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-sm py-4 px-4 rounded-full';
+
+            const createdAt = new Date(record.created_at).toISOString().replace('T', ' ').replace('Z', '');
+            const updatedAt = new Date(record.updated_at).toISOString().replace('T', ' ').replace('Z', '');
+
+            const resumeButton = `<button
+                    onclick="recordAction('resume', ${record.id})"
+                    class="bg-blue-50 dark:bg-blue-800 text-blue-600 dark:text-blue-300 text-sm py-2 px-4 m-1 rounded-full hover:bg-blue-50 dark:hover:bg-blue-700">
+                    Resume
+                </button>`
+
+            const pauseButton = `<button
+                    onclick="recordAction('pause', ${record.id})"
+                    class="bg-yellow-50 dark:bg-yellow-800 text-yellow-600 dark:text-yellow-300 text-sm py-2 px-4 m-1 rounded-full hover:bg-yellow-50 dark:hover:bg-yellow-700">
+                    Pause
+                </button>`
+
+            const cancelButton = `<button
+                    onclick="recordAction('cancel', ${record.id})"
+                    class="bg-red-50 dark:bg-red-800 text-red-600 dark:text-red-300 text-sm py-2 px-4 m-1 rounded-full hover:bg-red-50 dark:hover:bg-red-700">
+                    Cancel
+                </button>`
+
+            const deleteButton = `<button
+                    onclick="recordAction('delete', ${record.id})"
+                    class="bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-sm py-2 px-4 m-1 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700">
+                    Delete
+                </button>`
+
+            let selectedClass = ''
+            let buttons = ''
+            switch (record.run_state) {
+                case 'Initiated':
+                    selectedClass = gray
+                    buttons = pauseButton
+                    break
+                case 'Running':
+                    selectedClass = green
+                    buttons = pauseButton + cancelButton
+                    break
+                case 'Paused':
+                    selectedClass = yellow
+                    buttons = resumeButton + cancelButton
+                    break
+                case 'Cancelled':
+                    selectedClass = red
+                    buttons = deleteButton
+                    break
+                case 'Completed':
+                    selectedClass = green
+                    buttons = deleteButton
+                    break
+                case 'Data Deleted':
+                    selectedClass = gray
+                    buttons = deleteButton
+                    break
+                case 'Requested Data Deleted':
+                    selectedClass = yellow
+                    break
+            }
+
+
+            const row = document.createElement('tr');
+            row.classList.add('hover:bg-gray-50', 'dark:hover:bg-gray-800', 'transition', 'duration-150', 'ease-in-out');
+            row.innerHTML = `
+            <td class="py-4 px-4 text-center text-sm text-gray-800 dark:text-gray-300">${record.id}</td>
+            <td class="py-4 px-4 text-center text-sm text-gray-800 dark:text-gray-300">${record.foreign_id}</td>
+            <td class="py-4 px-4 text-center text-sm text-gray-800 dark:text-gray-300">${record.run_id}</td>
+            <td>
+                <div class="${selectedClass}">${record.run_state}</div>
+            </td>
+            <td class="py-4 px-4 text-center text-sm text-gray-800 dark:text-gray-300">${record.status}</td>
+            <td class="py-4 px-4 text-center text-sm text-gray-600 dark:text-gray-400">${createdAt}</td>
+            <td class="py-4 px-4 text-center text-sm text-gray-600 dark:text-gray-400">${updatedAt}</td>
+            <td class="py-4 px-4 text-center text-sm text-gray-800 dark:text-gray-300">
+                <button
+                    class="bg-green-50 dark:bg-green-800 text-green-600 dark:text-green-300 text-sm py-2 px-4 rounded-full hover:bg-green-50 dark:hover:bg-green-700"
+                    onclick="getObjectData(${record.id})"
+                >View</button>
+            </td>
+            <td class="py-4 px-4 text-center">
+                ${buttons}
+            </td>
+        `;
+            tableBody.appendChild(row);
+        });
+    }
+
+    async function getObjectData(id) {
+        const requestData = {
+            record_id: id,
+        };
+
+
+        const response = await fetch('/api/record/data', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData),
+        });
+
+        const data = await response.json();
+        openModal(data)
+    }
+
+    function createCollapsibleJSON(obj, container) {
+        try {
+            for (const key in obj) {
+                const value = obj[key];
+                const item = document.createElement("div");
+                item.classList.add("ml-4");
+
+                // Key element with expanded indicator
+                const keyEl = document.createElement("span");
+                keyEl.classList.add("font-semibold", "text-gray-700", "cursor-pointer");
+                keyEl.textContent = key + ": ";
+                item.appendChild(keyEl);
+
+                // Check if value is an object or array for collapsible feature
+                if (typeof value === "object" && value !== null) {
+                    const nestedContainer = document.createElement("div");
+                    nestedContainer.classList.add("ml-4"); // Visible by default
+
+                    keyEl.textContent += "▼"
+
+                    // Add toggle functionality
+                    keyEl.onclick = () => {
+                        nestedContainer.classList.toggle("hidden");
+                        keyEl.textContent = keyEl.textContent.includes("►") ? key + ": ▼" : key + ": ►";
+                    };
+
+                    // Recursive call for nested objects
+                    createCollapsibleJSON(value, nestedContainer);
+                    item.appendChild(nestedContainer);
+                } else {
+                    // Display primitive values
+                    const valueEl = document.createElement("span");
+                    valueEl.classList.add("text-gray-600");
+                    valueEl.textContent = JSON.stringify(value);
+                    item.appendChild(valueEl);
+                }
+                container.appendChild(item);
+            }
+        } catch (e) {
+            console.error("request failed:", e);
+        }
+
+    }
+
+    function openModal(data) {
+        document.getElementById('jsonModal').classList.remove('hidden');
+
+        const jsonContainer = document.getElementById('jsonContainer');
+        jsonContainer.innerHTML = "";  // Clear previous content
+        createCollapsibleJSON(data, jsonContainer);
+    }
+
+    function closeModal() {
+        document.getElementById('jsonModal').classList.add('hidden');
+    }
+
+    async function recordAction(action, id) {
+        switch (action) {
+            case 'resume':
+                break
+            case 'pause':
+                break
+            case 'cancel':
+                break
+            case 'delete':
+                break
+            default:
+                window.alert('Unknown action')
+                return
+        }
+
+        const data = {
+            record_id: id,
+            action: action,
+        }
+
+        try {
+            await fetch('/api/record/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
+            await collectAndUpdateTable();
+        }catch (e) {
+            console.error("request failed:", e);
+        }
+    }
+
+    async function collectRecords() {
+        try {
+            const workflowName = document.getElementById('workflowName').value;
+            const foreignID = document.getElementById('foreignID').value;
+            const runState = document.getElementById('runState').value;
+            const status = Number(document.getElementById('status').value);
+            const offset = Number(document.getElementById('offset').value);
+            const limit = Number(document.getElementById('limit').value);
+            const order = document.getElementById('order').value;
+
+            const requestData = {
+                workflow_name: workflowName,
+                offset_id: offset,
+                limit: limit,
+                order: order,
+                filter_by_foreign_id: foreignID,
+                filter_by_run_state: runState ? parseInt(runState) : null,
+                filter_by_status: status ? parseInt(status) : null,
+            };
+
+            const response = await fetch('/api/list', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData),
+            });
+
+            return await response.json();
+        } catch (e) {
+            console.error(e)
+        }
+    }
+
+    // Variable to hold the polling timeout ID and control the polling state
+    let pollingActive = false;
+    let pollingTimeoutId = null;
+
+    async function pollForUpdates() {
+        try {
+            await collectAndUpdateTable();
+        } catch (e) {
+            console.error(e);
+        } finally {
+            if (pollingActive) {
+                scheduleNextPoll();
+            }
+        }
+    }
+
+    // Schedule the next poll with setTimeout to avoid blocking the event loop
+    function scheduleNextPoll() {
+        const pollingInterval = 5000; // 5 seconds
+        pollingTimeoutId = setTimeout(pollForUpdates, pollingInterval);
+    }
+
+    // Toggle function for starting and stopping the polling
+    function togglePolling() {
+        const pollButton = document.getElementById("pollButton");
+        if (pollingActive) {
+            // Stop polling
+            clearTimeout(pollingTimeoutId);
+            pollingActive = false;
+            pollButton.textContent = "Enable Polling";
+            pollButton.classList.replace("bg-red-500", "bg-blue-500");
+            pollButton.classList.replace("hover:bg-red-700", "hover:bg-blue-700");
+        } else {
+            // Start polling
+            pollingActive = true;
+            pollButton.textContent = "Disable Polling";
+            pollButton.classList.replace("bg-blue-500", "bg-red-500");
+            pollButton.classList.replace("hover:bg-blue-700", "hover:bg-red-700");
+            pollForUpdates(); // Start the first poll immediately
+        }
+    }
+</script>
+</body>
+</html>

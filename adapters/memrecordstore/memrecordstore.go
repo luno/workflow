@@ -180,31 +180,39 @@ func (s *Store) List(ctx context.Context, workflowName string, offsetID int64, l
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if limit == 0 {
+		limit = 25
+	}
+
 	filter := workflow.MakeFilter(filters...)
 	filteredStore := make(map[int64]*workflow.Record)
 	increment := int64(1)
-	if len(filters) > 0 {
-		for _, record := range s.store {
-			if filter.ByForeignID().Enabled && filter.ByForeignID().Value != record.ForeignID {
-				continue
-			}
-
-			status := strconv.FormatInt(int64(record.Status), 10)
-			if filter.ByStatus().Enabled && filter.ByStatus().Value != status {
-				continue
-			}
-
-			runState := strconv.FormatInt(int64(record.RunState), 10)
-			if filter.ByRunState().Enabled && filter.ByRunState().Value != runState {
-				continue
-			}
-
-			filteredStore[increment] = record
-			increment++
+	for i := 0; i <= len(s.store); i++ {
+		record, ok := s.store[int64(i)]
+		if !ok {
+			continue
 		}
-	} else {
-		// If no filters are specified then assign the whole store
-		filteredStore = s.store
+
+		if workflowName != "" && workflowName != record.WorkflowName {
+			continue
+		}
+
+		if filter.ByForeignID().Enabled && filter.ByForeignID().Value != record.ForeignID {
+			continue
+		}
+
+		status := strconv.FormatInt(int64(record.Status), 10)
+		if filter.ByStatus().Enabled && filter.ByStatus().Value != status {
+			continue
+		}
+
+		runState := strconv.FormatInt(int64(record.RunState), 10)
+		if filter.ByRunState().Enabled && filter.ByRunState().Value != runState {
+			continue
+		}
+
+		filteredStore[increment] = record
+		increment++
 	}
 
 	var (

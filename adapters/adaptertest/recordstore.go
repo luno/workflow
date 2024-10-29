@@ -34,7 +34,7 @@ func testLatest(t *testing.T, factory func() workflow.RecordStore) {
 	t.Run("Latest", func(t *testing.T) {
 		store := factory()
 		ctx := context.Background()
-		expected := dummyWireRecordWithID(t, 1)
+		expected := dummyWireRecordWithID(t, "my_workflow", 1)
 		maker := func(recordID int64) (workflow.OutboxEventData, error) { return workflow.OutboxEventData{}, nil }
 
 		err := store.Store(ctx, expected, maker)
@@ -60,7 +60,7 @@ func testLookup(t *testing.T, factory func() workflow.RecordStore) {
 	t.Run("Lookup", func(t *testing.T) {
 		store := factory()
 		ctx := context.Background()
-		expected := dummyWireRecordWithID(t, 1)
+		expected := dummyWireRecordWithID(t, "my_workflow", 1)
 		maker := func(recordID int64) (workflow.OutboxEventData, error) { return workflow.OutboxEventData{}, nil }
 
 		err := store.Store(ctx, expected, maker)
@@ -77,7 +77,7 @@ func testStore(t *testing.T, factory func() workflow.RecordStore) {
 	t.Run("RecordStore", func(t *testing.T) {
 		store := factory()
 		ctx := context.Background()
-		expected := dummyWireRecordWithID(t, 1)
+		expected := dummyWireRecordWithID(t, "my_workflow", 1)
 		maker := func(recordID int64) (workflow.OutboxEventData, error) { return workflow.OutboxEventData{}, nil }
 
 		err := store.Store(ctx, expected, maker)
@@ -111,7 +111,7 @@ func testListOutboxEvents(t *testing.T, factory func() workflow.RecordStore) {
 	t.Run("ListOutboxEvents", func(t *testing.T) {
 		store := factory()
 		ctx := context.Background()
-		expected := dummyWireRecord(t)
+		expected := dummyWireRecord(t, "my_workflow")
 
 		maker := func(recordID int64) (workflow.OutboxEventData, error) {
 			// Record ID would not have been set if it is a new record. Assign the recordID that the Store provides
@@ -145,7 +145,7 @@ func testDeleteOutboxEvent(t *testing.T, factory func() workflow.RecordStore) {
 	t.Run("DeleteOutboxEvent", func(t *testing.T) {
 		store := factory()
 		ctx := context.Background()
-		expected := dummyWireRecord(t)
+		expected := dummyWireRecord(t, "my_workflow")
 
 		maker := func(recordID int64) (workflow.OutboxEventData, error) {
 			// Run ID would not have been set if it is a new record. Assign the recordID that the Store provides
@@ -176,46 +176,87 @@ func testDeleteOutboxEvent(t *testing.T, factory func() workflow.RecordStore) {
 
 func testList(t *testing.T, factory func() workflow.RecordStore) {
 	workflowName := "my_workflow"
+	secondWorkflowName := "my_second_workflow"
 	maker := func(recordID int64) (workflow.OutboxEventData, error) { return workflow.OutboxEventData{}, nil }
 
-	t.Run("List", func(t *testing.T) {
+	t.Run("List with no workflow specified returns all", func(t *testing.T) {
 		store := factory()
 		ctx := context.Background()
 
 		seedCount := 1000
 		for i := 0; i < seedCount; i++ {
-			err := store.Store(ctx, dummyWireRecord(t), maker)
+			name := workflowName
+			if i > seedCount/2 {
+				name = secondWorkflowName
+			}
+			err := store.Store(ctx, dummyWireRecord(t, name), maker)
 			require.Nil(t, err)
 		}
 
-		ls, err := store.List(ctx, workflowName, 0, 53, workflow.OrderTypeAscending)
+		ls, err := store.List(ctx, "", 0, 53, workflow.OrderTypeAscending)
 		require.Nil(t, err)
 		require.Equal(t, 53, len(ls))
 
-		ls2, err := store.List(ctx, workflowName, 53, 100, workflow.OrderTypeAscending)
+		ls2, err := store.List(ctx, "", 53, 100, workflow.OrderTypeAscending)
 		require.Nil(t, err)
 		require.Equal(t, 100, len(ls2))
 
 		// Make sure the last of the first page is not the same as the first of the next page
 		require.NotEqual(t, ls[52].ID, ls2[0])
 
-		ls3, err := store.List(ctx, workflowName, 153, seedCount-153, workflow.OrderTypeAscending)
+		ls3, err := store.List(ctx, "", 153, seedCount-153, workflow.OrderTypeAscending)
 		require.Nil(t, err)
 		require.Equal(t, seedCount-153, len(ls3))
 
-		// Make sure the last of the first page is not the same as the first of the next page
+		// Make sure the last of the first page is not the same as the first of the next page.
 		require.NotEqual(t, ls3[152].ID, ls3[0])
 
-		// Make sure that if 950 is the offset and we only have 1000 then only 1 item would be returned
-		lastPageAsc, err := store.List(ctx, workflowName, 950, 1000, workflow.OrderTypeAscending)
+		// Make sure that if 950 is the offset, and we only have 1000 then only 50 items will be returned.
+		lastPageAsc, err := store.List(ctx, "", 950, 1000, workflow.OrderTypeAscending)
 		require.Nil(t, err)
 		require.Equal(t, 50, len(lastPageAsc))
 		require.Equal(t, int64(1000), lastPageAsc[len(lastPageAsc)-1].ID)
 
-		lastPageDesc, err := store.List(ctx, workflowName, 950, 1000, workflow.OrderTypeDescending)
+		lastPageDesc, err := store.List(ctx, "", 950, 1000, workflow.OrderTypeDescending)
 		require.Nil(t, err)
 		require.Equal(t, 50, len(lastPageDesc))
 		require.Equal(t, int64(1000), lastPageDesc[0].ID)
+	})
+
+	t.Run("List - WorkflowName", func(t *testing.T) {
+		store := factory()
+		ctx := context.Background()
+		config := map[status]int{
+			statusStarted: 10,
+			statusMiddle:  100,
+			statusEnd:     20,
+		}
+		for status, count := range config {
+			for i := 0; i < count; i++ {
+				newRecord := dummyWireRecord(t, workflowName)
+				newRecord.Status = int(status)
+
+				err := store.Store(ctx, newRecord, maker)
+				require.Nil(t, err)
+
+				secondRecord := dummyWireRecord(t, secondWorkflowName)
+				newRecord.Status = int(status)
+
+				err = store.Store(ctx, secondRecord, maker)
+				require.Nil(t, err)
+			}
+		}
+
+		for status, count := range config {
+			ls, err := store.List(ctx, workflowName, 0, 100, workflow.OrderTypeAscending, workflow.FilterByStatus(int64(status)))
+			require.Nil(t, err)
+			fmt.Println(count, len(ls))
+			require.Equal(t, count, len(ls))
+
+			for _, l := range ls {
+				require.Equal(t, l.Status, int(status))
+			}
+		}
 	})
 
 	t.Run("List - FilterByForeignID", func(t *testing.T) {
@@ -224,7 +265,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 		foreignIDs := []string{"MSDVUI-OBEWF-BYUIOW", "FRELBJK-SRGIUE-RGTJDSF"}
 		for _, foreignID := range foreignIDs {
 			for i := 0; i < 20; i++ {
-				wr := dummyWireRecord(t)
+				wr := dummyWireRecord(t, workflowName)
 				wr.ForeignID = foreignID
 
 				err := store.Store(ctx, wr, maker)
@@ -258,7 +299,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 		}
 		for runState, count := range config {
 			for i := 0; i < count; i++ {
-				wr := dummyWireRecord(t)
+				wr := dummyWireRecord(t, workflowName)
 				wr.RunState = runState
 
 				err := store.Store(ctx, wr, maker)
@@ -287,7 +328,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 		}
 		for status, count := range config {
 			for i := 0; i < count; i++ {
-				newRecord := dummyWireRecord(t)
+				newRecord := dummyWireRecord(t, workflowName)
 				newRecord.Status = int(status)
 
 				err := store.Store(ctx, newRecord, maker)
@@ -307,12 +348,11 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 	})
 }
 
-func dummyWireRecord(t *testing.T) *workflow.Record {
-	return dummyWireRecordWithID(t, 0)
+func dummyWireRecord(t *testing.T, workflowName string) *workflow.Record {
+	return dummyWireRecordWithID(t, workflowName, 0)
 }
 
-func dummyWireRecordWithID(t *testing.T, id int64) *workflow.Record {
-	workflowName := "my_workflow"
+func dummyWireRecordWithID(t *testing.T, workflowName string, id int64) *workflow.Record {
 	foreignID := "Andrew Wormald"
 	runID, err := uuid.NewUUID()
 	require.Nil(t, err)
