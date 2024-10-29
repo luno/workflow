@@ -10,6 +10,8 @@ import (
 	"github.com/luno/workflow"
 )
 
+const defaultListLimit = 25
+
 func New(opts ...Option) *Store {
 	// Set option defaults
 	opt := options{
@@ -181,7 +183,7 @@ func (s *Store) List(ctx context.Context, workflowName string, offsetID int64, l
 	defer s.mu.Unlock()
 
 	if limit == 0 {
-		limit = 25
+		limit = defaultListLimit
 	}
 
 	filter := workflow.MakeFilter(filters...)

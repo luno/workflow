@@ -9,6 +9,8 @@ import (
 	"github.com/luno/workflow"
 )
 
+const defaultListLimit = 25
+
 type SQLStore struct {
 	writer *sql.DB
 	reader *sql.DB
@@ -133,6 +135,14 @@ func (s *SQLStore) List(ctx context.Context, workflowName string, offsetID int64
 
 	if filter.ByRunState().Enabled {
 		filterStr += fmt.Sprintf(" and run_state=%v ", filter.ByRunState().Value)
+	}
+
+	if limit == 0 {
+		limit = defaultListLimit
+	}
+
+	if workflowName == "" {
+		return s.listWhere(ctx, s.reader, "id>? "+filterStr+"order by id "+order.String()+" limit ?", offsetID, limit)
 	}
 
 	return s.listWhere(ctx, s.reader, "workflow_name=? and id>? "+filterStr+"order by id "+order.String()+" limit ?", workflowName, offsetID, limit)
