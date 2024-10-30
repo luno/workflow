@@ -132,8 +132,7 @@ func purgeOutbox[Type any, Status StatusType](
 		}
 
 		event := &Event{
-			ID:        e.ID,
-			ForeignID: outboxRecord.ForeignId,
+			ForeignID: outboxRecord.RunId,
 			Type:      int(outboxRecord.Type),
 			Headers:   headers,
 			CreatedAt: e.CreatedAt,
@@ -160,7 +159,7 @@ func purgeOutbox[Type any, Status StatusType](
 			return err
 		}
 
-		err = recordStore.DeleteOutboxEvent(ctx, event.ID)
+		err = recordStore.DeleteOutboxEvent(ctx, e.ID)
 		if err != nil {
 			return err
 		}

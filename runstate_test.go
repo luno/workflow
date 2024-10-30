@@ -129,13 +129,13 @@ func TestWorkflowRunStateController(t *testing.T) {
 	ctx := context.Background()
 	workflowName := "test-workflow"
 	foreignID := "foreignID"
+	runID := "uuid"
 	err = recordStore.Store(ctx, &workflow.Record{
 		WorkflowName: workflowName,
 		ForeignID:    foreignID,
+		RunID:        runID,
 		RunState:     workflow.RunStateInitiated,
 		Object:       b,
-	}, func(recordID int64) (workflow.OutboxEventData, error) {
-		return workflow.OutboxEventData{}, nil
 	})
 
 	record, err := recordStore.Latest(ctx, workflowName, foreignID)
@@ -148,7 +148,7 @@ func TestWorkflowRunStateController(t *testing.T) {
 
 	require.Equal(t, workflow.RunStateInitiated, record.RunState)
 
-	wr, err := recordStore.Lookup(ctx, 1)
+	wr, err := recordStore.Lookup(ctx, record.RunID)
 	require.Nil(t, err)
 
 	rsc := workflow.NewRunStateController(recordStore.Store, wr)

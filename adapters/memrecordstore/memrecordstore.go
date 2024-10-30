@@ -25,7 +25,7 @@ func New(opts ...Option) *Store {
 
 	s := &Store{
 		keyIndex:         make(map[string]*workflow.Record),
-		store:            make(map[int64]*workflow.Record),
+		store:            make(map[string]*workflow.Record),
 		snapshots:        make(map[string][]*workflow.Record),
 		snapshotsOffsets: make(map[string]int),
 		clock:            opt.clock,
@@ -55,7 +55,8 @@ type Store struct {
 	clock clock.Clock
 
 	keyIndex map[string]*workflow.Record
-	store    map[int64]*workflow.Record
+	store    map[string]*workflow.Record
+	order    []string
 
 	outbox            []workflow.OutboxEvent
 	outboxIDIncrement int64
@@ -64,7 +65,7 @@ type Store struct {
 	snapshotsOffsets map[string]int
 }
 
-func (s *Store) Lookup(ctx context.Context, id int64) (*workflow.Record, error) {
+func (s *Store) Lookup(ctx context.Context, id string) (*workflow.Record, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -75,7 +76,6 @@ func (s *Store) Lookup(ctx context.Context, id int64) (*workflow.Record, error) 
 
 	// Return a new pointer so modifications don't affect the store.
 	return &workflow.Record{
-		ID:           record.ID,
 		WorkflowName: record.WorkflowName,
 		ForeignID:    record.ForeignID,
 		RunID:        record.RunID,
@@ -87,29 +87,32 @@ func (s *Store) Lookup(ctx context.Context, id int64) (*workflow.Record, error) 
 	}, nil
 }
 
-func (s *Store) Store(ctx context.Context, record *workflow.Record, maker workflow.OutboxEventDataMaker) error {
+func (s *Store) Store(ctx context.Context, record *workflow.Record) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	if record.ID == 0 {
-		s.idIncrement++
-		record.ID = s.idIncrement
-	}
 
 	// Add record to store
 	uk := uniqueKey(record.WorkflowName, record.ForeignID)
 	s.keyIndex[uk] = record
-	s.store[record.ID] = record
 
-	// Add event to outbox
-	eventData, err := maker(record.ID)
+	var previous workflow.Record
+	val, previouslyExisted := s.store[record.RunID]
+	if previouslyExisted {
+		previous = *val
+	}
+
+	eventData, err := workflow.MakeOutboxEventData(*record, previous)
 	if err != nil {
 		return err
 	}
 
-	s.outboxIDIncrement++
+	s.store[record.RunID] = record
+	if !previouslyExisted {
+		s.order = append(s.order, record.RunID)
+	}
+
 	s.outbox = append(s.outbox, workflow.OutboxEvent{
-		ID:           s.outboxIDIncrement,
+		ID:           eventData.ID,
 		WorkflowName: eventData.WorkflowName,
 		Data:         eventData.Data,
 		CreatedAt:    s.clock.Now(),
@@ -133,7 +136,6 @@ func (s *Store) Latest(ctx context.Context, workflowName, foreignID string) (*wo
 
 	// Return a new pointer so modifications don't affect the store.
 	return &workflow.Record{
-		ID:           record.ID,
 		WorkflowName: record.WorkflowName,
 		ForeignID:    record.ForeignID,
 		RunID:        record.RunID,
@@ -156,12 +158,15 @@ func (s *Store) ListOutboxEvents(ctx context.Context, workflowName string, limit
 		}
 
 		filtered = append(filtered, outboxEvent)
+		if len(filtered) >= int(limit) {
+			break
+		}
 	}
 
 	return filtered, nil
 }
 
-func (s *Store) DeleteOutboxEvent(ctx context.Context, id int64) error {
+func (s *Store) DeleteOutboxEvent(ctx context.Context, id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -178,7 +183,7 @@ func (s *Store) DeleteOutboxEvent(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (s *Store) List(ctx context.Context, workflowName string, offsetID int64, limit int, order workflow.OrderType, filters ...workflow.RecordFilter) ([]workflow.Record, error) {
+func (s *Store) List(ctx context.Context, workflowName string, offset int64, limit int, order workflow.OrderType, filters ...workflow.RecordFilter) ([]workflow.Record, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -189,8 +194,8 @@ func (s *Store) List(ctx context.Context, workflowName string, offsetID int64, l
 	filter := workflow.MakeFilter(filters...)
 	filteredStore := make(map[int64]*workflow.Record)
 	increment := int64(1)
-	for i := 0; i <= len(s.store); i++ {
-		record, ok := s.store[int64(i)]
+	for _, runID := range s.order {
+		record, ok := s.store[runID]
 		if !ok {
 			continue
 		}
@@ -220,7 +225,7 @@ func (s *Store) List(ctx context.Context, workflowName string, offsetID int64, l
 	var (
 		entries []workflow.Record
 		length  = int64(len(filteredStore))
-		start   = offsetID + 1
+		start   = offset + 1
 		end     = start + int64(limit)
 	)
 

@@ -3,9 +3,8 @@ package workflow
 import "time"
 
 // Record is the cornerstone of Workflow. Record must always be wire compatible with no generics as it's intended
-// purpose is to be the
+// purpose is to be the stored structure of a Run.
 type Record struct {
-	ID           int64
 	WorkflowName string
 	ForeignID    string
 	RunID        string

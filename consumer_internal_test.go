@@ -33,7 +33,6 @@ func TestConsume(t *testing.T) {
 	require.Nil(t, err)
 
 	current := &Record{
-		ID:           1,
 		WorkflowName: "example",
 		ForeignID:    "32948623984623",
 		RunID:        "JHFJDS-LSFKHJSLD-KSJDBLSL",
@@ -50,7 +49,6 @@ func TestConsume(t *testing.T) {
 		}
 
 		currentRecord := &Record{
-			ID:           1,
 			WorkflowName: "example",
 			ForeignID:    "32948623984623",
 			RunID:        "JHFJDS-LSFKHJSLD-KSJDBLSL",
@@ -76,7 +74,7 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		store := func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
+		store := func(ctx context.Context, record *Record) error {
 			calls["store"] += 1
 			return nil
 		}
@@ -116,7 +114,7 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		store := func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
+		store := func(ctx context.Context, record *Record) error {
 			calls["store"] += 1
 			return nil
 		}
@@ -155,7 +153,7 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		store := func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
+		store := func(ctx context.Context, record *Record) error {
 			calls["store"] += 1
 			return nil
 		}
@@ -198,7 +196,7 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		store := func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
+		store := func(ctx context.Context, record *Record) error {
 			calls["store"] += 1
 			return nil
 		}

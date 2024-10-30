@@ -30,7 +30,6 @@ func TestProcessCallback(t *testing.T) {
 	require.Nil(t, err)
 
 	current := &Record{
-		ID:           1,
 		WorkflowName: "example",
 		ForeignID:    "32948623984623",
 		RunID:        "JHFJDS-LSFKHJSLD-KSJDBLSL",
@@ -47,7 +46,6 @@ func TestProcessCallback(t *testing.T) {
 		}
 
 		current := &Record{
-			ID:           1,
 			WorkflowName: "example",
 			ForeignID:    "32948623984623",
 			RunID:        "JHFJDS-LSFKHJSLD-KSJDBLSL",
@@ -73,7 +71,7 @@ func TestProcessCallback(t *testing.T) {
 			return current, nil
 		}
 
-		store := func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
+		store := func(ctx context.Context, record *Record) error {
 			calls["store"] += 1
 			return nil
 		}
@@ -113,7 +111,7 @@ func TestProcessCallback(t *testing.T) {
 			return current, nil
 		}
 
-		store := func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
+		store := func(ctx context.Context, record *Record) error {
 			calls["store"] += 1
 			return nil
 		}
@@ -151,7 +149,7 @@ func TestProcessCallback(t *testing.T) {
 			return current, nil
 		}
 
-		store := func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
+		store := func(ctx context.Context, record *Record) error {
 			calls["store"] += 1
 			return nil
 		}

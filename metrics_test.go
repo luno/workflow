@@ -39,7 +39,6 @@ func runWorkflow(t *testing.T) *workflow.Workflow[string, status] {
 		recordStore,
 		memrolescheduler.New(),
 		workflow.WithClock(clock),
-		workflow.WithOutboxParallelCount(2),
 	)
 
 	ctx := context.Background()
@@ -83,7 +82,7 @@ func TestMetricProcessLag(t *testing.T) {
 	expected := `
 # HELP workflow_process_lag_seconds lag between now and the current event timestamp in seconds
 # TYPE workflow_process_lag_seconds gauge
-workflow_process_lag_seconds{process_name="outbox-consumer-2-of-2",workflow_name="example"} 3600
+workflow_process_lag_seconds{process_name="outbox-consumer-1-of-1",workflow_name="example"} 3600
 workflow_process_lag_seconds{process_name="start-consumer-1-of-1",workflow_name="example"} 0
 `
 
@@ -116,8 +115,7 @@ func TestMetricProcessStates(t *testing.T) {
 # HELP workflow_process_states The current states of all the processes
 # TYPE workflow_process_states gauge
 workflow_process_states{process_name="example-delete-consumer",workflow_name="example"} 2
-workflow_process_states{process_name="outbox-consumer-1-of-2",workflow_name="example"} 2
-workflow_process_states{process_name="outbox-consumer-2-of-2",workflow_name="example"} 2
+workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="example"} 2
 workflow_process_states{process_name="start-consumer-1-of-1",workflow_name="example"} 2
 `
 
@@ -132,8 +130,7 @@ workflow_process_states{process_name="start-consumer-1-of-1",workflow_name="exam
 # TYPE workflow_process_states gauge
 workflow_process_states{process_name="example-delete-consumer",workflow_name="example"} 1
 workflow_process_states{process_name="start-consumer-1-of-1",workflow_name="example"} 1
-workflow_process_states{process_name="outbox-consumer-1-of-2",workflow_name="example"} 1
-workflow_process_states{process_name="outbox-consumer-2-of-2",workflow_name="example"} 1
+workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="example"} 1
 `
 
 	err = testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
@@ -406,11 +403,7 @@ func TestMetricProcessSkippedEvents(t *testing.T) {
 }
 
 func update(ctx context.Context, store workflow.RecordStore, wr *workflow.Record) error {
-	return store.Store(ctx, wr, func(recordID int64) (workflow.OutboxEventData, error) {
-		// Run ID would not have been set if it is a new record. Assign the recordID that the Store provides
-		wr.ID = recordID
-		return workflow.RecordToOutboxEventData(*wr, workflow.RunStateUnknown)
-	})
+	return store.Store(ctx, wr)
 }
 
 func newClock() *clock_testing.FakeClock {

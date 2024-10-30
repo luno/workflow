@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/luno/workflow/internal/outboxpb"
@@ -14,7 +15,7 @@ type Event struct {
 	ID int64
 
 	// ForeignID refers to the ID of a record in the record store.
-	ForeignID int64
+	ForeignID string
 
 	// Type relates to the StatusType that the associated record changed to.
 	Type int
@@ -45,7 +46,7 @@ type ConnectorEvent struct {
 
 type OutboxEvent struct {
 	// ID is a unique ID for this specific OutboxEvent.
-	ID int64
+	ID string
 
 	// WorkflowName refers to the name of the workflow that the OutboxEventData belongs to.
 	WorkflowName string
@@ -59,6 +60,8 @@ type OutboxEvent struct {
 }
 
 type OutboxEventData struct {
+	ID string
+
 	// WorkflowName refers to the name of the workflow that the OutboxEventData belongs to.
 	WorkflowName string
 
@@ -67,7 +70,7 @@ type OutboxEventData struct {
 	Data []byte
 }
 
-func RecordToOutboxEventData(record Record, previousRunState RunState) (OutboxEventData, error) {
+func MakeOutboxEventData(record Record, previousRecord Record) (OutboxEventData, error) {
 	topic := Topic(record.WorkflowName, record.Status)
 
 	// Any record that is updated with a RunState of RunStateRequestedDataDeleted has it's events pushed into
@@ -94,12 +97,12 @@ func RecordToOutboxEventData(record Record, previousRunState RunState) (OutboxEv
 	headers[string(HeaderTopic)] = topic
 	headers[string(HeaderRunID)] = record.RunID
 	headers[string(HeaderRunState)] = strconv.FormatInt(int64(record.RunState), 10)
-	headers[string(HeaderPreviousRunState)] = strconv.FormatInt(int64(previousRunState), 10)
+	headers[string(HeaderPreviousRunState)] = strconv.FormatInt(int64(previousRecord.RunState), 10)
 
 	r := outboxpb.OutboxRecord{
-		ForeignId: record.ID,
-		Type:      int32(record.Status),
-		Headers:   headers,
+		RunId:   record.RunID,
+		Type:    int32(record.Status),
+		Headers: headers,
 	}
 
 	data, err := proto.Marshal(&r)
@@ -107,7 +110,13 @@ func RecordToOutboxEventData(record Record, previousRunState RunState) (OutboxEv
 		return OutboxEventData{}, err
 	}
 
+	uid, err := uuid.NewUUID()
+	if err != nil {
+		return OutboxEventData{}, err
+	}
+
 	return OutboxEventData{
+		ID:           "outbox-id-" + uid.String(),
 		WorkflowName: record.WorkflowName,
 		Data:         data,
 	}, nil

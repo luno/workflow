@@ -26,7 +26,7 @@ func TestUpdater(t *testing.T) {
 	}{
 		{
 			name: "Golden path",
-			lookup: func(ctx context.Context, id int64) (*Record, error) {
+			lookup: func(context.Context, string) (*Record, error) {
 				return &Record{
 					Status: int(statusStart),
 				}, nil
@@ -55,7 +55,7 @@ func TestUpdater(t *testing.T) {
 		},
 		{
 			name: "No transitions - error",
-			lookup: func(ctx context.Context, id int64) (*Record, error) {
+			lookup: func(context.Context, string) (*Record, error) {
 				return &Record{
 					Status: int(statusStart),
 				}, nil
@@ -75,7 +75,7 @@ func TestUpdater(t *testing.T) {
 		},
 		{
 			name: "Mark as completed",
-			lookup: func(ctx context.Context, id int64) (*Record, error) {
+			lookup: func(context.Context, string) (*Record, error) {
 				return &Record{
 					Status: int(statusStart),
 				}, nil
@@ -100,14 +100,14 @@ func TestUpdater(t *testing.T) {
 		},
 		{
 			name: "Return error on lookup",
-			lookup: func(ctx context.Context, id int64) (*Record, error) {
+			lookup: func(context.Context, string) (*Record, error) {
 				return nil, testErr
 			},
 			expectedErr: testErr,
 		},
 		{
 			name: "Exit early if lookup record status has changed",
-			lookup: func(ctx context.Context, id int64) (*Record, error) {
+			lookup: func(context.Context, string) (*Record, error) {
 				return &Record{
 					Status: int(statusEnd),
 				}, nil
@@ -117,7 +117,7 @@ func TestUpdater(t *testing.T) {
 		},
 		{
 			name: "No valid transition available",
-			lookup: func(ctx context.Context, id int64) (*Record, error) {
+			lookup: func(context.Context, string) (*Record, error) {
 				return &Record{
 					Status: int(statusStart),
 				}, nil
@@ -150,10 +150,8 @@ func TestUpdater(t *testing.T) {
 			}
 			c := clock_testing.NewFakeClock(time.Now())
 
-			store := func(ctx context.Context, r *Record, maker OutboxEventDataMaker) error {
+			store := func(ctx context.Context, r *Record) error {
 				require.Equal(t, tc.expectedRunState, r.RunState)
-				_, err := maker(1)
-				require.Nil(t, err)
 				return nil
 			}
 

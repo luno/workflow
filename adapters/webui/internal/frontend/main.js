@@ -1,5 +1,4 @@
 document.addEventListener("DOMContentLoaded", function() {
-    collectAndUpdateTable();
     pollForUpdates();
 });
 
@@ -30,25 +29,25 @@ async function collectAndUpdateTable() {
         const updatedAt = new Date(record.updated_at).toISOString().replace('T', ' ').replace('Z', '');
 
         const resumeButton = `<button
-                    onclick="recordAction('resume', ${record.id})"
+                    onclick="recordAction('resume', \`${record.run_id}\`)"
                     class="bg-blue-50 dark:bg-blue-800 text-blue-600 dark:text-blue-300 text-sm py-2 px-4 m-1 rounded-full hover:bg-blue-50 dark:hover:bg-blue-700">
                     Resume
                 </button>`
 
         const pauseButton = `<button
-                    onclick="recordAction('pause', ${record.id})"
+                    onclick="recordAction('pause', \`${record.run_id}\`)"
                     class="bg-yellow-50 dark:bg-yellow-800 text-yellow-600 dark:text-yellow-300 text-sm py-2 px-4 m-1 rounded-full hover:bg-yellow-50 dark:hover:bg-yellow-700">
                     Pause
                 </button>`
 
         const cancelButton = `<button
-                    onclick="recordAction('cancel', ${record.id})"
+                    onclick="recordAction('cancel', \`${record.run_id}\`)"
                     class="bg-red-50 dark:bg-red-800 text-red-600 dark:text-red-300 text-sm py-2 px-4 m-1 rounded-full hover:bg-red-50 dark:hover:bg-red-700">
                     Cancel
                 </button>`
 
         const deleteButton = `<button
-                    onclick="recordAction('delete', ${record.id})"
+                    onclick="recordAction('delete', \`${record.run_id}\`)"
                     class="bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-sm py-2 px-4 m-1 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700">
                     Delete
                 </button>`
@@ -89,7 +88,7 @@ async function collectAndUpdateTable() {
         const row = document.createElement('tr');
         row.classList.add('hover:bg-gray-50', 'dark:hover:bg-gray-800', 'transition', 'duration-150', 'ease-in-out');
         row.innerHTML = `
-            <td class="py-4 px-4 text-center text-sm text-gray-800 dark:text-gray-300">${record.id}</td>
+            <td class="py-4 px-4 text-center text-sm text-gray-800 dark:text-gray-300">${record.workflow_name}</td>
             <td class="py-4 px-4 text-center text-sm text-gray-800 dark:text-gray-300">${record.foreign_id}</td>
             <td class="py-4 px-4 text-center text-sm text-gray-800 dark:text-gray-300">${record.run_id}</td>
             <td>
@@ -101,7 +100,7 @@ async function collectAndUpdateTable() {
             <td class="py-4 px-4 text-center text-sm text-gray-800 dark:text-gray-300">
                 <button
                     class="bg-green-50 dark:bg-green-800 text-green-600 dark:text-green-300 text-sm py-2 px-4 rounded-full hover:bg-green-50 dark:hover:bg-green-700"
-                    onclick="getObjectData(${record.id})"
+                    onclick="getObjectData(\`${record.run_id}\`)"
                 >View</button>
             </td>
             <td class="py-4 px-4 text-center">
@@ -114,7 +113,7 @@ async function collectAndUpdateTable() {
 
 async function getObjectData(id) {
     const requestData = {
-        record_id: id,
+        run_id: id,
     };
 
 
@@ -202,7 +201,7 @@ async function recordAction(action, id) {
     }
 
     const data = {
-        record_id: id,
+        run_id: id,
         action: action,
     }
 
@@ -232,7 +231,7 @@ async function collectRecords() {
 
         const requestData = {
             workflow_name: workflowName,
-            offset_id: offset,
+            offset: offset,
             limit: limit,
             order: order,
             filter_by_foreign_id: foreignID,

@@ -3,6 +3,8 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"fmt"
+
 	"github.com/luno/jettison/errors"
 	"github.com/luno/workflow"
 )
@@ -30,7 +32,7 @@ func New(writer *sql.DB, reader *sql.DB, recordTableName string, outboxTableName
 		outboxTableName: outboxTableName,
 	}
 
-	e.recordCols = " `id`, `workflow_name`, `foreign_id`, `run_id`, `run_state`, `status`, `object`, `created_at`, `updated_at` "
+	e.recordCols = " `workflow_name`, `foreign_id`, `run_id`, `run_state`, `status`, `object`, `created_at`, `updated_at` "
 	e.recordSelectPrefix = " select " + e.recordCols + " from " + e.recordTableName + " where "
 
 	e.outboxCols = " `id`, `workflow_name`, `data`, `created_at` "
@@ -41,47 +43,49 @@ func New(writer *sql.DB, reader *sql.DB, recordTableName string, outboxTableName
 
 var _ workflow.RecordStore = (*SQLStore)(nil)
 
-func (s *SQLStore) Store(ctx context.Context, r *workflow.Record, maker workflow.OutboxEventDataMaker) error {
+func (s *SQLStore) Store(ctx context.Context, r *workflow.Record) error {
 	tx, err := s.writer.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	var mustCreate bool
-	if r.ID != 0 {
-		_, err := recordScan(tx.QueryRowContext(ctx, s.recordSelectPrefix+"id=?", r.ID))
+	var (
+		mustCreate bool
+		previous   workflow.Record
+	)
+	if r.RunID != "" {
+		existing, err := recordScan(tx.QueryRowContext(ctx, s.recordSelectPrefix+"run_id=?", r.RunID))
 		if errors.Is(err, workflow.ErrRecordNotFound) {
 			mustCreate = true
 		} else if err != nil {
 			return err
+		} else {
+			previous = *existing
 		}
+
 	} else {
 		mustCreate = true
 	}
 
-	var recordID int64
 	if mustCreate {
-		recordID, err = s.create(ctx, tx, r.WorkflowName, r.ForeignID, r.RunID, r.Status, r.Object, int(r.RunState))
+		err := s.create(ctx, tx, r.WorkflowName, r.ForeignID, r.RunID, r.Status, r.Object, int(r.RunState))
 		if err != nil {
 			return err
 		}
 	} else {
-		err := s.update(ctx, tx, r.WorkflowName, r.ForeignID, r.RunID, r.Status, r.Object, int(r.RunState), r.ID)
+		err := s.update(ctx, tx, r.RunID, r.Status, r.Object, int(r.RunState))
 		if err != nil {
 			return err
 		}
-
-		// Set so that outbox event maker below receives the recordID in a consistent manner.
-		recordID = r.ID
 	}
 
-	eventData, err := maker(recordID)
+	eventData, err := workflow.MakeOutboxEventData(*r, previous)
 	if err != nil {
 		return err
 	}
 
-	_, err = s.insertOutboxEvent(ctx, tx, eventData.WorkflowName, eventData.Data)
+	_, err = s.insertOutboxEvent(ctx, tx, eventData.ID, eventData.WorkflowName, eventData.Data)
 	if err != nil {
 		return err
 	}
@@ -89,12 +93,12 @@ func (s *SQLStore) Store(ctx context.Context, r *workflow.Record, maker workflow
 	return tx.Commit()
 }
 
-func (s *SQLStore) Lookup(ctx context.Context, id int64) (*workflow.Record, error) {
-	return s.lookupWhere(ctx, s.reader, "id=?", id)
+func (s *SQLStore) Lookup(ctx context.Context, runID string) (*workflow.Record, error) {
+	return s.lookupWhere(ctx, s.reader, "run_id=?", runID)
 }
 
 func (s *SQLStore) Latest(ctx context.Context, workflowName, foreignID string) (*workflow.Record, error) {
-	ls, err := s.listWhere(ctx, s.reader, "workflow_name=? and foreign_id=? order by id desc limit 1", workflowName, foreignID)
+	ls, err := s.listWhere(ctx, s.reader, "workflow_name=? and foreign_id=? order by created_at desc limit 1", workflowName, foreignID)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +114,7 @@ func (s *SQLStore) ListOutboxEvents(ctx context.Context, workflowName string, li
 	return s.listOutboxWhere(ctx, s.reader, "workflow_name=? limit ?", workflowName, limit)
 }
 
-func (s *SQLStore) DeleteOutboxEvent(ctx context.Context, id int64) error {
+func (s *SQLStore) DeleteOutboxEvent(ctx context.Context, id string) error {
 	_, err := s.writer.ExecContext(ctx, "delete from "+s.outboxTableName+" where id=?;", id)
 	if err != nil {
 		return err
@@ -119,25 +123,33 @@ func (s *SQLStore) DeleteOutboxEvent(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (s *SQLStore) List(ctx context.Context, workflowName string, offsetID int64, limit int, order workflow.OrderType, filters ...workflow.RecordFilter) ([]workflow.Record, error) {
+func (s *SQLStore) List(ctx context.Context, workflowName string, offset int64, limit int, order workflow.OrderType, filters ...workflow.RecordFilter) ([]workflow.Record, error) {
 	filter := workflow.MakeFilter(filters...)
 
 	var (
 		filterStr    string
 		filterParams []any
 	)
+
+	filterStr += " run_id is not null"
+
+	if workflowName != "" {
+		filterStr += " and workflow_name=?"
+		filterParams = append(filterParams, workflowName)
+	}
+
 	if filter.ByForeignID().Enabled {
-		filterStr += " and foreign_id=? "
+		filterStr += " and foreign_id=?"
 		filterParams = append(filterParams, filter.ByForeignID().Value)
 	}
 
 	if filter.ByStatus().Enabled {
-		filterStr += " and status=? "
+		filterStr += " and status=?"
 		filterParams = append(filterParams, filter.ByStatus().Value)
 	}
 
 	if filter.ByRunState().Enabled {
-		filterStr += " and run_state=? "
+		filterStr += " and run_state=?"
 		filterParams = append(filterParams, filter.ByRunState().Value)
 	}
 
@@ -145,17 +157,9 @@ func (s *SQLStore) List(ctx context.Context, workflowName string, offsetID int64
 		limit = defaultListLimit
 	}
 
-	var params []any
-	if workflowName == "" {
-		params = append(params, offsetID)
-		params = append(params, filterParams...)
-		params = append(params, limit)
-		return s.listWhere(ctx, s.reader, "id>? "+filterStr+"order by id "+order.String()+" limit ?", params...)
-	}
-
-	params = append(params, workflowName)
-	params = append(params, offsetID)
-	params = append(params, filterParams...)
+	params := filterParams
 	params = append(params, limit)
-	return s.listWhere(ctx, s.reader, "workflow_name=? and id>? "+filterStr+"order by id "+order.String()+" limit ?", params...)
+	params = append(params, offset)
+	fmt.Println(filterStr+" order by created_at "+order.String()+" limit ? offset ?", params)
+	return s.listWhere(ctx, s.reader, filterStr+" order by created_at "+order.String()+" limit ? offset ?", params...)
 }

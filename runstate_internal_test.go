@@ -327,7 +327,7 @@ func TestRunStateControllerTransitions(t *testing.T) {
 				record: &Record{
 					RunState: tc.from,
 				},
-				store: func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
+				store: func(ctx context.Context, record *Record) error {
 					return nil
 				},
 			}

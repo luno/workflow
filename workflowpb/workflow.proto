@@ -7,12 +7,12 @@ import "google/protobuf/timestamp.proto";
 option go_package = "../workflowpb";
 
 message Record {
-  int64 id = 1;
+  int64 id = 1 [deprecated = true]; // Use run_id;
   string run_id = 2;
   string workflow_name = 3;
   string foreign_id = 4;
-  bool is_start = 5 [deprecated = true]; // Use RunState
-  bool is_end = 6 [deprecated = true]; // Use RunState
+  bool is_start = 5 [deprecated = true]; // Use run_state
+  bool is_end = 6 [deprecated = true]; // Use run_state
   bytes object = 7;
   google.protobuf.Timestamp created_at = 8;
   int32 status = 9;

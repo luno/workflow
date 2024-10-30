@@ -28,13 +28,11 @@ func TestListHandler(t *testing.T) {
 			name: "Golden path - asc",
 			request: api.ListRequest{
 				WorkflowName: "test",
-				OffsetID:     0,
 				Limit:        5,
 				Order:        "asc",
 			},
 			listResponse: []workflow.Record{
 				{
-					ID:           1,
 					WorkflowName: "test",
 					ForeignID:    "9",
 					RunState:     workflow.RunStateCompleted,
@@ -44,7 +42,6 @@ func TestListHandler(t *testing.T) {
 			expectedResponse: api.ListResponse{
 				Items: []api.ListItem{
 					{
-						ID:           1,
 						WorkflowName: "test",
 						ForeignID:    "9",
 						RunState:     workflow.RunStateCompleted.String(),
@@ -58,20 +55,18 @@ func TestListHandler(t *testing.T) {
 			name: "Golden path - desc",
 			request: api.ListRequest{
 				WorkflowName: "test",
-				OffsetID:     0,
+				Offset:       0,
 				Limit:        5,
 				Order:        "desc",
 			},
 			listResponse: []workflow.Record{
 				{
-					ID:           2,
 					WorkflowName: "test",
 					ForeignID:    "9",
 					RunState:     workflow.RunStateCompleted,
 					Status:       9,
 				},
 				{
-					ID:           1,
 					WorkflowName: "test",
 					ForeignID:    "9",
 					RunState:     workflow.RunStateCompleted,
@@ -81,14 +76,12 @@ func TestListHandler(t *testing.T) {
 			expectedResponse: api.ListResponse{
 				Items: []api.ListItem{
 					{
-						ID:           2,
 						WorkflowName: "test",
 						ForeignID:    "9",
 						RunState:     workflow.RunStateCompleted.String(),
 						Status:       "9",
 					},
 					{
-						ID:           1,
 						WorkflowName: "test",
 						ForeignID:    "9",
 						RunState:     workflow.RunStateCompleted.String(),
@@ -102,14 +95,13 @@ func TestListHandler(t *testing.T) {
 			name: "Filter by RunState",
 			request: api.ListRequest{
 				WorkflowName:     "test",
-				OffsetID:         0,
+				Offset:           0,
 				Limit:            5,
 				Order:            "desc",
 				FilterByRunState: int(workflow.RunStateCompleted),
 			},
 			listResponse: []workflow.Record{
 				{
-					ID:           1,
 					WorkflowName: "test",
 					ForeignID:    "9",
 					RunState:     workflow.RunStateCompleted,
@@ -119,7 +111,6 @@ func TestListHandler(t *testing.T) {
 			expectedResponse: api.ListResponse{
 				Items: []api.ListItem{
 					{
-						ID:           1,
 						WorkflowName: "test",
 						ForeignID:    "9",
 						RunState:     workflow.RunStateCompleted.String(),
@@ -133,14 +124,13 @@ func TestListHandler(t *testing.T) {
 			name: "Filter by ForeignID",
 			request: api.ListRequest{
 				WorkflowName:      "test",
-				OffsetID:          0,
+				Offset:            0,
 				Limit:             5,
 				Order:             "desc",
 				FilterByForeignID: "9",
 			},
 			listResponse: []workflow.Record{
 				{
-					ID:           1,
 					WorkflowName: "test",
 					ForeignID:    "9",
 					RunState:     workflow.RunStateCompleted,
@@ -150,7 +140,6 @@ func TestListHandler(t *testing.T) {
 			expectedResponse: api.ListResponse{
 				Items: []api.ListItem{
 					{
-						ID:           1,
 						WorkflowName: "test",
 						ForeignID:    "9",
 						RunState:     workflow.RunStateCompleted.String(),
@@ -164,14 +153,13 @@ func TestListHandler(t *testing.T) {
 			name: "Filter by Status",
 			request: api.ListRequest{
 				WorkflowName:   "test",
-				OffsetID:       0,
+				Offset:         0,
 				Limit:          5,
 				Order:          "desc",
 				FilterByStatus: 9,
 			},
 			listResponse: []workflow.Record{
 				{
-					ID:           1,
 					WorkflowName: "test",
 					ForeignID:    "9",
 					RunState:     workflow.RunStateCompleted,
@@ -181,7 +169,6 @@ func TestListHandler(t *testing.T) {
 			expectedResponse: api.ListResponse{
 				Items: []api.ListItem{
 					{
-						ID:           1,
 						WorkflowName: "test",
 						ForeignID:    "9",
 						RunState:     workflow.RunStateCompleted.String(),
@@ -201,7 +188,7 @@ func TestListHandler(t *testing.T) {
 					// of listing with filters etc. The main thing to test would be to ensure the fields are mapped
 					// correctly and end the concern there (hand off to the record store implementation).
 					require.Equal(t, tc.request.WorkflowName, workflowName)
-					require.Equal(t, tc.request.OffsetID, offsetID)
+					require.Equal(t, tc.request.Offset, offsetID)
 					require.Equal(t, tc.request.Limit, limit)
 					require.Equal(t, tc.request.Order, order.String())
 

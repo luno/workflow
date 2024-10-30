@@ -31,7 +31,7 @@ func TestProcessTimeout(t *testing.T) {
 
 	type calls struct {
 		updater      func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error
-		store        func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error
+		store        func(ctx context.Context, record *Record) error
 		timeoutFunc  func(ctx context.Context, r *Run[string, testStatus], now time.Time) (testStatus, error)
 		completeFunc func(ctx context.Context, id int64) error
 	}
@@ -55,7 +55,7 @@ func TestProcessTimeout(t *testing.T) {
 						require.Equal(t, "new data", *record.Object)
 						return nil
 					},
-					store: func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
+					store: func(ctx context.Context, record *Record) error {
 						call["store"] += 1
 						return nil
 					},
@@ -71,7 +71,6 @@ func TestProcessTimeout(t *testing.T) {
 				}
 			},
 			record: &Record{
-				ID:           1,
 				WorkflowName: "example",
 				ForeignID:    "32948623984623",
 				RunID:        "JHFJDS-LSFKHJSLD-KSJDBLSL",
@@ -94,7 +93,7 @@ func TestProcessTimeout(t *testing.T) {
 						require.Equal(t, "new data", *record.Object)
 						return nil
 					},
-					store: func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
+					store: func(ctx context.Context, record *Record) error {
 						call["store"] += 1
 						return nil
 					},
@@ -110,7 +109,6 @@ func TestProcessTimeout(t *testing.T) {
 				}
 			},
 			record: &Record{
-				ID:           1,
 				WorkflowName: "example",
 				ForeignID:    "32948623984623",
 				RunID:        "JHFJDS-LSFKHJSLD-KSJDBLSL",
@@ -136,7 +134,6 @@ func TestProcessTimeout(t *testing.T) {
 				}
 			},
 			record: &Record{
-				ID:           1,
 				WorkflowName: "example",
 				ForeignID:    "32948623984623",
 				RunID:        "JHFJDS-LSFKHJSLD-KSJDBLSL",
@@ -156,7 +153,7 @@ func TestProcessTimeout(t *testing.T) {
 						call["timeout/TimeoutFunc"] += 1
 						return 0, testErr
 					},
-					store: func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error {
+					store: func(ctx context.Context, record *Record) error {
 						call["store"] += 1
 						require.Equal(t, record.RunState, RunStatePaused)
 						return nil
@@ -164,7 +161,6 @@ func TestProcessTimeout(t *testing.T) {
 				}
 			},
 			record: &Record{
-				ID:           1,
 				WorkflowName: "example",
 				ForeignID:    "32948623984623",
 				RunID:        "JHFJDS-LSFKHJSLD-KSJDBLSL",

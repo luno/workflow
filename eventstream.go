@@ -12,7 +12,7 @@ type EventStreamer interface {
 }
 
 type Producer interface {
-	Send(ctx context.Context, recordID int64, statusType int, headers map[Header]string) error
+	Send(ctx context.Context, foreignID string, statusType int, headers map[Header]string) error
 	Close() error
 }
 

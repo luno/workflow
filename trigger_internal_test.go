@@ -37,7 +37,6 @@ func Test_trigger(t *testing.T) {
 
 		_, err := trigger(ctx, w, func(ctx context.Context, workflowName, foreignID string) (*Record, error) {
 			return &Record{
-				ID:           1,
 				WorkflowName: "trigger test",
 				ForeignID:    "1",
 				RunState:     RunStateRunning,
