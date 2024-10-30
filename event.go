@@ -71,9 +71,8 @@ type OutboxEventData struct {
 }
 
 // MakeOutboxEventData creates a OutboxEventData that houses all the information that must be stored and be
-// retrievable from the outbox. A previous record must be provided as this is used for additional context
-// that is used for producing the event from the outbox record.
-func MakeOutboxEventData(record Record, previousRecord Record) (OutboxEventData, error) {
+// retrievable from the outbox.
+func MakeOutboxEventData(record Record) (OutboxEventData, error) {
 	topic := Topic(record.WorkflowName, record.Status)
 
 	// Any record that is updated with a RunState of RunStateRequestedDataDeleted has it's events pushed into
@@ -100,7 +99,6 @@ func MakeOutboxEventData(record Record, previousRecord Record) (OutboxEventData,
 	headers[string(HeaderTopic)] = topic
 	headers[string(HeaderRunID)] = record.RunID
 	headers[string(HeaderRunState)] = strconv.FormatInt(int64(record.RunState), 10)
-	headers[string(HeaderPreviousRunState)] = strconv.FormatInt(int64(previousRecord.RunState), 10)
 
 	r := outboxpb.OutboxRecord{
 		RunId:   record.RunID,
@@ -128,10 +126,9 @@ func MakeOutboxEventData(record Record, previousRecord Record) (OutboxEventData,
 type Header string
 
 const (
-	HeaderWorkflowName     Header = "workflow_name"
-	HeaderForeignID        Header = "foreign_id"
-	HeaderTopic            Header = "topic"
-	HeaderRunID            Header = "run_id"
-	HeaderRunState         Header = "run_state"
-	HeaderPreviousRunState Header = "previous_run_state"
+	HeaderWorkflowName Header = "workflow_name"
+	HeaderForeignID    Header = "foreign_id"
+	HeaderTopic        Header = "topic"
+	HeaderRunID        Header = "run_id"
+	HeaderRunState     Header = "run_state"
 )

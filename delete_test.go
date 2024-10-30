@@ -117,11 +117,10 @@ func TestDeleteForever(t *testing.T) {
 
 			runID := "uuid"
 			err = producer.Send(ctx, runID, 1, map[workflow.Header]string{
-				workflow.HeaderWorkflowName:     workflowName,
-				workflow.HeaderForeignID:        "1",
-				workflow.HeaderTopic:            workflow.DeleteTopic(workflowName),
-				workflow.HeaderRunState:         workflow.RunStateRequestedDataDeleted.String(),
-				workflow.HeaderPreviousRunState: workflow.RunStateCompleted.String(),
+				workflow.HeaderWorkflowName: workflowName,
+				workflow.HeaderForeignID:    "1",
+				workflow.HeaderTopic:        workflow.DeleteTopic(workflowName),
+				workflow.HeaderRunState:     workflow.RunStateRequestedDataDeleted.String(),
 			})
 			require.Nil(t, err)
 

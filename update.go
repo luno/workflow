@@ -88,7 +88,7 @@ func validateTransition[Status StatusType](current, next Status, graph *graph.Gr
 	return nil
 }
 
-func updateWireRecord(ctx context.Context, store storeFunc, record *Record, previousRunState RunState) error {
+func updateRecord(ctx context.Context, store storeFunc, record *Record, previousRunState RunState) error {
 	// Push run state changes for observability
 	metrics.RunStateChanges.WithLabelValues(record.WorkflowName, previousRunState.String(), record.RunState.String()).Inc()
 

@@ -50,18 +50,13 @@ func (s *SQLStore) Store(ctx context.Context, r *workflow.Record) error {
 	}
 	defer tx.Rollback()
 
-	var (
-		mustCreate bool
-		previous   workflow.Record
-	)
+	var mustCreate bool
 	if r.RunID != "" {
-		existing, err := recordScan(tx.QueryRowContext(ctx, s.recordSelectPrefix+"run_id=?", r.RunID))
+		_, err := recordScan(tx.QueryRowContext(ctx, s.recordSelectPrefix+"run_id=?", r.RunID))
 		if errors.Is(err, workflow.ErrRecordNotFound) {
 			mustCreate = true
 		} else if err != nil {
 			return err
-		} else {
-			previous = *existing
 		}
 
 	} else {
@@ -80,7 +75,7 @@ func (s *SQLStore) Store(ctx context.Context, r *workflow.Record) error {
 		}
 	}
 
-	eventData, err := workflow.MakeOutboxEventData(*r, previous)
+	eventData, err := workflow.MakeOutboxEventData(*r)
 	if err != nil {
 		return err
 	}

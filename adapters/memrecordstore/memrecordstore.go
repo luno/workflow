@@ -95,22 +95,16 @@ func (s *Store) Store(ctx context.Context, record *workflow.Record) error {
 	uk := uniqueKey(record.WorkflowName, record.ForeignID)
 	s.keyIndex[uk] = record
 
-	var previous workflow.Record
-	val, previouslyExisted := s.store[record.RunID]
-	if previouslyExisted {
-		previous = *val
-	}
-
-	eventData, err := workflow.MakeOutboxEventData(*record, previous)
+	eventData, err := workflow.MakeOutboxEventData(*record)
 	if err != nil {
 		return err
 	}
 
-	s.store[record.RunID] = record
+	_, previouslyExisted := s.store[record.RunID]
 	if !previouslyExisted {
 		s.order = append(s.order, record.RunID)
 	}
-
+	s.store[record.RunID] = record
 	s.outbox = append(s.outbox, workflow.OutboxEvent{
 		ID:           eventData.ID,
 		WorkflowName: eventData.WorkflowName,
