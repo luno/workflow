@@ -10,8 +10,9 @@ import (
 // being able to obtain an ID for the record before it is created.
 type RecordStore interface {
 	// Store should create or update a record depending on whether the underlying store is mutable or append only. Store
-	// must implement transactions and a separate outbox store to store the event that can be retrieved when calling
-	// ListOutboxEvents and can be deleted when DeleteOutboxEvent is called.
+	// must implement transactions and a separate outbox store to store the outbox record (that should be
+	// generated using MakeOutboxEventData) which can be retrieved when calling ListOutboxEvents and can be
+	// deleted when DeleteOutboxEvent is called.
 	Store(ctx context.Context, record *Record) error
 	Lookup(ctx context.Context, runID string) (*Record, error)
 	Latest(ctx context.Context, workflowName, foreignID string) (*Record, error)
