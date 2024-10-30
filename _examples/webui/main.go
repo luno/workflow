@@ -33,8 +33,13 @@ func main() {
 		}
 	}
 
-	http.HandleFunc("/", webui.HomeHandlerFunc())
-	http.HandleFunc("/api/list", webui.ListHandlerFunc(
+	paths := webui.Paths{
+		List:       "/api/v1/list",
+		Update:     "/api/v1/record/update",
+		ObjectData: "/api/v1/record/objectdata",
+	}
+	http.HandleFunc("/", webui.HomeHandlerFunc(paths))
+	http.HandleFunc(paths.List, webui.ListHandlerFunc(
 		recordStore,
 		func(workflowName string, enumValue int) string {
 			if workflowName == ExampleWorkflowName {
@@ -44,8 +49,8 @@ func main() {
 			return strconv.Itoa(enumValue)
 		},
 	))
-	http.HandleFunc("/api/record/data", webui.ObjectDataHandlerFunc(recordStore))
-	http.HandleFunc("/api/record/update", webui.UpdateHandlerFunc(recordStore))
+	http.HandleFunc(paths.ObjectData, webui.ObjectDataHandlerFunc(recordStore))
+	http.HandleFunc(paths.Update, webui.UpdateHandlerFunc(recordStore))
 
 	err := http.ListenAndServe("localhost:9492", nil)
 	if err != nil {

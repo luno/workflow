@@ -9,14 +9,15 @@ import (
 	"github.com/luno/workflow/adapters/webui/internal/frontend"
 )
 
-func HomeHandlerFunc() http.HandlerFunc {
-	return frontend.HomeHandlerFunc()
+func HomeHandlerFunc(paths Paths) http.HandlerFunc {
+	return frontend.HomeHandlerFunc(paths)
 }
 
 type (
 	Stringer            = api.Stringer
 	ListWorkflowRecords = api.ListWorkflowRecords
 	LookupFn            = api.LookupFn
+	Paths               = frontend.Paths
 )
 
 func ListHandlerFunc(store workflow.RecordStore, stringer Stringer) http.HandlerFunc {

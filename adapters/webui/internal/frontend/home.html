@@ -230,7 +230,7 @@
         };
 
 
-        const response = await fetch('/api/record/data', {
+        const response = await fetch('{{.Paths.ObjectData}}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -319,7 +319,7 @@
         }
 
         try {
-            await fetch('/api/record/update', {
+            await fetch('{{.Paths.Update}}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -352,7 +352,7 @@
                 filter_by_status: status ? parseInt(status) : null,
             };
 
-            const response = await fetch('/api/list', {
+            const response = await fetch('{{.Paths.List}}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
