@@ -13,7 +13,7 @@ import (
 )
 
 func TestStreamer(t *testing.T) {
-	eventsTable := rsql.NewEventsTableInt("workflow_events", rsql.WithEventMetadataField("metadata"))
+	eventsTable := rsql.NewEventsTable("workflow_events", rsql.WithEventMetadataField("metadata"))
 	dbc := ConnectForTesting(t)
 	cTable := rsql.NewCursorsTable("cursors")
 	constructor := reflexstreamer.New(dbc, dbc, eventsTable, cTable.ToStore(dbc))
@@ -21,7 +21,7 @@ func TestStreamer(t *testing.T) {
 }
 
 func TestStreamerGapFiller(t *testing.T) {
-	eventsTable := rsql.NewEventsTableInt("workflow_events", rsql.WithEventMetadataField("metadata"))
+	eventsTable := rsql.NewEventsTable("workflow_events", rsql.WithEventMetadataField("metadata"))
 	dbc := ConnectForTesting(t)
 	cTable := rsql.NewCursorsTable("cursors")
 	_, err := dbc.Exec("insert into workflow_events set id=1, foreign_id=98327498324, timestamp=now(3), type=1, metadata=?;", "{}")

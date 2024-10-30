@@ -16,7 +16,7 @@ var tables = []string{
 	`
 	create table workflow_events (
 	  id bigint not null auto_increment,
-	  foreign_id bigint not null,
+	  foreign_id varchar(255) not null,
 	  timestamp datetime not null,
 	  type int not null default 0,
 	  metadata blob,

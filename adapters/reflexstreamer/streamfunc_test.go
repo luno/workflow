@@ -19,7 +19,7 @@ import (
 
 func TestStreamFunc(t *testing.T) {
 	dbc := ConnectForTesting(t)
-	eventsTable := rsql.NewEventsTableInt("workflow_events", rsql.WithEventMetadataField("metadata"))
+	eventsTable := rsql.NewEventsTable("workflow_events", rsql.WithEventMetadataField("metadata"))
 
 	wf, store, ctx, cancel := createTestWorkflow(t, dbc, eventsTable)
 
@@ -33,7 +33,7 @@ func TestStreamFunc(t *testing.T) {
 		reflexstreamer.StreamFunc(dbc, eventsTable, "myWorkflow"),
 		rpatterns.MemCursorStore(),
 		reflex.NewConsumer("something", func(ctx context.Context, event *reflex.Event) error {
-			wireRecord, err := store.Lookup(ctx, event.ForeignIDInt())
+			wireRecord, err := store.Lookup(ctx, event.ForeignID)
 			if err != nil {
 				return err
 			}
@@ -61,7 +61,7 @@ func TestStreamFunc(t *testing.T) {
 
 func TestOnComplete(t *testing.T) {
 	dbc := ConnectForTesting(t)
-	eventsTable := rsql.NewEventsTableInt("workflow_events", rsql.WithEventMetadataField("metadata"))
+	eventsTable := rsql.NewEventsTable("workflow_events", rsql.WithEventMetadataField("metadata"))
 
 	wf, store, ctx, cancel := createTestWorkflow(t, dbc, eventsTable)
 
@@ -75,7 +75,7 @@ func TestOnComplete(t *testing.T) {
 		reflexstreamer.OnComplete(dbc, eventsTable, "myWorkflow"),
 		rpatterns.MemCursorStore(),
 		reflex.NewConsumer("something", func(ctx context.Context, event *reflex.Event) error {
-			wireRecord, err := store.Lookup(ctx, event.ForeignIDInt())
+			wireRecord, err := store.Lookup(ctx, event.ForeignID)
 			if err != nil {
 				return err
 			}
@@ -100,7 +100,7 @@ func TestOnComplete(t *testing.T) {
 	jtest.Require(t, context.Canceled, err)
 }
 
-func createTestWorkflow(t *testing.T, dbc *sql.DB, eventsTable *rsql.EventsTableInt) (*workflow.Workflow[string, status], workflow.RecordStore, context.Context, context.CancelFunc) {
+func createTestWorkflow(t *testing.T, dbc *sql.DB, eventsTable *rsql.EventsTable) (*workflow.Workflow[string, status], workflow.RecordStore, context.Context, context.CancelFunc) {
 	workflowName := "myWorkflow"
 	b := workflow.NewBuilder[string, status](workflowName)
 	b.AddStep(

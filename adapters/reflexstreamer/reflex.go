@@ -16,7 +16,7 @@ import (
 	"github.com/luno/workflow"
 )
 
-func New(writer, reader *sql.DB, table *rsql.EventsTableInt, cursorStore reflex.CursorStore) workflow.EventStreamer {
+func New(writer, reader *sql.DB, table *rsql.EventsTable, cursorStore reflex.CursorStore) workflow.EventStreamer {
 	return &constructor{
 		writer:      writer,
 		reader:      reader,
@@ -29,7 +29,7 @@ type constructor struct {
 	writer            *sql.DB
 	reader            *sql.DB
 	stream            reflex.StreamFunc
-	eventsTable       *rsql.EventsTableInt
+	eventsTable       *rsql.EventsTable
 	cursorStore       reflex.CursorStore
 	registerGapFiller sync.Once
 }
@@ -45,10 +45,10 @@ func (c *constructor) NewProducer(ctx context.Context, topic string) (workflow.P
 type Producer struct {
 	topic       string
 	writer      *sql.DB
-	eventsTable *rsql.EventsTableInt
+	eventsTable *rsql.EventsTable
 }
 
-func (p *Producer) Send(ctx context.Context, recordID int64, statusType int, headers map[workflow.Header]string) error {
+func (p *Producer) Send(ctx context.Context, runID string, statusType int, headers map[workflow.Header]string) error {
 	tx, err := p.writer.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -60,7 +60,7 @@ func (p *Producer) Send(ctx context.Context, recordID int64, statusType int, hea
 		return err
 	}
 
-	notify, err := p.eventsTable.InsertWithMetadata(ctx, tx, recordID, EventType(statusType), b)
+	notify, err := p.eventsTable.InsertWithMetadata(ctx, tx, runID, EventType(statusType), b)
 	if err != nil {
 		return err
 	}
@@ -145,7 +145,7 @@ func (c *Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, err
 
 		event := &workflow.Event{
 			ID:        reflexEvent.IDInt(),
-			ForeignID: reflexEvent.ForeignIDInt(),
+			ForeignID: reflexEvent.ForeignID,
 			Type:      reflexEvent.Type.ReflexType(),
 			Headers:   headers,
 			CreatedAt: reflexEvent.Timestamp,
