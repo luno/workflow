@@ -3,11 +3,11 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
-	"fmt"
-
 	"github.com/luno/jettison/errors"
 	"github.com/luno/workflow"
 )
+
+const defaultListLimit = 25
 
 type SQLStore struct {
 	writer *sql.DB
@@ -122,18 +122,40 @@ func (s *SQLStore) DeleteOutboxEvent(ctx context.Context, id int64) error {
 func (s *SQLStore) List(ctx context.Context, workflowName string, offsetID int64, limit int, order workflow.OrderType, filters ...workflow.RecordFilter) ([]workflow.Record, error) {
 	filter := workflow.MakeFilter(filters...)
 
-	var filterStr string
+	var (
+		filterStr    string
+		filterParams []any
+	)
 	if filter.ByForeignID().Enabled {
-		filterStr += fmt.Sprintf(" and foreign_id='%v' ", filter.ByForeignID().Value)
+		filterStr += " and foreign_id=? "
+		filterParams = append(filterParams, filter.ByForeignID().Value)
 	}
 
 	if filter.ByStatus().Enabled {
-		filterStr += fmt.Sprintf(" and status=%v ", filter.ByStatus().Value)
+		filterStr += " and status=? "
+		filterParams = append(filterParams, filter.ByStatus().Value)
 	}
 
 	if filter.ByRunState().Enabled {
-		filterStr += fmt.Sprintf(" and run_state=%v ", filter.ByRunState().Value)
+		filterStr += " and run_state=? "
+		filterParams = append(filterParams, filter.ByRunState().Value)
 	}
 
-	return s.listWhere(ctx, s.reader, "workflow_name=? and id>? "+filterStr+"order by id "+order.String()+" limit ?", workflowName, offsetID, limit)
+	if limit == 0 {
+		limit = defaultListLimit
+	}
+
+	var params []any
+	if workflowName == "" {
+		params = append(params, offsetID)
+		params = append(params, filterParams...)
+		params = append(params, limit)
+		return s.listWhere(ctx, s.reader, "id>? "+filterStr+"order by id "+order.String()+" limit ?", params...)
+	}
+
+	params = append(params, workflowName)
+	params = append(params, offsetID)
+	params = append(params, filterParams...)
+	params = append(params, limit)
+	return s.listWhere(ctx, s.reader, "workflow_name=? and id>? "+filterStr+"order by id "+order.String()+" limit ?", params...)
 }

@@ -35,9 +35,9 @@ func (rs RunState) String() string {
 	case RunStateCompleted:
 		return "Completed"
 	case RunStateDataDeleted:
-		return "DataDeleted"
+		return "Data Deleted"
 	case RunStateRequestedDataDeleted:
-		return "RequestedDataDeleted"
+		return "Requested Data Deleted"
 	default:
 		return "RunState(" + strconv.FormatInt(int64(rs), 10) + ")"
 	}

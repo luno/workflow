@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Workflow | Search Filters and Records</title>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900">
+
+<div class="p-4">
+    <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-4">Search Filters</h2>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Workflow Name Input -->
+        <div class="flex flex-col">
+            <label class="text-gray-600 dark:text-gray-400 font-medium mb-2">Workflow Name</label>
+            <input type="text" id="workflowName" placeholder="Enter Workflow Name" class="border border-gray-300 dark:border-gray-700 rounded-lg w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-gray-300">
+        </div>
+
+        <!-- Foreign ID Input -->
+        <div class="flex flex-col">
+            <label class="text-gray-600 dark:text-gray-400 font-medium mb-2">Foreign ID</label>
+            <input type="text" id="foreignID" placeholder="Enter Foreign ID" class="border border-gray-300 dark:border-gray-700 rounded-lg w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-gray-300">
+        </div>
+
+        <!-- Run State Selector -->
+        <div class="flex flex-col">
+            <label class="text-gray-600 dark:text-gray-400 font-medium mb-2">Run State</label>
+            <select id="runState" class="h-10 border border-gray-300 dark:border-gray-700 rounded-lg w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-gray-300">
+                <option value="0">Select Run State</option>
+                <option value="1">Initiated</option>
+                <option value="2">Running</option>
+                <option value="3">Paused</option>
+                <option value="4">Cancelled</option>
+                <option value="5">Completed</option>
+                <option value="7">Requested Data Deleted</option>
+                <option value="6">Data Deleted</option>
+                <!-- Add specific options for Run State here -->
+            </select>
+        </div>
+
+        <!-- Status Selector -->
+        <div class="flex flex-col">
+            <label class="text-gray-600 dark:text-gray-400 font-medium mb-2">Status</label>
+            <input type="text" id="status" placeholder="Enter Status (int value)" class="border border-gray-300 dark:border-gray-700 rounded-lg w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-gray-300">
+        </div>
+
+        <!-- Offset Input -->
+        <div class="flex flex-col">
+            <label class="text-gray-600 dark:text-gray-400 font-medium mb-2">Offset</label>
+            <input type="number" id="offset" placeholder="0" class="border border-gray-300 dark:border-gray-700 rounded-lg w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-gray-300">
+        </div>
+
+        <!-- Limit Input -->
+        <div class="flex flex-col">
+            <label class="text-gray-600 dark:text-gray-400 font-medium mb-2">Limit</label>
+            <input type="number" id="limit" placeholder="25" class="border border-gray-300 dark:border-gray-700 rounded-lg w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-gray-300">
+        </div>
+
+        <!-- Order Selector -->
+        <div class="flex flex-col">
+            <label class="text-gray-600 dark:text-gray-400 font-medium mb-2">Order</label>
+            <select id="order" class="h-10 border border-gray-300 dark:border-gray-700 rounded-lg w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-gray-300">
+                <option value="desc">DESC</option>
+                <option value="asc">ASC</option>
+            </select>
+        </div>
+
+        <!-- Search Button -->
+        <div class="flex flex-col justify-end">
+            <button onclick="collectAndUpdateTable()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150 ease-in-out">
+                <div>Search</div>
+            </button>
+        </div>
+    </div>
+
+    <div class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md mt-6">
+        <div class="flex justify-between py-5 px-4">
+            <h2 class="flex items-center text-xl font-semibold text-gray-800 dark:text-gray-200 mb-0">Workflow Records</h2>
+            <button id="pollButton" onclick="togglePolling()" class="bg-blue-500 hover:bg-blue-700 text-sm text-white py-2 px-4 rounded">
+                Enable Polling
+            </button>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white dark:bg-gray-900 rounded-lg shadow-sm">
+                <thead class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-600">
+                <tr>
+                    <th class="py-3 px-4 text-center font-medium text-sm">ID</th>
+                    <th class="py-3 px-4 text-center font-medium text-sm">Foreign ID</th>
+                    <th class="py-3 px-4 text-center font-medium text-sm">Run ID</th>
+                    <th class="py-3 px-4 text-center font-medium text-sm">Run State</th>
+                    <th class="py-3 px-4 text-center font-medium text-sm">Status</th>
+                    <th class="py-3 px-4 text-center font-medium text-sm">Created At</th>
+                    <th class="py-3 px-4 text-center font-medium text-sm">Updated At</th>
+                    <th class="py-3 px-4 text-center font-medium text-sm">Object</th>
+                    <th class="py-3 px-4 text-center font-medium text-sm">Actions</th>
+                </tr>
+                </thead>
+                <tbody id="tableBody" class="divide-y divide-gray-100 dark:divide-gray-700">
+                <!-- Dynamic rows will be populated here by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div id="jsonModal" class="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-lg min-h-[50vh] min-w-[50vw] overflow-auto">
+            <h2 class="text-xl font-semibold mb-4">Object</h2>
+            <div id="jsonContainer" class="bg-gray-100 p-4 rounded text-sm"></div>
+            <button onclick="closeModal()" class="bg-red-500 text-white px-4 py-2 mt-4 rounded">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    {{.Javascript}}
+</script>
+</body>
+</html>
