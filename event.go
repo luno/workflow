@@ -70,6 +70,9 @@ type OutboxEventData struct {
 	Data []byte
 }
 
+// MakeOutboxEventData creates a OutboxEventData that houses all the information that must be stored and be
+// retrievable from the outbox. A previous record must be provided as this is used for additional context
+// that is used for producing the event from the outbox record.
 func MakeOutboxEventData(record Record, previousRecord Record) (OutboxEventData, error) {
 	topic := Topic(record.WorkflowName, record.Status)
 
