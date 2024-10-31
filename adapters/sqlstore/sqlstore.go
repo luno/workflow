@@ -3,8 +3,6 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
-	"fmt"
-
 	"github.com/luno/jettison/errors"
 	"github.com/luno/workflow"
 )
@@ -155,6 +153,5 @@ func (s *SQLStore) List(ctx context.Context, workflowName string, offset int64, 
 	params := filterParams
 	params = append(params, limit)
 	params = append(params, offset)
-	fmt.Println(filterStr+" order by created_at "+order.String()+" limit ? offset ?", params)
 	return s.listWhere(ctx, s.reader, filterStr+" order by created_at "+order.String()+" limit ? offset ?", params...)
 }

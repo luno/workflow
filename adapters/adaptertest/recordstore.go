@@ -233,7 +233,6 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 		for status, count := range config {
 			ls, err := store.List(ctx, workflowName, 0, 100, workflow.OrderTypeAscending, workflow.FilterByStatus(int64(status)))
 			require.Nil(t, err)
-			fmt.Println(count, len(ls))
 			require.Equal(t, count, len(ls))
 
 			for _, l := range ls {
