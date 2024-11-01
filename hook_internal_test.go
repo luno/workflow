@@ -176,7 +176,7 @@ func Test_runHooks(t *testing.T) {
 				},
 			},
 			RunStateCompleted,
-			func(ctx context.Context, id int64) (*Record, error) {
+			func(ctx context.Context, id string) (*Record, error) {
 				// Ensures that the test only finished if this is called
 				wg.Done()
 				return nil, ErrRecordNotFound
@@ -212,7 +212,7 @@ func Test_runHooks(t *testing.T) {
 				},
 			},
 			RunStateCompleted,
-			func(ctx context.Context, id int64) (*Record, error) {
+			func(context.Context, string) (*Record, error) {
 				return nil, testErr
 			},
 			nil,
@@ -243,7 +243,7 @@ func Test_runHooks(t *testing.T) {
 				},
 			},
 			RunStateCompleted,
-			func(ctx context.Context, id int64) (*Record, error) {
+			func(context.Context, string) (*Record, error) {
 				return nil, ErrRecordNotFound
 			},
 			nil,
@@ -277,7 +277,7 @@ func Test_runHooks(t *testing.T) {
 				},
 			},
 			RunStateCompleted,
-			func(ctx context.Context, id int64) (*Record, error) {
+			func(context.Context, string) (*Record, error) {
 				wg.Done()
 				return &Record{
 					Object: []byte("INVALID JSON"),
@@ -312,7 +312,7 @@ func Test_runHooks(t *testing.T) {
 				},
 			},
 			RunStateCompleted,
-			func(ctx context.Context, id int64) (*Record, error) {
+			func(context.Context, string) (*Record, error) {
 				return &Record{
 					Object: []byte("INVALID JSON"),
 				}, nil
@@ -345,7 +345,7 @@ func Test_runHooks(t *testing.T) {
 				},
 			},
 			RunStateCompleted,
-			func(ctx context.Context, id int64) (*Record, error) {
+			func(context.Context, string) (*Record, error) {
 				return &Record{
 					Object: []byte(`"VALID JSON"`),
 				}, nil

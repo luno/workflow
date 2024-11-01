@@ -88,7 +88,7 @@ func DeleteForever(
 
 		record.Object = replacementData
 		record.RunState = RunStateDataDeleted
-		err = updateWireRecord(ctx, store, record, RunStateRequestedDataDeleted)
+		err = updateRecord(ctx, store, record, RunStateRequestedDataDeleted)
 		if err != nil {
 			return err
 		}

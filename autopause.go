@@ -2,7 +2,6 @@ package workflow
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/luno/workflow/internal/errorcounter"
 )
@@ -35,7 +34,6 @@ func maybePause[Type any, Status StatusType](
 	}
 
 	logger.maybeDebug(ctx, "paused record after exceeding allowed error count", map[string]string{
-		"record_id":     strconv.FormatInt(run.Record.ID, 10),
 		"workflow_name": run.WorkflowName,
 		"foreign_id":    run.ForeignID,
 		"run_id":        run.RunID,

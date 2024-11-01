@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"strconv"
 )
 
 type callback[Type any, Status StatusType] struct {
@@ -68,7 +67,6 @@ func processCallback[Type any, Status StatusType](
 	if skipUpdate(next) {
 		w.logger.maybeDebug(ctx, "skipping update", map[string]string{
 			"description":   skipUpdateDescription(next),
-			"record_id":     strconv.FormatInt(run.Record.ID, 10),
 			"workflow_name": w.Name,
 			"foreign_id":    run.ForeignID,
 			"run_id":        run.RunID,

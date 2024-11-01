@@ -95,14 +95,14 @@ type Stream struct {
 	options     workflow.ConsumerOptions
 }
 
-func (s *Stream) Send(ctx context.Context, recordID int64, statusType int, headers map[workflow.Header]string) error {
+func (s *Stream) Send(ctx context.Context, foreignID string, statusType int, headers map[workflow.Header]string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	length := len(*s.log)
 	*s.log = append(*s.log, &workflow.Event{
 		ID:        int64(length) + 1,
-		ForeignID: recordID,
+		ForeignID: foreignID,
 		Type:      statusType,
 		Headers:   headers,
 		CreatedAt: s.clock.Now(),

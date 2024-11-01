@@ -125,7 +125,7 @@ func (rsc *runStateControllerImpl) update(ctx context.Context, rs RunState) erro
 
 	previousRunState := rsc.record.RunState
 	rsc.record.RunState = rs
-	return updateWireRecord(ctx, rsc.store, rsc.record, previousRunState)
+	return updateRecord(ctx, rsc.store, rsc.record, previousRunState)
 }
 
 var runStateTransitions = map[RunState]map[RunState]bool{

@@ -68,7 +68,7 @@ func trigger[Type any, Status StatusType](ctx context.Context, w *Workflow[Type,
 		UpdatedAt:    w.clock.Now(),
 	}
 
-	err = updateWireRecord(ctx, w.recordStore.Store, wr, RunStateUnknown)
+	err = updateRecord(ctx, w.recordStore.Store, wr, RunStateUnknown)
 	if err != nil {
 		return "", err
 	}

@@ -23,20 +23,18 @@ func TestDeleteForever(t *testing.T) {
 
 	testCases := []struct {
 		Name        string
-		storeFn     func(ctx context.Context, record *workflow.Record, maker workflow.OutboxEventDataMaker) error
-		lookupFn    func(ctx context.Context, id int64) (*workflow.Record, error)
+		storeFn     func(ctx context.Context, record *workflow.Record) error
+		lookupFn    func(ctx context.Context, runID string) (*workflow.Record, error)
 		deleteFn    func(wr *workflow.Record) ([]byte, error)
 		expectedErr error
 	}{
 		{
 			Name: "Golden path - custom delete",
-			storeFn: func(ctx context.Context, record *workflow.Record, maker workflow.OutboxEventDataMaker) error {
+			storeFn: func(ctx context.Context, record *workflow.Record) error {
 				require.Equal(t, workflow.RunStateDataDeleted, record.RunState)
 				return nil
 			},
-			lookupFn: func(ctx context.Context, id int64) (*workflow.Record, error) {
-				require.Equal(t, int64(1), id)
-
+			lookupFn: func(ctx context.Context, runID string) (*workflow.Record, error) {
 				o := object{
 					pii:    "my name",
 					notPII: "name of the month",
@@ -64,13 +62,11 @@ func TestDeleteForever(t *testing.T) {
 		},
 		{
 			Name: "Golden path - default delete",
-			storeFn: func(ctx context.Context, record *workflow.Record, maker workflow.OutboxEventDataMaker) error {
+			storeFn: func(ctx context.Context, record *workflow.Record) error {
 				require.Equal(t, workflow.RunStateDataDeleted, record.RunState)
 				return nil
 			},
-			lookupFn: func(ctx context.Context, id int64) (*workflow.Record, error) {
-				require.Equal(t, int64(1), id)
-
+			lookupFn: func(ctx context.Context, runID string) (*workflow.Record, error) {
 				o := object{
 					pii:    "my name",
 					notPII: "name of the month",
@@ -88,19 +84,19 @@ func TestDeleteForever(t *testing.T) {
 		},
 		{
 			Name: "Return err on lookup error",
-			lookupFn: func(ctx context.Context, id int64) (*workflow.Record, error) {
+			lookupFn: func(ctx context.Context, runID string) (*workflow.Record, error) {
 				return nil, testErr
 			},
 			expectedErr: testErr,
 		},
 		{
 			Name: "Return err on store error",
-			lookupFn: func(ctx context.Context, id int64) (*workflow.Record, error) {
+			lookupFn: func(ctx context.Context, runID string) (*workflow.Record, error) {
 				return &workflow.Record{
 					RunState: workflow.RunStateRequestedDataDeleted,
 				}, nil
 			},
-			storeFn: func(ctx context.Context, record *workflow.Record, maker workflow.OutboxEventDataMaker) error {
+			storeFn: func(ctx context.Context, record *workflow.Record) error {
 				return testErr
 			},
 			expectedErr: testErr,
@@ -119,13 +115,12 @@ func TestDeleteForever(t *testing.T) {
 				producer.Close()
 			})
 
-			recordID := int64(1)
-			err = producer.Send(ctx, recordID, 1, map[workflow.Header]string{
-				workflow.HeaderWorkflowName:     workflowName,
-				workflow.HeaderForeignID:        "1",
-				workflow.HeaderTopic:            workflow.DeleteTopic(workflowName),
-				workflow.HeaderRunState:         workflow.RunStateRequestedDataDeleted.String(),
-				workflow.HeaderPreviousRunState: workflow.RunStateCompleted.String(),
+			runID := "uuid"
+			err = producer.Send(ctx, runID, 1, map[workflow.Header]string{
+				workflow.HeaderWorkflowName: workflowName,
+				workflow.HeaderForeignID:    "1",
+				workflow.HeaderTopic:        workflow.DeleteTopic(workflowName),
+				workflow.HeaderRunState:     workflow.RunStateRequestedDataDeleted.String(),
 			})
 			require.Nil(t, err)
 

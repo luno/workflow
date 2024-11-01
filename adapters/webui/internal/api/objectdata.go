@@ -10,10 +10,10 @@ import (
 )
 
 type ObjectDataRequest struct {
-	RecordID int64 `json:"record_id"`
+	RunID string `json:"run_id"`
 }
 
-type LookupFn func(ctx context.Context, id int64) (*workflow.Record, error)
+type LookupFn func(ctx context.Context, runID string) (*workflow.Record, error)
 
 func ObjectData(lookup LookupFn) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -30,7 +30,7 @@ func ObjectData(lookup LookupFn) http.HandlerFunc {
 			return
 		}
 
-		record, err := lookup(r.Context(), req.RecordID)
+		record, err := lookup(r.Context(), req.RunID)
 		if err != nil {
 			http.Error(w, "failed to lookup record from store", http.StatusInternalServerError)
 			return

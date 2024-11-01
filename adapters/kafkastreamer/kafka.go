@@ -43,7 +43,7 @@ type Producer struct {
 
 var _ workflow.Producer = (*Producer)(nil)
 
-func (p *Producer) Send(ctx context.Context, recordID int64, statusType int, headers map[workflow.Header]string) error {
+func (p *Producer) Send(ctx context.Context, foreignID string, statusType int, headers map[workflow.Header]string) error {
 	for ctx.Err() == nil {
 		ctx, cancel := context.WithTimeout(ctx, p.WriterTimeout)
 		defer cancel()
@@ -56,9 +56,8 @@ func (p *Producer) Send(ctx context.Context, recordID int64, statusType int, hea
 			})
 		}
 
-		key := strconv.FormatInt(int64(recordID), 10)
 		msg := kafka.Message{
-			Key:     []byte(key),
+			Key:     []byte(foreignID),
 			Value:   []byte(strconv.FormatInt(int64(statusType), 10)),
 			Headers: kHeaders,
 		}
@@ -128,11 +127,6 @@ func (c *Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, err
 		// Append the message to the commit slice to ensure we send all messages that have been processed
 		commit = append(commit, m)
 
-		recordID, err := strconv.ParseInt(string(m.Key), 10, 64)
-		if err != nil {
-			return nil, nil, err
-		}
-
 		statusType, err := strconv.ParseInt(string(m.Value), 10, 64)
 		if err != nil {
 			return nil, nil, err
@@ -145,7 +139,7 @@ func (c *Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, err
 
 		event := &workflow.Event{
 			ID:        m.Offset,
-			ForeignID: recordID,
+			ForeignID: string(m.Key),
 			Type:      int(statusType),
 			Headers:   headers,
 			CreatedAt: m.Time,

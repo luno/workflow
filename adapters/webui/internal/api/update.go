@@ -9,8 +9,8 @@ import (
 )
 
 type UpdateRequest struct {
-	RecordID int64  `json:"record_id"`
-	Action   string `json:"action"`
+	RunID  string `json:"run_id"`
+	Action string `json:"action"`
 }
 
 func Update(store workflow.RecordStore) http.HandlerFunc {
@@ -29,7 +29,7 @@ func Update(store workflow.RecordStore) http.HandlerFunc {
 			return
 		}
 
-		wr, err := store.Lookup(r.Context(), req.RecordID)
+		wr, err := store.Lookup(r.Context(), req.RunID)
 		if err != nil {
 			http.Error(w, "failed to lookup record from store", http.StatusInternalServerError)
 			return

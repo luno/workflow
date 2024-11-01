@@ -11,8 +11,8 @@ import (
 )
 
 type (
-	lookupFunc func(ctx context.Context, id int64) (*Record, error)
-	storeFunc  func(ctx context.Context, record *Record, maker OutboxEventDataMaker) error
+	lookupFunc func(ctx context.Context, runID string) (*Record, error)
+	storeFunc  func(ctx context.Context, record *Record) error
 
 	updater[Type any, Status StatusType] func(ctx context.Context, current Status, next Status, run *Run[Type, Status]) error
 )
@@ -31,7 +31,6 @@ func newUpdater[Type any, Status StatusType](lookup lookupFunc, store storeFunc,
 		}
 
 		updatedRecord := &Record{
-			ID:           record.ID,
 			WorkflowName: record.WorkflowName,
 			ForeignID:    record.ForeignID,
 			RunID:        record.RunID,
@@ -42,7 +41,7 @@ func newUpdater[Type any, Status StatusType](lookup lookupFunc, store storeFunc,
 			UpdatedAt:    clock.Now(),
 		}
 
-		latest, err := lookup(ctx, updatedRecord.ID)
+		latest, err := lookup(ctx, updatedRecord.RunID)
 		if err != nil {
 			return err
 		}
@@ -61,11 +60,7 @@ func newUpdater[Type any, Status StatusType](lookup lookupFunc, store storeFunc,
 		// Push run state changes for observability
 		metrics.RunStateChanges.WithLabelValues(record.WorkflowName, record.RunState.String(), updatedRecord.RunState.String()).Inc()
 
-		return store(ctx, updatedRecord, func(recordID int64) (OutboxEventData, error) {
-			// Run ID would not have been set if it is a new record. Assign the recordID that the Store provides
-			updatedRecord.ID = recordID
-			return RecordToOutboxEventData(*updatedRecord, record.RunState)
-		})
+		return store(ctx, updatedRecord)
 	}
 }
 
@@ -93,13 +88,9 @@ func validateTransition[Status StatusType](current, next Status, graph *graph.Gr
 	return nil
 }
 
-func updateWireRecord(ctx context.Context, store storeFunc, record *Record, previousRunState RunState) error {
+func updateRecord(ctx context.Context, store storeFunc, record *Record, previousRunState RunState) error {
 	// Push run state changes for observability
 	metrics.RunStateChanges.WithLabelValues(record.WorkflowName, previousRunState.String(), record.RunState.String()).Inc()
 
-	return store(ctx, record, func(recordID int64) (OutboxEventData, error) {
-		// Run ID would not have been set if it is a new record. Assign the recordID that the Store provides
-		record.ID = recordID
-		return RecordToOutboxEventData(*record, previousRunState)
-	})
+	return store(ctx, record)
 }

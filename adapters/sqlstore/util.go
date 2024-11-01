@@ -9,8 +9,8 @@ import (
 	"github.com/luno/workflow"
 )
 
-func (s *SQLStore) create(ctx context.Context, tx *sql.Tx, workflowName, foreignID, runID string, status int, object []byte, runState int) (int64, error) {
-	resp, err := tx.ExecContext(ctx, "insert into "+s.recordTableName+" set "+
+func (s *SQLStore) create(ctx context.Context, tx *sql.Tx, workflowName, foreignID, runID string, status int, object []byte, runState int) error {
+	_, err := tx.ExecContext(ctx, "insert into "+s.recordTableName+" set "+
 		" workflow_name=?, foreign_id=?, run_id=?, run_state=?, status=?, object=?, created_at=now(), updated_at=now() ",
 		workflowName,
 		foreignID,
@@ -18,30 +18,6 @@ func (s *SQLStore) create(ctx context.Context, tx *sql.Tx, workflowName, foreign
 		runState,
 		status,
 		object,
-	)
-	if err != nil {
-		return 0, errors.Wrap(err, "failed to create entry", j.MKV{
-			"workflowName": workflowName,
-			"foreignID":    foreignID,
-			"runID":        runID,
-			"status":       status,
-			"object":       object,
-		})
-	}
-
-	return resp.LastInsertId()
-}
-
-func (s *SQLStore) update(ctx context.Context, tx *sql.Tx, workflowName, foreignID, runID string, status int, object []byte, runState int, id int64) error {
-	_, err := tx.ExecContext(ctx, "update "+s.recordTableName+" set "+
-		" workflow_name=?, foreign_id=?, run_id=?, run_state=?, status=?, object=?, updated_at=now() where id=?",
-		workflowName,
-		foreignID,
-		runID,
-		runState,
-		status,
-		object,
-		id,
 	)
 	if err != nil {
 		return errors.Wrap(err, "failed to create entry", j.MKV{
@@ -56,9 +32,29 @@ func (s *SQLStore) update(ctx context.Context, tx *sql.Tx, workflowName, foreign
 	return nil
 }
 
-func (s *SQLStore) insertOutboxEvent(ctx context.Context, tx *sql.Tx, workflowName string, data []byte) (int64, error) {
+func (s *SQLStore) update(ctx context.Context, tx *sql.Tx, runID string, status int, object []byte, runState int) error {
+	_, err := tx.ExecContext(ctx, "update "+s.recordTableName+" set "+
+		" run_state=?, status=?, object=?, updated_at=now() where run_id=?",
+		runState,
+		status,
+		object,
+		runID,
+	)
+	if err != nil {
+		return errors.Wrap(err, "failed to create entry", j.MKV{
+			"runID":  runID,
+			"status": status,
+			"object": object,
+		})
+	}
+
+	return nil
+}
+
+func (s *SQLStore) insertOutboxEvent(ctx context.Context, tx *sql.Tx, id string, workflowName string, data []byte) (int64, error) {
 	resp, err := tx.ExecContext(ctx, "insert into "+s.outboxTableName+" set "+
-		" workflow_name=?, data=?, created_at=now() ",
+		" id=?, workflow_name=?, data=?, created_at=now() ",
+		id,
 		workflowName,
 		data,
 	)
@@ -127,7 +123,6 @@ func (s *SQLStore) listOutboxWhere(ctx context.Context, dbc *sql.DB, where strin
 func recordScan(row row) (*workflow.Record, error) {
 	var r workflow.Record
 	err := row.Scan(
-		&r.ID,
 		&r.WorkflowName,
 		&r.ForeignID,
 		&r.RunID,

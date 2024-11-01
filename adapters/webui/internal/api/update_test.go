@@ -26,23 +26,23 @@ func TestUpdateHandler(t *testing.T) {
 		{
 			name: "Pause",
 			request: api.UpdateRequest{
-				RecordID: 1,
-				Action:   "pause",
+				RunID:  "1",
+				Action: "pause",
 			},
 			before: []workflow.Record{
 				{
-					ID:           1,
 					WorkflowName: "test",
 					ForeignID:    "9",
+					RunID:        "1",
 					RunState:     workflow.RunStateRunning,
 					Status:       2,
 				},
 			},
 			after: []workflow.Record{
 				{
-					ID:           1,
 					WorkflowName: "test",
 					ForeignID:    "9",
+					RunID:        "1",
 					RunState:     workflow.RunStatePaused,
 					Status:       2,
 				},
@@ -52,23 +52,23 @@ func TestUpdateHandler(t *testing.T) {
 		{
 			name: "Resume",
 			request: api.UpdateRequest{
-				RecordID: 1,
-				Action:   "resume",
+				RunID:  "1",
+				Action: "resume",
 			},
 			before: []workflow.Record{
 				{
-					ID:           1,
 					WorkflowName: "test",
 					ForeignID:    "9",
+					RunID:        "1",
 					RunState:     workflow.RunStatePaused,
 					Status:       2,
 				},
 			},
 			after: []workflow.Record{
 				{
-					ID:           1,
 					WorkflowName: "test",
 					ForeignID:    "9",
+					RunID:        "1",
 					RunState:     workflow.RunStateRunning,
 					Status:       2,
 				},
@@ -78,23 +78,23 @@ func TestUpdateHandler(t *testing.T) {
 		{
 			name: "Cancel",
 			request: api.UpdateRequest{
-				RecordID: 1,
-				Action:   "cancel",
+				RunID:  "1",
+				Action: "cancel",
 			},
 			before: []workflow.Record{
 				{
-					ID:           1,
 					WorkflowName: "test",
 					ForeignID:    "9",
+					RunID:        "1",
 					RunState:     workflow.RunStateRunning,
 					Status:       2,
 				},
 			},
 			after: []workflow.Record{
 				{
-					ID:           1,
 					WorkflowName: "test",
 					ForeignID:    "9",
+					RunID:        "1",
 					RunState:     workflow.RunStateCancelled,
 					Status:       2,
 				},
@@ -104,23 +104,23 @@ func TestUpdateHandler(t *testing.T) {
 		{
 			name: "Delete",
 			request: api.UpdateRequest{
-				RecordID: 1,
-				Action:   "delete",
+				RunID:  "1",
+				Action: "delete",
 			},
 			before: []workflow.Record{
 				{
-					ID:           1,
 					WorkflowName: "test",
 					ForeignID:    "9",
+					RunID:        "1",
 					RunState:     workflow.RunStateCompleted,
 					Status:       9,
 				},
 			},
 			after: []workflow.Record{
 				{
-					ID:           1,
 					WorkflowName: "test",
 					ForeignID:    "9",
+					RunID:        "1",
 					RunState:     workflow.RunStateRequestedDataDeleted,
 					Status:       9,
 					Object:       []byte("Deleted"),
@@ -131,14 +131,14 @@ func TestUpdateHandler(t *testing.T) {
 		{
 			name: "Unknown action",
 			request: api.UpdateRequest{
-				RecordID: 1,
-				Action:   "",
+				RunID:  "1",
+				Action: "",
 			},
 			before: []workflow.Record{
 				{
-					ID:           1,
 					WorkflowName: "test",
 					ForeignID:    "9",
+					RunID:        "1",
 					RunState:     workflow.RunStateCompleted,
 					Status:       9,
 				},
@@ -153,9 +153,7 @@ func TestUpdateHandler(t *testing.T) {
 
 			ctx := context.Background()
 			for _, record := range tc.before {
-				err := recordStore.Store(ctx, &record, func(recordID int64) (workflow.OutboxEventData, error) {
-					return workflow.OutboxEventData{}, nil
-				})
+				err := recordStore.Store(ctx, &record)
 				require.NoError(t, err)
 			}
 
@@ -173,7 +171,7 @@ func TestUpdateHandler(t *testing.T) {
 			require.Equal(t, tc.expectedStatusCode, resp.StatusCode)
 
 			for _, expected := range tc.after {
-				actual, err := recordStore.Lookup(ctx, expected.ID)
+				actual, err := recordStore.Lookup(ctx, expected.RunID)
 				require.NoError(t, err)
 
 				// No need to compare objects

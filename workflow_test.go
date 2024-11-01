@@ -605,7 +605,6 @@ func TestStepConsumerLag(t *testing.T) {
 	require.Nil(t, err)
 
 	// Ensure that the record has not been consumer or updated
-	require.Equal(t, int64(1), latest.ID)
 	require.Equal(t, int(StatusStart), latest.Status)
 
 	clock.Step(lagAmount)

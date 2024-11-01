@@ -27,7 +27,7 @@ func TestObjectDataHandler(t *testing.T) {
 	}
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		lookupFn := func(ctx context.Context, id int64) (*workflow.Record, error) {
+		lookupFn := func(ctx context.Context, runID string) (*workflow.Record, error) {
 			b, err := workflow.Marshal(&expectedResponseData)
 			require.NoError(t, err)
 
@@ -39,7 +39,7 @@ func TestObjectDataHandler(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	body, err := json.Marshal(api.ObjectDataRequest{RecordID: 1})
+	body, err := json.Marshal(api.ObjectDataRequest{RunID: "1"})
 	require.NoError(t, err)
 
 	resp, err := http.Post(srv.URL, "application/json", bytes.NewReader(body))

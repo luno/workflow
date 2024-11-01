@@ -52,6 +52,8 @@ func main() {
 	http.HandleFunc(paths.ObjectData, webui.ObjectDataHandlerFunc(recordStore))
 	http.HandleFunc(paths.Update, webui.UpdateHandlerFunc(recordStore))
 
+	fmt.Println("Head on over to 'http://localhost:9492' to view!")
+
 	err := http.ListenAndServe("localhost:9492", nil)
 	if err != nil {
 		panic(err)

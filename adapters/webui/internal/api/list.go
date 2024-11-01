@@ -12,7 +12,7 @@ import (
 
 type ListRequest struct {
 	WorkflowName      string `json:"workflow_name"`
-	OffsetID          int64  `json:"offset_id"`
+	Offset            int64  `json:"offset"`
 	Limit             int    `json:"limit"`
 	Order             string `json:"order"`
 	FilterByForeignID string `json:"filter_by_foreign_id"`
@@ -26,7 +26,6 @@ type ListResponse struct {
 
 // ListItem is a lightweight version of workflow.Record
 type ListItem struct {
-	ID           int64     `json:"id"`
 	WorkflowName string    `json:"workflow_name"`
 	ForeignID    string    `json:"foreign_id"`
 	RunID        string    `json:"run_id"`
@@ -36,7 +35,7 @@ type ListItem struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
-type ListWorkflowRecords func(ctx context.Context, workflowName string, offsetID int64, limit int, order workflow.OrderType, filters ...workflow.RecordFilter) ([]workflow.Record, error)
+type ListWorkflowRecords func(ctx context.Context, workflowName string, offset int64, limit int, order workflow.OrderType, filters ...workflow.RecordFilter) ([]workflow.Record, error)
 
 func List(listRecords ListWorkflowRecords, stringer Stringer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +70,7 @@ func List(listRecords ListWorkflowRecords, stringer Stringer) http.HandlerFunc {
 			filters = append(filters, workflow.FilterByStatus(int64(req.FilterByStatus)))
 		}
 
-		list, err := listRecords(r.Context(), req.WorkflowName, req.OffsetID, req.Limit, order, filters...)
+		list, err := listRecords(r.Context(), req.WorkflowName, req.Offset, req.Limit, order, filters...)
 		if err != nil {
 			http.Error(w, "failed to collect records from store", http.StatusInternalServerError)
 			return
@@ -81,7 +80,6 @@ func List(listRecords ListWorkflowRecords, stringer Stringer) http.HandlerFunc {
 		for _, record := range list {
 			statusName := stringer(record.WorkflowName, record.Status)
 			listItems = append(listItems, ListItem{
-				ID:           record.ID,
 				WorkflowName: record.WorkflowName,
 				ForeignID:    record.ForeignID,
 				RunID:        record.RunID,

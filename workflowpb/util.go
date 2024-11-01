@@ -18,7 +18,6 @@ func ProtoMarshal(r *workflow.Record) ([]byte, error) {
 
 func ToProto(r *workflow.Record) *Record {
 	return &Record{
-		Id:           r.ID,
 		WorkflowName: r.WorkflowName,
 		ForeignId:    r.ForeignID,
 		RunId:        r.RunID,
@@ -38,7 +37,6 @@ func UnmarshalRecord(b []byte) (*workflow.Record, error) {
 	}
 
 	return &workflow.Record{
-		ID:           wpb.Id,
 		WorkflowName: wpb.WorkflowName,
 		ForeignID:    wpb.ForeignId,
 		RunID:        wpb.RunId,
