@@ -1,5 +1,5 @@
 <div align="center">
-    <img src="./logo/logo.png" style="width: 300px; margin: 30px" alt="Workflow Logo">
+    <img src="./logo/logo.png" style="width: 220px; margin: 30px" alt="Workflow Logo">
     <div  align="center" style="max-width: 750px">
         <a style="padding: 0 5px" href="https://goreportcard.com/report/github.com/luno/workflow"><img src="https://goreportcard.com/badge/github.com/luno/workflow"/></a>
         <a style="padding: 0 5px" href="https://sonarcloud.io/summary/new_code?id=luno_workflow"><img src="https://sonarcloud.io/api/project_badges/measure?project=luno_workflow&metric=coverage"/></a>
@@ -15,7 +15,7 @@
 
 # Workflow
 
-[Workflow](https://github.com/luno/workflow) is a distributed event driven workflow framework than runs robust, durable, and
+[Workflow](https://github.com/luno/workflow) is a distributed event driven workflow framework that runs robust, durable, and
 scalable sequential business logic on your services.
 
 [Workflow](https://github.com/luno/workflow) uses a [RoleScheduler](https://github.com/luno/workflow/blob/main/rolescheduler.go) to distribute the work
@@ -29,15 +29,28 @@ scalable sequential business logic on your services.
 
 ---
 
+1. [Features](#features)
+2. [Installation](#installation)
+3. [Adapters](#adapters)
+4. [Connectors](#connectors)
+5. [What is a workflow Run](#what-is-a-workflow-run)
+6. [Hooks](#hooks)
+7. [Configuration Options](#configuration-options)
+8. [Glossary](#glossary)
+9. [Best Practices](#best-practices)
+
+---
+
 ## Features
 
 - **Tech stack agnostic:** Use Kafka, Cassandra, Redis, MongoDB, Postgresql, MySQL, RabbitM, or Reflex - the choice is yours!
 - **Graph based (Directed Acyclic Graph - DAG):** Design the workflow by defining small units of work called "Steps".
 - **TDD:** Workflow was built using TDD and remains well-supported through a suit of tools.
+- **Callbacks:** Allow for manual callbacks from webhooks or manual triggers from consoles to progress the workflow such as approval buttons or third-party webhooks.  
+- **Event fusion:** Add event connectors to your workflow to consume external event streams (even if its from a different event streaming platform).
+- **Hooks:** Write hooks that execute on core changes in a workflow Run.
 - **Schedule:** Allows standard cron spec to schedule workflows 
 - **Timeouts:** Set either a dynamic or static time for a workflow to wait for. Once the timeout finishes everything continues as it was.
-- **Event fusion:** Add event connectors to your workflow to consume external event streams (even if its from a different event streaming platform).  
-- **Callbacks:** Allow for manual callbacks from webhooks or manual triggers from consoles to progress the workflow such as approval buttons or third-party webhooks.  
 - **Parallel consumers:** Specify how many step consumers should run or specify the default for all consumers. 
 - **Consumer management:** Consumer management and graceful shutdown of all processes making sure there is no goroutine leaks!
 
@@ -49,9 +62,22 @@ To start using workflow you will need to add the workflow module to your project
 go get github.com/luno/workflow
 ```
 
-### Adapters
-Some adapters dont come with the core workflow module such as `kafkastreamer`, `reflexstreamer`, `sqlstore`, and `sqltimeout`. If you
- wish to use these you need to add them individually based on your needs or build out your own adapter.
+---
+
+## Adapters
+Adapters enable [Workflow](https://github.com/luno/workflow) to be tech stack agnostic by placing an interface /
+ protocol between [Workflow](https://github.com/luno/workflow) and the tech stack. [Workflow](https://github.com/luno/workflow)
+ uses adapters to understand how to use that specific tech stack.
+
+For example, the Kafka adapter enables workflow
+ to produce messages to a topic as well as consume them from a topic using a set of predefined methods that wrap the
+ kafka client. [Reflex](https://github.com/luno/reflex) is an event streaming framework that works very differently
+ to Kafka and the adapter pattern allows for the differences to be contained and localised in the adapter and not
+ spill into the main implementation.
+
+Some adapters dont come with the core workflow module such as `kafkastreamer`, `reflexstreamer`, `sqlstore`,
+ `sqltimeout`, `rinkrolescheduler`, `webui` and many more. If you wish to use these you need to add them individually
+ based on your needs or build out your own adapter.
 
 #### Kafka
 ```bash
@@ -72,7 +98,32 @@ go get github.com/luno/workflow/adapters/sqlstore
 ```bash
 go get github.com/luno/workflow/adapters/sqltimeout
 ```
+
+#### Rink Role Scheduler
+```bash
+go get github.com/luno/workflow/adapters/rinkrolescheduler
+```
+
+#### WebUI
+```bash
+go get github.com/luno/workflow/adapters/webui
+```
+
+
 ---
+
+## Connectors
+Connectors allow [Workflow](https://github.com/luno/workflow) to consume events from an event streaming platform or
+ framework and either trigger a workflow run or provide a callback to the workflow run. This means that Connectors can act
+ as a way for [Workflow](https://github.com/luno/workflow) to connect with the rest of the system.
+
+Connectors are implemented as adapters as they would share a lot of the same code as implementations of an
+ EventStreamer and can be seen as a subsection of an adapter.
+
+An example can be found [here](_examples/connector).
+
+---
+
 ## Usage
 
 ### Step 1: Define the workflow
@@ -181,7 +232,7 @@ Head on over to [./_examples](./_examples) to get familiar with **callbacks**, *
 
 ---
 
-### What is a workflow Run
+## What is a workflow Run
 
 When a Workflow is triggered it creates an individual workflow instance called a Run. This is represented as workflow.Run in
 [Workflow](https://github.com/luno/workflow). Each run has a lifecycle which is a finite set of states - commonly
