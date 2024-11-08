@@ -15,16 +15,16 @@
 
 # Workflow
 
-[Workflow](https://github.com/luno/workflow) is a distributed event driven workflow framework that runs robust, durable, and
+**Workflow** is a distributed event driven workflow framework that runs robust, durable, and
 scalable sequential business logic on your services.
 
-[Workflow](https://github.com/luno/workflow) uses a [RoleScheduler](https://github.com/luno/workflow/blob/main/rolescheduler.go) to distribute the work
+**Workflow** uses a [RoleScheduler](https://github.com/luno/workflow/blob/main/rolescheduler.go) to distribute the work
  across your instances through a role assignment process (similar to a leadership election process but with more than
  the single role of leader).
 
-[Workflow](https://github.com/luno/workflow) expects to be run on multiple instances but can also be run on single
+**Workflow** expects to be run on multiple instances but can also be run on single
  instances. Using the above-mentioned [RoleScheduler](https://github.com/luno/workflow/blob/main/rolescheduler.go),
-[Workflow](https://github.com/luno/workflow) is able to make sure each process only runs once at any given time
+**Workflow** is able to make sure each process only runs once at any given time
  regardless if you are running 40 instances of your service or 1 instance.
 
 ---
@@ -33,11 +33,12 @@ scalable sequential business logic on your services.
 2. [Installation](#installation)
 3. [Adapters](#adapters)
 4. [Connectors](#connectors)
-5. [What is a workflow Run](#what-is-a-workflow-run)
-6. [Hooks](#hooks)
-7. [Configuration Options](#configuration-options)
-8. [Glossary](#glossary)
-9. [Best Practices](#best-practices)
+5. [Basic Usage](#basic-usage)
+6. [What is a workflow Run](#what-is-a-workflow-run)
+7. [Hooks](#hooks)
+8. [Configuration Options](#configuration-options)
+9. [Glossary](#glossary)
+10. [Best Practices](#best-practices)
 
 ---
 
@@ -45,7 +46,7 @@ scalable sequential business logic on your services.
 
 - **Tech stack agnostic:** Use Kafka, Cassandra, Redis, MongoDB, Postgresql, MySQL, RabbitM, or Reflex - the choice is yours!
 - **Graph based (Directed Acyclic Graph - DAG):** Design the workflow by defining small units of work called "Steps".
-- **TDD:** Workflow was built using TDD and remains well-supported through a suit of tools.
+- **TDD:** **Workflow** was built using TDD and remains well-supported through a suit of tools.
 - **Callbacks:** Allow for manual callbacks from webhooks or manual triggers from consoles to progress the workflow such as approval buttons or third-party webhooks.  
 - **Event fusion:** Add event connectors to your workflow to consume external event streams (even if its from a different event streaming platform).
 - **Hooks:** Write hooks that execute on core changes in a workflow Run.
@@ -65,8 +66,8 @@ go get github.com/luno/workflow
 ---
 
 ## Adapters
-Adapters enable [Workflow](https://github.com/luno/workflow) to be tech stack agnostic by placing an interface /
- protocol between [Workflow](https://github.com/luno/workflow) and the tech stack. [Workflow](https://github.com/luno/workflow)
+Adapters enable **Workflow** to be tech stack agnostic by placing an interface /
+ protocol between **Workflow** and the tech stack. **Workflow**
  uses adapters to understand how to use that specific tech stack.
 
 For example, the Kafka adapter enables workflow
@@ -75,7 +76,30 @@ For example, the Kafka adapter enables workflow
  to Kafka and the adapter pattern allows for the differences to be contained and localised in the adapter and not
  spill into the main implementation.
 
-Some adapters dont come with the core workflow module such as `kafkastreamer`, `reflexstreamer`, `sqlstore`,
+### Event Streamer
+The [EventStreamer](https://github.com/luno/workflow/blob/main/eventstream.go) adapter interface defines what is needed
+ to be satisfied in order for an event streaming platform or framework to be used by **Workflow**. 
+
+All implementations of the EventStreamer interface should be tested using [adaptertest.TestEventStreamer](https://github.com/luno/workflow/blob/main/adapters/adaptertest/eventstreaming.go)
+
+### Record Store
+The [RecordStore](https://github.com/luno/workflow/blob/main/store.go) adapter interface defines what is needed to
+ satisfied in order for a storage solution to be used by **Workflow**.
+
+All implementations of the RecordStore interface should be tested using [adaptertest.RunRecordStoreTest](https://github.com/luno/workflow/blob/main/adapters/adaptertest/recordstore.go)
+
+### Role Scheduler
+The [RoleScheduler](https://github.com/luno/workflow/blob/main/rolescheduler.go) adapter interface defines what is needed to
+satisfied in order for a role scheduling solution to be used by **Workflow**.
+
+All implementations of the RoleScheduler interface should be tested using [adaptertest.RunRoleSchedulerTest](https://github.com/luno/workflow/blob/main/adapters/adaptertest/rolescheduler.go)
+
+There are more adapters available but only the above 3 are core requirements to use **Workflow**. To start, use the
+ in-memory implementations as that is the simplest way to experiment and get used to **Workflow**. For testing other
+ adapter types be sure to look at [adaptertest](https://github.com/luno/workflow/blob/main/adapters/adaptertest) which
+ are tests written for adapters to ensure that they meet the specification. 
+
+Adapters, except for the in-memory implementations, don't come with the core **Workflow** module such as `kafkastreamer`, `reflexstreamer`, `sqlstore`,
  `sqltimeout`, `rinkrolescheduler`, `webui` and many more. If you wish to use these you need to add them individually
  based on your needs or build out your own adapter.
 
@@ -109,13 +133,12 @@ go get github.com/luno/workflow/adapters/rinkrolescheduler
 go get github.com/luno/workflow/adapters/webui
 ```
 
-
 ---
 
 ## Connectors
-Connectors allow [Workflow](https://github.com/luno/workflow) to consume events from an event streaming platform or
+Connectors allow **Workflow** to consume events from an event streaming platform or
  framework and either trigger a workflow run or provide a callback to the workflow run. This means that Connectors can act
- as a way for [Workflow](https://github.com/luno/workflow) to connect with the rest of the system.
+ as a way for **Workflow** to connect with the rest of the system.
 
 Connectors are implemented as adapters as they would share a lot of the same code as implementations of an
  EventStreamer and can be seen as a subsection of an adapter.
@@ -124,7 +147,7 @@ An example can be found [here](_examples/connector).
 
 ---
 
-## Usage
+## Basic Usage
 
 ### Step 1: Define the workflow
 ```go
@@ -234,10 +257,10 @@ Head on over to [./_examples](./_examples) to get familiar with **callbacks**, *
 
 ## What is a workflow Run
 
-When a Workflow is triggered it creates an individual workflow instance called a Run. This is represented as workflow.Run in
-[Workflow](https://github.com/luno/workflow). Each run has a lifecycle which is a finite set of states - commonly
+When a **Workflow** is triggered it creates an individual workflow instance called a Run. This is represented as workflow.Run in
+**Workflow**. Each run has a lifecycle which is a finite set of states - commonly
 referred to as Finite State Machine. Each
- workflow Run has the following of states (called RunState in [Workflow](https://github.com/luno/workflow)):
+ workflow Run has the following of states (called RunState in **Workflow**):
 
 1. Initiated
 2. Running
@@ -279,8 +302,8 @@ stateDiagram-v2
 Hooks allow for you to write some functionality for Runs that enter a specific RunState. For example when
 using `PauseAfterErrCount` the usage of the OnPause hook can be used to send a notification to a team to notify
 them that a specific Run has errored to the threshold and now has been paused and should be investigated. Another
-example is handling a known sentinel error in a Workflow Run and cancelling the Run by calling (where r is *Run)
-r.Cancel(ctx) or if a Workflow Run is manually cancelled from a UI then a notifgication can be sent to the team for visibility.
+example is handling a known sentinel error in a **Workflow** Run and cancelling the Run by calling (where r is *Run)
+r.Cancel(ctx) or if a **Workflow** Run is manually cancelled from a UI then a notifgication can be sent to the team for visibility.
 
 Hooks run in an event consumer. This means that it will retry until a nil error has been returned and is durable
 across deploys and interruptions. At-least-once delivery is guaranteed, and it is advised to use the RunID as an
@@ -443,7 +466,7 @@ b.AddStep(
 ## Best practices
 
 1. Break up complex business logic into small steps.
-2. [Workflow](https://github.com/luno/workflow) can be used to produce new meaningful data and not just be used to execute logic. If it is it's suggested
+2. **Workflow** can be used to produce new meaningful data and not just be used to execute logic. If it is it's suggested
 to implement a CQRS pattern where the workflow acts as the "Command" and the data is persisted into a more queryable manner.
 3. Changes to workflows must be backwards compatible. If you need to introduce a non-backwards compatible change
    then the non-backwards compatible workflow should be added alongside the existing workflow with
@@ -451,6 +474,6 @@ to implement a CQRS pattern where the workflow acts as the "Command" and the dat
    to finish processing any workflows it started and once it has finished processing all the existing non-finished Runs
    then it may be safely removed. Alternatively versioning can be added internally to your Object type that you provide
    but this results in changes to the workflow's Directed Acyclic Graph (map of steps connecting together).
-4. [Workflow](https://github.com/luno/workflow) is not intended for low-latency. Asynchronous event driven systems are not meant to be low-latency but
+4. **Workflow** is not intended for low-latency. Asynchronous event driven systems are not meant to be low-latency but
    prioritise decoupling, durability, distribution of workload, and breakdown of complex logic (to name a few).
-5. Ensure that the prometheus metrics that come with [Workflow](https://github.com/luno/workflow) are being used for monitoring and alerting.
+5. Ensure that the prometheus metrics that come with **Workflow** are being used for monitoring and alerting.
