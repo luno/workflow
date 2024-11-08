@@ -15,10 +15,20 @@
 
 # Workflow
 
-Workflow is an event driven workflow that allows for robust, durable, and scalable sequential business logic to
-be executed in a deterministic manner.
+[Workflow](https://github.com/luno/workflow) is a distributed event driven workflow framework than runs robust, durable, and
+scalable sequential business logic on your services.
+
+[Workflow](https://github.com/luno/workflow) uses a [RoleScheduler](https://github.com/luno/workflow/blob/main/rolescheduler.go) to distribute the work
+ across your instances through a role assignment process (similar to a leadership election process but with more than
+ the single role of leader).
+
+[Workflow](https://github.com/luno/workflow) expects to be run on multiple instances but can also be run on single
+ instances. Using the above-mentioned [RoleScheduler](https://github.com/luno/workflow/blob/main/rolescheduler.go),
+[Workflow](https://github.com/luno/workflow) is able to make sure each process only runs once at any given time
+ regardless if you are running 40 instances of your service or 1 instance.
 
 ---
+
 ## Features
 
 - **Tech stack agnostic:** Use Kafka, Cassandra, Redis, MongoDB, Postgresql, MySQL, RabbitM, or Reflex - the choice is yours!
@@ -171,10 +181,22 @@ Head on over to [./_examples](./_examples) to get familiar with **callbacks**, *
 
 ---
 
-## Workflow's RunState
-RunState is the state of a Run and can only exist in one state at any given time. RunState is a
- finite state machine and allows for control over the Run. A Run is every instance of
- a triggered workflow.
+### What is a workflow Run
+
+When a Workflow is triggered it creates an individual workflow instance called a Run. This is represented as workflow.Run in
+[Workflow](https://github.com/luno/workflow). Each run has a lifecycle which is a finite set of states - commonly
+referred to as Finite State Machine. Each
+ workflow Run has the following of states (called RunState in [Workflow](https://github.com/luno/workflow)):
+
+1. Initiated
+2. Running
+3. Paused
+4. Completed
+5. Cancelled
+6. Data Deleted
+7. Requested Data Deleted
+
+A Run can only exist in one state at any given time and the RunState allows for control over the Run.
 ```mermaid
 ---
 title: Diagram the run states of a workflow
@@ -219,7 +241,6 @@ idempotency key to ensure that the operation is idempotent.
 |---------------|---------------------------------|-----------|-------------------------------------------|------------------|
 | OnPause       | workflow.RunStateChangeHookFunc | error     | Fired when a Run enters RunStatePaused    | Yes              |
 | OnCancelled   | workflow.RunStateChangeHookFunc | error     | Fired when a Run enters RunStateCancelled | Yes              |
-| OnDataDeleted | workflow.RunStateChangeHookFunc | error     | Fired when a Run enters RunStateDeleted   | Yes              |
 | OnCompleted   | workflow.RunStateChangeHookFunc | error     | Fired when a Run enters RunStateCompleted | Yes              |
 
 ---
@@ -344,6 +365,7 @@ b.AddStep(
     workflow.PauseAfterErrCount(3),
 )
 ```
+
 ---
 
 ## Glossary
@@ -364,3 +386,20 @@ b.AddStep(
 | **RunState**      | RunState defines the finite number of states that a Run can be in. This is used to control and monitor the lifecycle of Runs.                                                                                         |
 | **Topic**         | A method that generates a topic for producing events in the event streamer based on the workflow name and status.                                                                                                     |
 | **Trigger**       | A method in the workflow API that initiates a workflow for a specified foreignID and starting status. It returns a Run ID and allows for additional configuration options.                                            |
+
+---
+
+## Best practices
+
+1. Break up complex business logic into small steps.
+2. [Workflow](https://github.com/luno/workflow) can be used to produce new meaningful data and not just be used to execute logic. If it is it's suggested
+to implement a CQRS pattern where the workflow acts as the "Command" and the data is persisted into a more queryable manner.
+3. Changes to workflows must be backwards compatible. If you need to introduce a non-backwards compatible change
+   then the non-backwards compatible workflow should be added alongside the existing workflow with
+   the non-backwards compatible workflow receiving all the incoming triggers. The old workflow should be given time
+   to finish processing any workflows it started and once it has finished processing all the existing non-finished Runs
+   then it may be safely removed. Alternatively versioning can be added internally to your Object type that you provide
+   but this results in changes to the workflow's Directed Acyclic Graph (map of steps connecting together).
+4. [Workflow](https://github.com/luno/workflow) is not intended for low-latency. Asynchronous event driven systems are not meant to be low-latency but
+   prioritise decoupling, durability, distribution of workload, and breakdown of complex logic (to name a few).
+5. Ensure that the prometheus metrics that come with [Workflow](https://github.com/luno/workflow) are being used for monitoring and alerting.
