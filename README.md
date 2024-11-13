@@ -20,8 +20,8 @@
 scalable sequential business logic on your services.
 
 **Workflow** uses a [RoleScheduler](https://github.com/luno/workflow/blob/main/rolescheduler.go) to distribute the work
- across your instances through a role assignment process (similar to a leadership election process but with more than
- the single role of leader).
+ across your instances through a role assignment process (similar to a leadership election process, but with more than
+ a single role of leader).
 
 **Workflow** expects to be run on multiple instances but can also be run on single
  instances. Using the above-mentioned [RoleScheduler](https://github.com/luno/workflow/blob/main/rolescheduler.go),
