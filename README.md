@@ -49,7 +49,7 @@ scalable sequential business logic on your services.
 - **Graph based (Directed Acyclic Graph - DAG):** Design the workflow by defining small units of work called "Steps".
 - **TDD:** **Workflow** was built using TDD and remains well-supported through a suit of tools.
 - **Callbacks:** Allow for manual callbacks from webhooks or manual triggers from consoles to progress the workflow, such as approval buttons or third-party webhooks.  
-- **Event fusion:** Add event connectors to your workflow to consume external event streams (even if its from a different event streaming platform).
+- **Event fusion:** Add event connectors to your workflow to consume external event streams (even if it's from a different event streaming platform).
 - **Hooks:** Write hooks that execute on core changes in a workflow Run.
 - **Schedule:** Allows standard cron spec to schedule workflows 
 - **Timeouts:** Set either a dynamic or static time for a workflow to wait for. Once the timeout finishes everything continues as it was.
