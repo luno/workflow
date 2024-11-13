@@ -467,7 +467,7 @@ b.AddStep(
 ## Best practices
 
 1. Break up complex business logic into small steps.
-2. **Workflow** can be used to produce new meaningful data and not just be used to execute logic. If it is it's suggested
+2. **Workflow** can be used to produce new meaningful data and not just be used to execute logic. If it is used for this, it's suggested
 to implement a CQRS pattern where the workflow acts as the "Command" and the data is persisted into a more queryable manner.
 3. Changes to workflows must be backwards compatible. If you need to introduce a non-backwards compatible change
    then the non-backwards compatible workflow should be added alongside the existing workflow with
