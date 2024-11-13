@@ -473,7 +473,7 @@ to implement a CQRS pattern where the workflow acts as the "Command" and the dat
    then the non-backwards compatible workflow should be added alongside the existing workflow with
    the non-backwards compatible workflow receiving all the incoming triggers. The old workflow should be given time
    to finish processing any workflows it started and once it has finished processing all the existing non-finished Runs
-   then it may be safely removed. Alternatively versioning can be added internally to your Object type that you provide
+   then it may be safely removed. Alternatively versioning can be added internally to your Object type that you provide,
    but this results in changes to the workflow's Directed Acyclic Graph (map of steps connecting together).
 4. **Workflow** is not intended for low-latency. Asynchronous event driven systems are not meant to be low-latency but
    prioritise decoupling, durability, distribution of workload, and breakdown of complex logic (to name a few).
