@@ -1,5 +1,5 @@
 <div align="center">
-    <img src="./logo/logo.png" style="width: 300px; margin: 30px" alt="Workflow Logo">
+    <img src="./logo/logo.png" style="width: 220px; margin: 30px" alt="Workflow Logo">
     <div  align="center" style="max-width: 750px">
         <a style="padding: 0 5px" href="https://goreportcard.com/report/github.com/luno/workflow"><img src="https://goreportcard.com/badge/github.com/luno/workflow"/></a>
         <a style="padding: 0 5px" href="https://sonarcloud.io/summary/new_code?id=luno_workflow"><img src="https://sonarcloud.io/api/project_badges/measure?project=luno_workflow&metric=coverage"/></a>
@@ -10,24 +10,36 @@
         <a style="padding: 0 5px" href="https://sonarcloud.io/summary/new_code?id=luno_workflow"><img src="https://sonarcloud.io/api/project_badges/measure?project=luno_workflow&metric=vulnerabilities"/></a>
         <a style="padding: 0 5px" href="https://sonarcloud.io/summary/new_code?id=luno_workflow"><img src="https://sonarcloud.io/api/project_badges/measure?project=luno_workflow&metric=duplicated_lines_density"/></a>
         <a style="padding: 0 5px" href="https://pkg.go.dev/github.com/luno/workflow"><img src="https://pkg.go.dev/badge/github.com/luno/workflow.svg" alt="Go Reference"></a>
+        <a style="padding: 0 5px" href="https://github.com/avelino/awesome-go"><img src="https://awesome.re/mentioned-badge-flat.svg" alt="Mentioned in Awesome Go"></a>
     </div>
 </div>
 
 # Workflow
 
-Workflow is an event driven workflow that allows for robust, durable, and scalable sequential business logic to
-be executed in a deterministic manner.
+**Workflow** is a distributed event driven workflow framework that runs robust, durable, and
+scalable sequential business logic on your services.
+
+**Workflow** uses a [RoleScheduler](https://github.com/luno/workflow/blob/main/rolescheduler.go) to distribute the work
+ across your instances through a role assignment process (similar to a leadership election process, but with more than
+ a single role of leader).
+
+**Workflow** expects to be run on multiple instances but can also be run on single
+ instances. Using the above-mentioned [RoleScheduler](https://github.com/luno/workflow/blob/main/rolescheduler.go),
+**Workflow** is able to make sure each process only runs once at any given time
+ regardless if you are running 40 instances of your service or 1 instance.
 
 ---
+
 ## Features
 
 - **Tech stack agnostic:** Use Kafka, Cassandra, Redis, MongoDB, Postgresql, MySQL, RabbitM, or Reflex - the choice is yours!
 - **Graph based (Directed Acyclic Graph - DAG):** Design the workflow by defining small units of work called "Steps".
-- **TDD:** Workflow was built using TDD and remains well-supported through a suit of tools.
+- **TDD:** **Workflow** was built using TDD and remains well-supported through a suit of tools.
+- **Callbacks:** Allow for manual callbacks from webhooks or manual triggers from consoles to progress the workflow, such as approval buttons or third-party webhooks.  
+- **Event fusion:** Add event connectors to your workflow to consume external event streams (even if it's from a different event streaming platform).
+- **Hooks:** Write hooks that execute on core changes in a workflow Run.
 - **Schedule:** Allows standard cron spec to schedule workflows 
 - **Timeouts:** Set either a dynamic or static time for a workflow to wait for. Once the timeout finishes everything continues as it was.
-- **Event fusion:** Add event connectors to your workflow to consume external event streams (even if its from a different event streaming platform).  
-- **Callbacks:** Allow for manual callbacks from webhooks or manual triggers from consoles to progress the workflow such as approval buttons or third-party webhooks.  
 - **Parallel consumers:** Specify how many step consumers should run or specify the default for all consumers. 
 - **Consumer management:** Consumer management and graceful shutdown of all processes making sure there is no goroutine leaks!
 
@@ -39,9 +51,45 @@ To start using workflow you will need to add the workflow module to your project
 go get github.com/luno/workflow
 ```
 
-### Adapters
-Some adapters dont come with the core workflow module such as `kafkastreamer`, `reflexstreamer`, `sqlstore`, and `sqltimeout`. If you
- wish to use these you need to add them individually based on your needs or build out your own adapter.
+---
+
+## Adapters
+Adapters enable **Workflow** to be tech stack agnostic by placing an interface /
+ protocol between **Workflow** and the tech stack. **Workflow**
+ uses adapters to understand how to use that specific tech stack.
+
+For example, the Kafka adapter enables workflow
+ to produce messages to a topic as well as consume them from a topic using a set of predefined methods that wrap the
+ kafka client. [Reflex](https://github.com/luno/reflex) is an event streaming framework that works very differently
+ to Kafka and the adapter pattern allows for the differences to be contained and localised in the adapter and not
+ spill into the main implementation.
+
+### Event Streamer
+The [EventStreamer](https://github.com/luno/workflow/blob/main/eventstream.go) adapter interface defines what is needed
+ to be satisfied in order for an event streaming platform or framework to be used by **Workflow**. 
+
+All implementations of the EventStreamer interface should be tested using [adaptertest.TestEventStreamer](https://github.com/luno/workflow/blob/main/adapters/adaptertest/eventstreaming.go)
+
+### Record Store
+The [RecordStore](https://github.com/luno/workflow/blob/main/store.go) adapter interface defines what is needed to
+ satisfied in order for a storage solution to be used by **Workflow**.
+
+All implementations of the RecordStore interface should be tested using [adaptertest.RunRecordStoreTest](https://github.com/luno/workflow/blob/main/adapters/adaptertest/recordstore.go)
+
+### Role Scheduler
+The [RoleScheduler](https://github.com/luno/workflow/blob/main/rolescheduler.go) adapter interface defines what is needed to
+satisfied in order for a role scheduling solution to be used by **Workflow**.
+
+All implementations of the RoleScheduler interface should be tested using [adaptertest.RunRoleSchedulerTest](https://github.com/luno/workflow/blob/main/adapters/adaptertest/rolescheduler.go)
+
+There are more adapters available but only the above 3 are core requirements to use **Workflow**. To start, use the
+ in-memory implementations as that is the simplest way to experiment and get used to **Workflow**. For testing other
+ adapter types be sure to look at [adaptertest](https://github.com/luno/workflow/blob/main/adapters/adaptertest) which
+ are tests written for adapters to ensure that they meet the specification. 
+
+Adapters, except for the in-memory implementations, don't come with the core **Workflow** module such as `kafkastreamer`, `reflexstreamer`, `sqlstore`,
+ `sqltimeout`, `rinkrolescheduler`, `webui` and many more. If you wish to use these you need to add them individually
+ based on your needs or build out your own adapter.
 
 #### Kafka
 ```bash
@@ -62,8 +110,32 @@ go get github.com/luno/workflow/adapters/sqlstore
 ```bash
 go get github.com/luno/workflow/adapters/sqltimeout
 ```
+
+#### Rink Role Scheduler
+```bash
+go get github.com/luno/workflow/adapters/rinkrolescheduler
+```
+
+#### WebUI
+```bash
+go get github.com/luno/workflow/adapters/webui
+```
+
 ---
-## Usage
+
+## Connectors
+Connectors allow **Workflow** to consume events from an event streaming platform or
+ framework and either trigger a workflow run or provide a callback to the workflow run. This means that Connectors can act
+ as a way for **Workflow** to connect with the rest of the system.
+
+Connectors are implemented as adapters as they would share a lot of the same code as implementations of an
+ EventStreamer and can be seen as a subsection of an adapter.
+
+An example can be found [here](_examples/connector).
+
+---
+
+## Basic Usage
 
 ### Step 1: Define the workflow
 ```go
@@ -171,10 +243,26 @@ Head on over to [./_examples](./_examples) to get familiar with **callbacks**, *
 
 ---
 
-## Workflow's RunState
-RunState is the state of a Run and can only exist in one state at any given time. RunState is a
- finite state machine and allows for control over the Run. A Run is every instance of
- a triggered workflow.
+## What is a workflow Run
+
+When a **Workflow** is triggered it creates an individual workflow instance called a Run. This is represented as workflow.Run in
+**Workflow**. Each run has a lifecycle which is a finite set of states - commonly
+referred to as Finite State Machine. Each
+ workflow Run has the following of states (called RunState in **Workflow**):
+
+| Run State              | Value (int) | Description                                                                                                 |
+|------------------------|-------------|-------------------------------------------------------------------------------------------------------------|
+| Unknown                | 0 | Has no meaning. Protects against default zero value.                                                        |
+| Initiated              | 1 | State assinged at creation of Run and is yet to be processed.                                               |
+| Running                | 2 | Has begun to be processed and is currently still being processed by a step in the workflow.                 |
+| Paused                 | 3 | Temporary stoppage that can be resumed or cancelled. Will prevent any new triggers of the same Foreign ID.  |
+| Completed              | 4 | Finished all the steps configured at time of execution.                                                     |
+| Cancelled              | 5 | Did not complete all the steps and was terminated before completion.                                        |
+| Data Deleted           | 6 | Run Object has been modified to remove data or has been entirely removed. Likely for PII scrubbing reasons. |
+| Requested Data Deleted | 7 | Request state for the workflow to apply the default or custom provided delete operation to the Run Object.  |
+
+
+A Run can only exist in one state at any given time and the RunState allows for control over the Run.
 ```mermaid
 ---
 title: Diagram the run states of a workflow
@@ -206,8 +294,8 @@ stateDiagram-v2
 Hooks allow for you to write some functionality for Runs that enter a specific RunState. For example when
 using `PauseAfterErrCount` the usage of the OnPause hook can be used to send a notification to a team to notify
 them that a specific Run has errored to the threshold and now has been paused and should be investigated. Another
-example is handling a known sentinel error in a Workflow Run and cancelling the Run by calling (where r is *Run)
-r.Cancel(ctx) or if a Workflow Run is manually cancelled from a UI then a notifgication can be sent to the team for visibility.
+example is handling a known sentinel error in a **Workflow** Run and cancelling the Run by calling (where r is *Run)
+r.Cancel(ctx) or if a **Workflow** Run is manually cancelled from a UI then a notifgication can be sent to the team for visibility.
 
 Hooks run in an event consumer. This means that it will retry until a nil error has been returned and is durable
 across deploys and interruptions. At-least-once delivery is guaranteed, and it is advised to use the RunID as an
@@ -219,7 +307,6 @@ idempotency key to ensure that the operation is idempotent.
 |---------------|---------------------------------|-----------|-------------------------------------------|------------------|
 | OnPause       | workflow.RunStateChangeHookFunc | error     | Fired when a Run enters RunStatePaused    | Yes              |
 | OnCancelled   | workflow.RunStateChangeHookFunc | error     | Fired when a Run enters RunStateCancelled | Yes              |
-| OnDataDeleted | workflow.RunStateChangeHookFunc | error     | Fired when a Run enters RunStateDeleted   | Yes              |
 | OnCompleted   | workflow.RunStateChangeHookFunc | error     | Fired when a Run enters RunStateCompleted | Yes              |
 
 ---
@@ -344,6 +431,7 @@ b.AddStep(
     workflow.PauseAfterErrCount(3),
 )
 ```
+
 ---
 
 ## Glossary
@@ -364,3 +452,20 @@ b.AddStep(
 | **RunState**      | RunState defines the finite number of states that a Run can be in. This is used to control and monitor the lifecycle of Runs.                                                                                         |
 | **Topic**         | A method that generates a topic for producing events in the event streamer based on the workflow name and status.                                                                                                     |
 | **Trigger**       | A method in the workflow API that initiates a workflow for a specified foreignID and starting status. It returns a Run ID and allows for additional configuration options.                                            |
+
+---
+
+## Best practices
+
+1. Break up complex business logic into small steps.
+2. **Workflow** can be used to produce new meaningful data and not just be used to execute logic. If it is used for this, it's suggested
+to implement a CQRS pattern where the workflow acts as the "Command" and the data is persisted into a more queryable manner.
+3. Changes to workflows must be backwards compatible. If you need to introduce a non-backwards compatible change
+   then the non-backwards compatible workflow should be added alongside the existing workflow with
+   the non-backwards compatible workflow receiving all the incoming triggers. The old workflow should be given time
+   to finish processing any workflows it started and once it has finished processing all the existing non-finished Runs
+   then it may be safely removed. Alternatively versioning can be added internally to your Object type that you provide,
+   but this results in changes to the workflow's Directed Acyclic Graph (map of steps connecting together).
+4. **Workflow** is not intended for low-latency. Asynchronous event driven systems are not meant to be low-latency but
+   prioritise decoupling, durability, distribution of workload, and breakdown of complex logic (to name a few).
+5. Ensure that the prometheus metrics that come with **Workflow** are being used for monitoring and alerting.
