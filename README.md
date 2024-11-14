@@ -30,19 +30,6 @@ scalable sequential business logic on your services.
 
 ---
 
-1. [Features](#features)
-2. [Installation](#installation)
-3. [Adapters](#adapters)
-4. [Connectors](#connectors)
-5. [Basic Usage](#basic-usage)
-6. [What is a workflow Run](#what-is-a-workflow-run)
-7. [Hooks](#hooks)
-8. [Configuration Options](#configuration-options)
-9. [Glossary](#glossary)
-10. [Best Practices](#best-practices)
-
----
-
 ## Features
 
 - **Tech stack agnostic:** Use Kafka, Cassandra, Redis, MongoDB, Postgresql, MySQL, RabbitM, or Reflex - the choice is yours!
