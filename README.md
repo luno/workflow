@@ -250,13 +250,17 @@ When a **Workflow** is triggered it creates an individual workflow instance call
 referred to as Finite State Machine. Each
  workflow Run has the following of states (called RunState in **Workflow**):
 
-1. Initiated
-2. Running
-3. Paused
-4. Completed
-5. Cancelled
-6. Data Deleted
-7. Requested Data Deleted
+| Run State              | Value (int) | Description                                                                                                 |
+|------------------------|-------------|-------------------------------------------------------------------------------------------------------------|
+| Unknown                | 0 | Has no meaning. Protects against default zero value.                                                        |
+| Initiated              | 1 | State assinged at creation of Run and is yet to be processed.                                               |
+| Running                | 2 | Has begun to be processed and is currently still being processed by a step in the workflow.                 |
+| Paused                 | 3 | Temporary stoppage that can be resumed or cancelled. Will prevent any new triggers of the same Foreign ID.  |
+| Completed              | 4 | Finished all the steps configured at time of execution.                                                     |
+| Cancelled              | 5 | Did not complete all the steps and was terminated before completion.                                        |
+| Data Deleted           | 6 | Run Object has been modified to remove data or has been entirely removed. Likely for PII scrubbing reasons. |
+| Requested Data Deleted | 7 | Request state for the workflow to apply the default or custom provided delete operation to the Run Object.  |
+
 
 A Run can only exist in one state at any given time and the RunState allows for control over the Run.
 ```mermaid
