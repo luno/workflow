@@ -25,8 +25,30 @@ async function collectAndUpdateTable() {
         const yellow = 'text-center bg-yellow-50 dark:bg-yellow-800 text-yellow-600 dark:text-yellow-300 text-sm py-4 px-4 rounded-full';
         const gray = 'text-center bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-sm py-4 px-4 rounded-full';
 
-        const createdAt = new Date(record.created_at).toISOString().replace('T', ' ').replace('Z', '');
+        const createdAt = new Date(record.created_at)
         const updatedAt = new Date(record.updated_at).toISOString().replace('T', ' ').replace('Z', '');
+        let lastRunningTimestamp = new Date(record.updated_at);
+        if (record.run_state === 'Running') {
+            lastRunningTimestamp = new Date()
+        }
+
+        const dur = calcDuration(createdAt, lastRunningTimestamp)
+        let duration = ''
+        if (dur.days > 0) {
+            duration += ` ${dur.days}d`
+        }
+        if (dur.hours > 0) {
+            duration += ` ${dur.hours}hr`
+        }
+        if (dur.minutes > 0) {
+            duration += ` ${dur.minutes}min`
+        }
+        if (dur.seconds > 0) {
+            duration += ` ${dur.seconds}s`
+        }
+        if (dur.milliseconds > 0) {
+            duration += ` ${dur.milliseconds}ms`
+        }
 
         const resumeButton = `<button
                     onclick="recordAction('resume', \`${record.run_id}\`)"
@@ -88,6 +110,7 @@ async function collectAndUpdateTable() {
         const row = document.createElement('tr');
         row.classList.add('hover:bg-gray-50', 'dark:hover:bg-gray-800', 'transition', 'duration-150', 'ease-in-out');
         row.innerHTML = `
+            <td class="py-4 px-4 text-center text-sm text-gray-600 dark:text-gray-400">${formatTriggerTimestamp(createdAt)}</td>
             <td class="py-4 px-4 text-center text-sm text-gray-800 dark:text-gray-300">${record.workflow_name}</td>
             <td class="py-4 px-4 text-center text-sm text-gray-800 dark:text-gray-300">${record.foreign_id}</td>
             <td class="py-4 px-4 text-center text-sm text-gray-800 dark:text-gray-300">${record.run_id}</td>
@@ -95,8 +118,7 @@ async function collectAndUpdateTable() {
                 <div class="${selectedClass}">${record.run_state}</div>
             </td>
             <td class="py-4 px-4 text-center text-sm text-gray-800 dark:text-gray-300">${record.status}</td>
-            <td class="py-4 px-4 text-center text-sm text-gray-600 dark:text-gray-400">${createdAt}</td>
-            <td class="py-4 px-4 text-center text-sm text-gray-600 dark:text-gray-400">${updatedAt}</td>
+            <td class="py-4 px-4 text-center text-sm text-gray-600 dark:text-gray-400">${duration}</td>
             <td class="py-4 px-4 text-center text-sm text-gray-800 dark:text-gray-300">
                 <button
                     class="bg-green-50 dark:bg-green-800 text-green-600 dark:text-green-300 text-sm py-2 px-4 rounded-full hover:bg-green-50 dark:hover:bg-green-700"
@@ -108,6 +130,63 @@ async function collectAndUpdateTable() {
             </td>
         `;
         tableBody.appendChild(row);
+    });
+}
+
+function calcDuration(startDate, endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    const difference = end - start;
+
+    // Convert the difference into days, hours, minutes, seconds, and milliseconds
+    const milliseconds = difference % 1000;
+    const seconds = Math.floor((difference / 1000) % 60);
+    const minutes = Math.floor((difference / (1000 * 60)) % 60);
+    const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
+    const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+
+    return { days, hours, minutes, seconds, milliseconds };
+}
+
+function formatTriggerTimestamp(date) {
+    const inputDate = new Date(date);
+    const now = new Date();
+
+    // Helper to format time
+    const formatTime = (date) =>
+        date.toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' });
+
+    // If the same day, show only the time
+    if (
+        inputDate.getFullYear() === now.getFullYear() &&
+        inputDate.getMonth() === now.getMonth() &&
+        inputDate.getDate() === now.getDate()
+    ) {
+        return formatTime(inputDate);
+    }
+
+    // If the same month, show the day and time
+    if (
+        inputDate.getFullYear() === now.getFullYear() &&
+        inputDate.getMonth() === now.getMonth()
+    ) {
+        return `${inputDate.getDate()} ${formatTime(inputDate)}`;
+    }
+
+    // If the same year, show the month, day, and time
+    if (inputDate.getFullYear() === now.getFullYear()) {
+        const month = inputDate.toLocaleString("en-US", { month: "short" });
+        return `${month} ${inputDate.getDate()} ${formatTime(inputDate)}`;
+    }
+
+    // Otherwise, show the full date and time
+    return inputDate.toLocaleString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: '2-digit',
+        minute: '2-digit'
     });
 }
 
