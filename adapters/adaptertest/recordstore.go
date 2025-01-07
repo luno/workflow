@@ -231,7 +231,14 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 		}
 
 		for status, count := range config {
-			ls, err := store.List(ctx, workflowName, 0, 100, workflow.OrderTypeAscending, workflow.FilterByStatus(int64(status)))
+			ls, err := store.List(
+				ctx,
+				workflowName,
+				0,
+				100,
+				workflow.OrderTypeAscending,
+				workflow.FilterByStatus(int64(status)),
+			)
 			require.Nil(t, err)
 			require.Equal(t, count, len(ls))
 
@@ -255,15 +262,36 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 			}
 		}
 
-		ls, err := store.List(ctx, workflowName, 0, 100, workflow.OrderTypeAscending, workflow.FilterByForeignID(foreignIDs[0]))
+		ls, err := store.List(
+			ctx,
+			workflowName,
+			0,
+			100,
+			workflow.OrderTypeAscending,
+			workflow.FilterByForeignID(foreignIDs[0]),
+		)
 		require.Nil(t, err)
 		require.Equal(t, 20, len(ls))
 
-		ls2, err := store.List(ctx, workflowName, 0, 100, workflow.OrderTypeAscending, workflow.FilterByForeignID(foreignIDs[1]))
+		ls2, err := store.List(
+			ctx,
+			workflowName,
+			0,
+			100,
+			workflow.OrderTypeAscending,
+			workflow.FilterByForeignID(foreignIDs[1]),
+		)
 		require.Nil(t, err)
 		require.Equal(t, 20, len(ls2))
 
-		ls3, err := store.List(ctx, workflowName, 0, 100, workflow.OrderTypeAscending, workflow.FilterByForeignID("random"))
+		ls3, err := store.List(
+			ctx,
+			workflowName,
+			0,
+			100,
+			workflow.OrderTypeAscending,
+			workflow.FilterByForeignID("random"),
+		)
 		require.Nil(t, err)
 		require.Equal(t, 0, len(ls3))
 	})
@@ -290,7 +318,14 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 		}
 
 		for runState, count := range config {
-			ls, err := store.List(ctx, workflowName, 0, 100, workflow.OrderTypeAscending, workflow.FilterByRunState(runState))
+			ls, err := store.List(
+				ctx,
+				workflowName,
+				0,
+				100,
+				workflow.OrderTypeAscending,
+				workflow.FilterByRunState(runState),
+			)
 			require.Nil(t, err)
 			require.Equal(t, count, len(ls), fmt.Sprintf("Expected to have %v entries of %v", count, runState.String()))
 
@@ -319,7 +354,14 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 		}
 
 		for status, count := range config {
-			ls, err := store.List(ctx, workflowName, 0, 100, workflow.OrderTypeAscending, workflow.FilterByStatus(int64(status)))
+			ls, err := store.List(
+				ctx,
+				workflowName,
+				0,
+				100,
+				workflow.OrderTypeAscending,
+				workflow.FilterByStatus(int64(status)),
+			)
 			require.Nil(t, err)
 			require.Equal(t, count, len(ls))
 
@@ -364,6 +406,6 @@ func recordIsEqual(t *testing.T, a, b workflow.Record) {
 	require.Equal(t, a.Status, b.Status)
 	require.Equal(t, a.Object, b.Object)
 	require.Equal(t, a.RunState, b.RunState)
-	require.WithinDuration(t, a.CreatedAt, b.CreatedAt, time.Second*10)
-	require.WithinDuration(t, a.UpdatedAt, b.UpdatedAt, time.Second*10)
+	require.WithinDuration(t, a.CreatedAt, b.CreatedAt, allowedTimeDeviation)
+	require.WithinDuration(t, a.UpdatedAt, b.UpdatedAt, allowedTimeDeviation)
 }

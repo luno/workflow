@@ -1,5 +1,9 @@
 package adaptertest
 
+import "time"
+
+const allowedTimeDeviation = time.Second * 10
+
 type status int
 
 const (

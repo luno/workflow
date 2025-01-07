@@ -45,7 +45,14 @@ func testCompleteAndCancelTimeout(t *testing.T, factory func() workflow.TimeoutS
 func seed(t *testing.T, store workflow.TimeoutStore, count int) {
 	ctx := context.Background()
 	for i := range count {
-		err := store.Create(ctx, "example", "andrew", fmt.Sprintf("%v", i+1), int(statusStarted), time.Now().Add(-time.Hour))
+		err := store.Create(
+			ctx,
+			"example",
+			"andrew",
+			fmt.Sprintf("%v", i+1),
+			int(statusStarted),
+			time.Now().Add(-time.Hour),
+		)
 		require.Nil(t, err)
 	}
 }
@@ -60,8 +67,8 @@ func expect(t *testing.T, count int, actual []workflow.TimeoutRecord) {
 		require.Equal(t, "andrew", timeout.ForeignID)
 		require.Equal(t, fmt.Sprintf("%v", i+1), timeout.RunID)
 		require.False(t, timeout.Completed)
-		require.WithinDuration(t, time.Now().Add(-time.Hour), timeout.ExpireAt, time.Second)
-		require.WithinDuration(t, time.Now(), timeout.CreatedAt, time.Second)
+		require.WithinDuration(t, time.Now().Add(-time.Hour), timeout.ExpireAt, allowedTimeDeviation)
+		require.WithinDuration(t, time.Now(), timeout.CreatedAt, allowedTimeDeviation)
 	}
 }
 
