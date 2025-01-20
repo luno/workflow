@@ -1,13 +1,15 @@
 module github.com/luno/workflow/adapters/jlog
 
-go 1.22.3
+go 1.23.4
+
+toolchain go1.23.5
 
 replace github.com/luno/workflow => ../..
 
 require (
-	github.com/luno/jettison v0.0.0-20241003145233-25be6c50d0ec
+	github.com/luno/jettison v0.0.0-20250113104610-673a166ae7d1
 	github.com/luno/workflow v0.0.0-20241017150231-e09bd48815f5
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 )
 
 require (
@@ -23,9 +25,9 @@ require (
 	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
-	golang.org/x/sys v0.22.0 // indirect
-	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
-	google.golang.org/protobuf v1.35.1 // indirect
+	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
+	google.golang.org/protobuf v1.36.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/utils v0.0.0-20240921022957-49e7df575cb6 // indirect
 )
