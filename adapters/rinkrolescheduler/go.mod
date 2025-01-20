@@ -5,7 +5,7 @@ go 1.22.3
 replace github.com/luno/workflow => ../..
 
 require (
-	github.com/luno/rink/v2 v2.0.0-20240803074900-d0c4b3f2abff
+	github.com/luno/rink/v2 v2.0.0-20241103103201-0d1bbd6e29dc
 	github.com/luno/workflow v0.1.2
 	github.com/stretchr/testify v1.9.0
 	go.etcd.io/etcd/client/v3 v3.5.0
