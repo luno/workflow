@@ -104,8 +104,8 @@ github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/luno/jettison v0.0.0-20230912135954-09d6084f5df9 h1:ykQ0/3gmOFypz1tNTyisrEM51rW7bx/UCGqEqrm/VyM=
 github.com/luno/jettison v0.0.0-20230912135954-09d6084f5df9/go.mod h1:Fc8KRfQEydIud0rjBHUNxUyyEKSidxP0kOlg4Dwn3JA=
-github.com/luno/rink/v2 v2.0.0-20240803074900-d0c4b3f2abff h1:eQ0QQFMPhzb/aX+HWnxhmnb0noc4rt99vwoYFXfR5i8=
-github.com/luno/rink/v2 v2.0.0-20240803074900-d0c4b3f2abff/go.mod h1:GopXfL/kqETi3CfepM7vSbFRiCilbjLR4PXCx2sfNR4=
+github.com/luno/rink/v2 v2.0.0-20241103103201-0d1bbd6e29dc h1:EvfUWuBMO8s3B6UAZBFiTLmRih24Tm7I9x6SVq/oVoY=
+github.com/luno/rink/v2 v2.0.0-20241103103201-0d1bbd6e29dc/go.mod h1:GopXfL/kqETi3CfepM7vSbFRiCilbjLR4PXCx2sfNR4=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
 github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
