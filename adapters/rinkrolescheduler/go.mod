@@ -8,7 +8,7 @@ require (
 	github.com/luno/rink/v2 v2.0.0-20241103103201-0d1bbd6e29dc
 	github.com/luno/workflow v0.1.2
 	github.com/stretchr/testify v1.9.0
-	go.etcd.io/etcd/client/v3 v3.5.0
+	go.etcd.io/etcd/client/v3 v3.5.17
 	google.golang.org/grpc v1.69.4
 )
 
@@ -31,8 +31,8 @@ require (
 	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
-	go.etcd.io/etcd/api/v3 v3.5.0 // indirect
-	go.etcd.io/etcd/client/pkg/v3 v3.5.0 // indirect
+	go.etcd.io/etcd/api/v3 v3.5.17 // indirect
+	go.etcd.io/etcd/client/pkg/v3 v3.5.17 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.17.0 // indirect
@@ -41,7 +41,8 @@ require (
 	golang.org/x/sys v0.26.0 // indirect
 	golang.org/x/text v0.19.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
-	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20241015192408-796eee8c2d53 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20241015192408-796eee8c2d53 // indirect
 	google.golang.org/protobuf v1.35.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
