@@ -7,7 +7,7 @@ replace github.com/luno/workflow => ../..
 require (
 	github.com/luno/workflow v0.2.2
 	github.com/segmentio/kafka-go v0.4.47
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 )
 
 require (
