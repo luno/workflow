@@ -16,7 +16,7 @@ import (
 func TestProcessCallback(t *testing.T) {
 	ctx := context.Background()
 	w := &Workflow[string, testStatus]{
-		Name:        "example",
+		name:        "example",
 		ctx:         ctx,
 		clock:       clock_testing.NewFakeClock(time.Date(2024, time.April, 19, 0, 0, 0, 0, time.UTC)),
 		statusGraph: graph.New(),

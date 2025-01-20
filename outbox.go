@@ -12,9 +12,13 @@ import (
 	"github.com/luno/workflow/internal/outboxpb"
 )
 
-func outboxConsumer[Type any, Status StatusType](w *Workflow[Type, Status], config outboxConfig, shard, totalShards int) {
+func outboxConsumer[Type any, Status StatusType](
+	w *Workflow[Type, Status],
+	config outboxConfig,
+	shard, totalShards int,
+) {
 	role := makeRole(
-		w.Name,
+		w.Name(),
 		"outbox",
 		"consumer",
 		strconv.FormatInt(int64(shard), 10),
@@ -48,7 +52,19 @@ func outboxConsumer[Type any, Status StatusType](w *Workflow[Type, Status], conf
 	}
 
 	w.run(role, processName, func(ctx context.Context) error {
-		return purgeOutbox[Type, Status](ctx, w.Name, processName, w.recordStore, w.eventStreamer, w.clock, pollingFrequency, lagAlert, config.limit, shard, totalShards)
+		return purgeOutbox[Type, Status](
+			ctx,
+			w.Name(),
+			processName,
+			w.recordStore,
+			w.eventStreamer,
+			w.clock,
+			pollingFrequency,
+			lagAlert,
+			config.limit,
+			shard,
+			totalShards,
+		)
 	}, errBackOff)
 }
 

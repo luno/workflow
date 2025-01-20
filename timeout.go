@@ -38,7 +38,7 @@ func pollTimeouts[Type any, Status StatusType](
 			return ctx.Err()
 		}
 
-		expiredTimeouts, err := w.timeoutStore.ListValid(ctx, w.Name, int(status), w.clock.Now())
+		expiredTimeouts, err := w.timeoutStore.ListValid(ctx, w.Name(), int(status), w.clock.Now())
 		if err != nil {
 			return err
 		}
@@ -76,13 +76,24 @@ func pollTimeouts[Type any, Status StatusType](
 
 			for _, config := range timeouts.transitions {
 				t0 := w.clock.Now()
-				err = processTimeout(ctx, w, config, r, expiredTimeout, w.timeoutStore.Complete, store, updateFn, processName, pauseAfterErrCount)
+				err = processTimeout(
+					ctx,
+					w,
+					config,
+					r,
+					expiredTimeout,
+					w.timeoutStore.Complete,
+					store,
+					updateFn,
+					processName,
+					pauseAfterErrCount,
+				)
 				if err != nil {
-					metrics.ProcessLatency.WithLabelValues(w.Name, processName).Observe(w.clock.Since(t0).Seconds())
+					metrics.ProcessLatency.WithLabelValues(w.Name(), processName).Observe(w.clock.Since(t0).Seconds())
 					return err
 				}
 
-				metrics.ProcessLatency.WithLabelValues(w.Name, processName).Observe(w.clock.Since(t0).Seconds())
+				metrics.ProcessLatency.WithLabelValues(w.Name(), processName).Observe(w.clock.Since(t0).Seconds())
 			}
 		}
 
@@ -128,14 +139,14 @@ func processTimeout[Type any, Status StatusType](
 	if skipUpdate(next) {
 		w.logger.maybeDebug(ctx, "skipping update", map[string]string{
 			"description":   skipUpdateDescription(next),
-			"workflow_name": w.Name,
+			"workflow_name": w.Name(),
 			"foreign_id":    run.ForeignID,
 			"run_id":        run.RunID,
 			"run_state":     run.RunState.String(),
 			"record_status": run.Status.String(),
 		})
 
-		metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName, "next value specified skip").Inc()
+		metrics.ProcessSkippedEvents.WithLabelValues(w.Name(), processName, "next value specified skip").Inc()
 		return nil
 	}
 
@@ -161,8 +172,12 @@ type timeout[Type any, Status StatusType] struct {
 	TimeoutFunc TimeoutFunc[Type, Status]
 }
 
-func timeoutPoller[Type any, Status StatusType](w *Workflow[Type, Status], status Status, timeouts timeouts[Type, Status]) {
-	role := makeRole(w.Name, strconv.FormatInt(int64(status), 10), "timeout-consumer")
+func timeoutPoller[Type any, Status StatusType](
+	w *Workflow[Type, Status],
+	status Status,
+	timeouts timeouts[Type, Status],
+) {
+	role := makeRole(w.Name(), strconv.FormatInt(int64(status), 10), "timeout-consumer")
 	// readableRole can change in value if the string value of the status enum is changed. It should not be used for
 	// storing in the record store, event streamer, timeout store, or offset store.
 	processName := makeRole(status.String(), "timeout-consumer")
@@ -197,7 +212,7 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](
 	status Status,
 	timeouts timeouts[Type, Status],
 ) {
-	role := makeRole(w.Name, strconv.FormatInt(int64(status), 10), "timeout-auto-inserter-consumer")
+	role := makeRole(w.Name(), strconv.FormatInt(int64(status), 10), "timeout-auto-inserter-consumer")
 	processName := makeRole(status.String(), "timeout-auto-inserter-consumer")
 
 	pauseAfterErrCount := w.defaultOpts.pauseAfterErrCount
@@ -243,7 +258,7 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](
 			return 0, nil
 		}
 
-		topic := Topic(w.Name, int(status))
+		topic := Topic(w.Name(), int(status))
 		consumerStream, err := w.eventStreamer.NewConsumer(
 			ctx,
 			topic,
@@ -255,7 +270,19 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](
 		}
 		defer consumerStream.Close()
 
-		return consumeForever(ctx, w, consumerFunc, 0, lagAlert, pauseAfterErrCount, consumerStream, status, processName, 1, 1)
+		return consumeForever(
+			ctx,
+			w,
+			consumerFunc,
+			0,
+			lagAlert,
+			pauseAfterErrCount,
+			consumerStream,
+			status,
+			processName,
+			1,
+			1,
+		)
 	}, errBackOff)
 }
 

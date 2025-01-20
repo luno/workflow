@@ -11,7 +11,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TriggerCallbackOn[Type any, Status StatusType, Payload any](t testing.TB, w *Workflow[Type, Status], foreignID, runID string, waitForStatus Status, p Payload) {
+func TriggerCallbackOn[Type any, Status StatusType, Payload any](
+	t testing.TB,
+	w *Workflow[Type, Status],
+	foreignID, runID string,
+	waitForStatus Status,
+	p Payload,
+) {
 	if t == nil {
 		panic("TriggerCallbackOn can only be used for testing")
 	}
@@ -27,7 +33,12 @@ func TriggerCallbackOn[Type any, Status StatusType, Payload any](t testing.TB, w
 	require.Nil(t, err)
 }
 
-func AwaitTimeoutInsert[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status], foreignID, runID string, waitFor Status) {
+func AwaitTimeoutInsert[Type any, Status StatusType](
+	t testing.TB,
+	w *Workflow[Type, Status],
+	foreignID, runID string,
+	waitFor Status,
+) {
 	if t == nil {
 		panic("AwaitTimeoutInsert can only be used for testing")
 	}
@@ -38,7 +49,7 @@ func AwaitTimeoutInsert[Type any, Status StatusType](t testing.TB, w *Workflow[T
 			return
 		}
 
-		ls, err := w.timeoutStore.List(w.ctx, w.Name)
+		ls, err := w.timeoutStore.List(w.ctx, w.Name())
 		require.Nil(t, err)
 
 		for _, l := range ls {
@@ -60,13 +71,21 @@ func AwaitTimeoutInsert[Type any, Status StatusType](t testing.TB, w *Workflow[T
 	}
 }
 
-func Require[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status], foreignID string, waitForStatus Status, expected Type) {
+func Require[Type any, Status StatusType](
+	t testing.TB,
+	w *Workflow[Type, Status],
+	foreignID string,
+	waitForStatus Status,
+	expected Type,
+) {
 	if t == nil {
 		panic("Require can only be used for testing")
 	}
 
 	if !w.statusGraph.IsValid(int(waitForStatus)) {
-		t.Error(fmt.Sprintf(`Status provided is not configured for workflow: "%v" (Workflow: %v)`, waitForStatus, w.Name))
+		t.Error(
+			fmt.Sprintf(`Status provided is not configured for workflow: "%v" (Workflow: %v)`, waitForStatus, w.Name()),
+		)
 		return
 	}
 
@@ -111,7 +130,12 @@ func WaitFor[Type any, Status StatusType](
 	})
 }
 
-func waitFor[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status], foreignID string, fn func(r *Record) (bool, error)) *Record {
+func waitFor[Type any, Status StatusType](
+	t testing.TB,
+	w *Workflow[Type, Status],
+	foreignID string,
+	fn func(r *Record) (bool, error),
+) *Record {
 	testingStore, ok := w.recordStore.(TestingRecordStore)
 	if !ok {
 		panic("TestingRecordStore implementation for record store dependency required")
@@ -119,7 +143,7 @@ func waitFor[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status
 
 	var runID string
 	for runID == "" {
-		latest, err := w.recordStore.Latest(context.Background(), w.Name, foreignID)
+		latest, err := w.recordStore.Latest(context.Background(), w.Name(), foreignID)
 		if errors.Is(err, ErrRecordNotFound) {
 			continue
 		} else {
@@ -130,11 +154,11 @@ func waitFor[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status
 	}
 
 	// Reset the offset run through all the changes and not just from the offset
-	// testingStore.SetSnapshotOffset(w.Name, foreignID, runID, 0)
+	// testingStore.SetSnapshotOffset(w.name, foreignID, runID, 0)
 
 	var wr *Record
 	for wr == nil {
-		snapshots := testingStore.Snapshots(w.Name, foreignID, runID)
+		snapshots := testingStore.Snapshots(w.Name(), foreignID, runID)
 		for _, r := range snapshots {
 			ok, err := fn(r)
 			require.Nil(t, err)
@@ -150,7 +174,12 @@ func waitFor[Type any, Status StatusType](t testing.TB, w *Workflow[Type, Status
 
 // NewTestingRun should be used when testing logic that defines a workflow.Run as a parameter. This is usually the
 // case in unit tests and would not normally be found when doing an Acceptance test for the entire workflow.
-func NewTestingRun[Type any, Status StatusType](t *testing.T, wr Record, object Type, opts ...TestingRunOption) Run[Type, Status] {
+func NewTestingRun[Type any, Status StatusType](
+	t *testing.T,
+	wr Record,
+	object Type,
+	opts ...TestingRunOption,
+) Run[Type, Status] {
 	var options testingRunOpts
 	for _, opt := range opts {
 		opt(&options)

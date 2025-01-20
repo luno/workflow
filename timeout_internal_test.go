@@ -18,7 +18,7 @@ func TestProcessTimeout(t *testing.T) {
 	processName := "processName"
 	testErr := errors.New("test error")
 	w := &Workflow[string, testStatus]{
-		Name:         "example",
+		name:         "example",
 		ctx:          ctx,
 		clock:        clock_testing.NewFakeClock(time.Date(2024, time.April, 19, 0, 0, 0, 0, time.UTC)),
 		errorCounter: counter,

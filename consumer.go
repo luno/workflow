@@ -27,9 +27,14 @@ type consumerConfig[Type any, Status StatusType] struct {
 	pauseAfterErrCount int
 }
 
-func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentStatus Status, p consumerConfig[Type, Status], shard, totalShards int) {
+func consumer[Type any, Status StatusType](
+	w *Workflow[Type, Status],
+	currentStatus Status,
+	p consumerConfig[Type, Status],
+	shard, totalShards int,
+) {
 	role := makeRole(
-		w.Name,
+		w.Name(),
 		strconv.FormatInt(int64(currentStatus), 10),
 		"consumer",
 		strconv.FormatInt(int64(shard), 10),
@@ -47,7 +52,7 @@ func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentSta
 		strconv.FormatInt(int64(totalShards), 10),
 	)
 
-	topic := Topic(w.Name, int(currentStatus))
+	topic := Topic(w.Name(), int(currentStatus))
 
 	errBackOff := w.defaultOpts.errBackOff
 	if p.errBackOff > 0 {
@@ -86,7 +91,19 @@ func consumer[Type any, Status StatusType](w *Workflow[Type, Status], currentSta
 		}
 		defer streamConsumer.Close()
 
-		return consumeForever[Type, Status](ctx, w, p.consumer, lag, lagAlert, pauseAfterErrCount, streamConsumer, currentStatus, processName, shard, totalShards)
+		return consumeForever[Type, Status](
+			ctx,
+			w,
+			p.consumer,
+			lag,
+			lagAlert,
+			pauseAfterErrCount,
+			streamConsumer,
+			currentStatus,
+			processName,
+			shard,
+			totalShards,
+		)
 	}, errBackOff)
 }
 
@@ -127,7 +144,7 @@ func consumeForever[Type any, Status StatusType](
 		}
 
 		// Push metrics and alerting around the age of the event being processed.
-		pushLagMetricAndAlerting(w.Name, processName, e.CreatedAt, lagAlert, w.clock)
+		pushLagMetricAndAlerting(w.Name(), processName, e.CreatedAt, lagAlert, w.clock)
 
 		shouldFilter := FilterUsing(e,
 			shardFilter(shard, totalShards),
@@ -138,7 +155,7 @@ func consumeForever[Type any, Status StatusType](
 				return err
 			}
 
-			metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName, "filtered out").Inc()
+			metrics.ProcessSkippedEvents.WithLabelValues(w.Name(), processName, "filtered out").Inc()
 			continue
 		}
 
@@ -149,7 +166,7 @@ func consumeForever[Type any, Status StatusType](
 				return err
 			}
 
-			metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName, "record not found").Inc()
+			metrics.ProcessSkippedEvents.WithLabelValues(w.Name(), processName, "record not found").Inc()
 			continue
 		} else if err != nil {
 			return err
@@ -163,7 +180,8 @@ func consumeForever[Type any, Status StatusType](
 				return err
 			}
 
-			metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName, "record status not in expected state").Inc()
+			metrics.ProcessSkippedEvents.WithLabelValues(w.Name(), processName, "record status not in expected state").
+				Inc()
 			continue
 		}
 
@@ -183,7 +201,7 @@ func consumeForever[Type any, Status StatusType](
 				return err
 			}
 
-			metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName, "record stopped").Inc()
+			metrics.ProcessSkippedEvents.WithLabelValues(w.Name(), processName, "record stopped").Inc()
 			continue
 		}
 
@@ -193,7 +211,7 @@ func consumeForever[Type any, Status StatusType](
 			return err
 		}
 
-		metrics.ProcessLatency.WithLabelValues(w.Name, processName).Observe(w.clock.Since(t2).Seconds())
+		metrics.ProcessLatency.WithLabelValues(w.Name(), processName).Observe(w.clock.Since(t2).Seconds())
 	}
 }
 
@@ -254,14 +272,14 @@ func consume[Type any, Status StatusType](
 	if skipUpdate(next) {
 		w.logger.maybeDebug(ctx, "skipping update", map[string]string{
 			"description":   skipUpdateDescription(next),
-			"workflow_name": w.Name,
+			"workflow_name": w.Name(),
 			"foreign_id":    run.ForeignID,
 			"run_id":        run.RunID,
 			"run_state":     run.RunState.String(),
 			"record_status": run.Status.String(),
 		})
 
-		metrics.ProcessSkippedEvents.WithLabelValues(w.Name, processName, "next value specified skip").Inc()
+		metrics.ProcessSkippedEvents.WithLabelValues(w.Name(), processName, "next value specified skip").Inc()
 		return ack()
 	}
 

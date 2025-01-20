@@ -14,9 +14,13 @@ import (
 // RunStateChangeHookFunc defines the function signature for all hooks associated to the run.
 type RunStateChangeHookFunc[Type any, Status StatusType] func(ctx context.Context, record *TypedRecord[Type, Status]) error
 
-func runStateChangeHookConsumer[Type any, Status StatusType](w *Workflow[Type, Status], runState RunState, hook RunStateChangeHookFunc[Type, Status]) {
+func runStateChangeHookConsumer[Type any, Status StatusType](
+	w *Workflow[Type, Status],
+	runState RunState,
+	hook RunStateChangeHookFunc[Type, Status],
+) {
 	role := makeRole(
-		w.Name,
+		w.Name(),
 		runState.String(),
 		"run-state-change-hook",
 		"consumer",
@@ -24,7 +28,7 @@ func runStateChangeHookConsumer[Type any, Status StatusType](w *Workflow[Type, S
 
 	processName := role
 	w.run(role, processName, func(ctx context.Context) error {
-		topic := RunStateChangeTopic(w.Name)
+		topic := RunStateChangeTopic(w.Name())
 		consumerStream, err := w.eventStreamer.NewConsumer(
 			ctx,
 			topic,
@@ -36,7 +40,17 @@ func runStateChangeHookConsumer[Type any, Status StatusType](w *Workflow[Type, S
 		}
 		defer consumerStream.Close()
 
-		return runHooks(ctx, w.Name, processName, consumerStream, runState, w.recordStore.Lookup, hook, w.defaultOpts.lagAlert, w.clock)
+		return runHooks(
+			ctx,
+			w.Name(),
+			processName,
+			consumerStream,
+			runState,
+			w.recordStore.Lookup,
+			hook,
+			w.defaultOpts.lagAlert,
+			w.clock,
+		)
 	}, w.defaultOpts.errBackOff)
 }
 
@@ -63,7 +77,8 @@ func runHooks[Type any, Status StatusType](
 
 		rs, err := strconv.ParseInt(e.Headers[HeaderRunState], 10, 64)
 		if err != nil {
-			metrics.ProcessSkippedEvents.WithLabelValues(workflowName, processName, "invalid or missing HeaderRunState").Inc()
+			metrics.ProcessSkippedEvents.WithLabelValues(workflowName, processName, "invalid or missing HeaderRunState").
+				Inc()
 			err = ack()
 			if err != nil {
 				return err
@@ -73,7 +88,8 @@ func runHooks[Type any, Status StatusType](
 		}
 
 		if RunState(rs) != runState {
-			metrics.ProcessSkippedEvents.WithLabelValues(workflowName, processName, "mismatch on current run state and target run state").Inc()
+			metrics.ProcessSkippedEvents.WithLabelValues(workflowName, processName, "mismatch on current run state and target run state").
+				Inc()
 			err = ack()
 			if err != nil {
 				return err

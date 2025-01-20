@@ -75,7 +75,7 @@ func TestRunState(t *testing.T) {
 
 			time.Sleep(time.Second)
 
-			snapshots := recordStore.Snapshots(w.Name, "fid", runID)
+			snapshots := recordStore.Snapshots(w.Name(), "fid", runID)
 
 			for i, state := range expected {
 				require.Equal(t, state, snapshots[i].RunState)

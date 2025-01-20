@@ -67,7 +67,7 @@ func mermaidDiagram[Type any, Status StatusType](a API[Type, Status], path strin
 	}
 
 	mf := MermaidFormat{
-		WorkflowName:   w.Name,
+		WorkflowName:   w.Name(),
 		Direction:      d,
 		StartingPoints: starting,
 		TerminalPoints: terminal,

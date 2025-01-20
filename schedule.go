@@ -11,13 +11,22 @@ import (
 	"k8s.io/utils/clock"
 )
 
-func (w *Workflow[Type, Status]) Schedule(foreignID string, startingStatus Status, spec string, opts ...ScheduleOption[Type, Status]) error {
+func (w *Workflow[Type, Status]) Schedule(
+	foreignID string,
+	startingStatus Status,
+	spec string,
+	opts ...ScheduleOption[Type, Status],
+) error {
 	if !w.calledRun {
 		return fmt.Errorf("schedule failed: workflow is not running")
 	}
 
 	if !w.statusGraph.IsValid(int(startingStatus)) {
-		w.logger.maybeDebug(w.ctx, fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name), map[string]string{})
+		w.logger.maybeDebug(
+			w.ctx,
+			fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name()),
+			map[string]string{},
+		)
 
 		return fmt.Errorf("schedule failed: status provided is not configured for workflow: %s", startingStatus)
 	}
@@ -32,11 +41,11 @@ func (w *Workflow[Type, Status]) Schedule(foreignID string, startingStatus Statu
 		return err
 	}
 
-	role := makeRole(w.Name, strconv.FormatInt(int64(startingStatus), 10), foreignID, "scheduler", spec)
+	role := makeRole(w.Name(), strconv.FormatInt(int64(startingStatus), 10), foreignID, "scheduler", spec)
 	processName := makeRole(startingStatus.String(), foreignID, "scheduler", spec)
 
 	w.run(role, processName, func(ctx context.Context) error {
-		latestEntry, err := w.recordStore.Latest(ctx, w.Name, foreignID)
+		latestEntry, err := w.recordStore.Latest(ctx, w.Name(), foreignID)
 		if errors.Is(err, ErrRecordNotFound) {
 			// NoReturnErr: Rather use zero value for lastRunID and use current clock for first run.
 			latestEntry = &Record{}
@@ -122,7 +131,9 @@ func WithScheduleInitialValue[Type any, Status StatusType](t *Type) ScheduleOpti
 	}
 }
 
-func WithScheduleFilter[Type any, Status StatusType](fn func(ctx context.Context) (bool, error)) ScheduleOption[Type, Status] {
+func WithScheduleFilter[Type any, Status StatusType](
+	fn func(ctx context.Context) (bool, error),
+) ScheduleOption[Type, Status] {
 	return func(o *scheduleOpts[Type, Status]) {
 		o.scheduleFilter = fn
 	}

@@ -30,12 +30,16 @@ type connectorConfig[Type any, Status StatusType] struct {
 	lagAlert      time.Duration
 }
 
-func connectorConsumer[Type any, Status StatusType](w *Workflow[Type, Status], config *connectorConfig[Type, Status], shard, totalShards int) {
+func connectorConsumer[Type any, Status StatusType](
+	w *Workflow[Type, Status],
+	config *connectorConfig[Type, Status],
+	shard, totalShards int,
+) {
 	role := makeRole(
 		config.name,
 		"connector",
 		"to",
-		w.Name,
+		w.Name(),
 		"consumer",
 		strconv.FormatInt(int64(shard), 10),
 		"of",
@@ -105,7 +109,7 @@ func connectForever[Type any, Status StatusType](
 		}
 
 		// Push metrics and alerting around the age of the event being processed.
-		pushLagMetricAndAlerting(w.Name, processName, e.CreatedAt, lagAlert, w.clock)
+		pushLagMetricAndAlerting(w.Name(), processName, e.CreatedAt, lagAlert, w.clock)
 
 		shouldFilter := FilterConnectorEventUsing(e,
 			shardConnectorEventFilter(shard, totalShards),
@@ -125,7 +129,7 @@ func connectForever[Type any, Status StatusType](
 			return err
 		}
 
-		metrics.ProcessLatency.WithLabelValues(w.Name, processName).Observe(w.clock.Since(t2).Seconds())
+		metrics.ProcessLatency.WithLabelValues(w.Name(), processName).Observe(w.clock.Since(t2).Seconds())
 		return ack()
 	}
 }
