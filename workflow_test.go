@@ -58,7 +58,7 @@ func (s status) String() string {
 	case StatusInitiated:
 		return "Initiated"
 	case StatusProfileCreated:
-		return "name Created"
+		return "Name Created"
 	case StatusEmailConfirmationSent:
 		return "Email Confirmation Sent"
 	case StatusEmailVerified:
