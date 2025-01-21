@@ -8,17 +8,33 @@ import (
 	"github.com/google/uuid"
 )
 
-func (w *Workflow[Type, Status]) Trigger(ctx context.Context, foreignID string, startingStatus Status, opts ...TriggerOption[Type, Status]) (runID string, err error) {
+func (w *Workflow[Type, Status]) Trigger(
+	ctx context.Context,
+	foreignID string,
+	startingStatus Status,
+	opts ...TriggerOption[Type, Status],
+) (runID string, err error) {
 	return trigger(ctx, w, w.recordStore.Latest, foreignID, startingStatus, opts...)
 }
 
-func trigger[Type any, Status StatusType](ctx context.Context, w *Workflow[Type, Status], lookup latestLookup, foreignID string, startingStatus Status, opts ...TriggerOption[Type, Status]) (runID string, err error) {
+func trigger[Type any, Status StatusType](
+	ctx context.Context,
+	w *Workflow[Type, Status],
+	lookup latestLookup,
+	foreignID string,
+	startingStatus Status,
+	opts ...TriggerOption[Type, Status],
+) (runID string, err error) {
 	if !w.calledRun {
 		return "", fmt.Errorf("trigger failed: workflow is not running")
 	}
 
 	if !w.statusGraph.IsValid(int(startingStatus)) {
-		w.logger.maybeDebug(w.ctx, fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name), map[string]string{})
+		w.logger.maybeDebug(
+			w.ctx,
+			fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name()),
+			map[string]string{},
+		)
 
 		return "", fmt.Errorf("trigger failed: status provided is not configured for workflow: %s", startingStatus)
 	}
@@ -38,7 +54,7 @@ func trigger[Type any, Status StatusType](ctx context.Context, w *Workflow[Type,
 		return "", err
 	}
 
-	lastRecord, err := lookup(ctx, w.Name, foreignID)
+	lastRecord, err := lookup(ctx, w.Name(), foreignID)
 	if errors.Is(err, ErrRecordNotFound) {
 		lastRecord = &Record{}
 	} else if err != nil {
@@ -58,7 +74,7 @@ func trigger[Type any, Status StatusType](ctx context.Context, w *Workflow[Type,
 
 	runID = uid.String()
 	wr := &Record{
-		WorkflowName: w.Name,
+		WorkflowName: w.Name(),
 		ForeignID:    foreignID,
 		RunID:        runID,
 		RunState:     RunStateInitiated,

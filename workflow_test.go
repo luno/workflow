@@ -161,7 +161,7 @@ func TestWorkflowAcceptanceTest(t *testing.T) {
 	_, err = wf.Await(ctx, fid, runID, StatusCompleted)
 	require.Nil(t, err)
 
-	r, err := recordStore.Latest(ctx, "user sign up", fid)
+	r, err := recordStore.Latest(ctx, wf.Name(), fid)
 	require.Nil(t, err)
 	require.Equal(t, int(expectedFinalStatus), r.Status)
 
@@ -601,7 +601,7 @@ func TestStepConsumerLag(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	latest, err := recordStore.Latest(ctx, wf.Name, foreignID)
+	latest, err := recordStore.Latest(ctx, wf.Name(), foreignID)
 	require.Nil(t, err)
 
 	// Ensure that the record has not been consumer or updated
@@ -613,4 +613,9 @@ func TestStepConsumerLag(t *testing.T) {
 		StartTime:   fixedNowTime,
 		ConsumeTime: fixedNowTime.Add(lagAmount),
 	})
+}
+
+func TestName(t *testing.T) {
+	wf := workflow.NewBuilder[string, status]("test name").Build(nil, nil, nil)
+	require.Equal(t, "test name", wf.Name())
 }

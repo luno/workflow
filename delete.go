@@ -12,14 +12,14 @@ import (
 
 func deleteConsumer[Type any, Status StatusType](w *Workflow[Type, Status]) {
 	role := makeRole(
-		w.Name,
+		w.Name(),
 		"delete",
 		"consumer",
 	)
 
 	processName := role
 	w.run(role, processName, func(ctx context.Context) error {
-		topic := DeleteTopic(w.Name)
+		topic := DeleteTopic(w.Name())
 		consumerStream, err := w.eventStreamer.NewConsumer(
 			ctx,
 			topic,
@@ -31,7 +31,17 @@ func deleteConsumer[Type any, Status StatusType](w *Workflow[Type, Status]) {
 		}
 		defer consumerStream.Close()
 
-		return DeleteForever(ctx, w.Name, processName, consumerStream, w.recordStore.Store, w.recordStore.Lookup, w.customDelete, w.defaultOpts.lagAlert, w.clock)
+		return DeleteForever(
+			ctx,
+			w.Name(),
+			processName,
+			consumerStream,
+			w.recordStore.Store,
+			w.recordStore.Lookup,
+			w.customDelete,
+			w.defaultOpts.lagAlert,
+			w.clock,
+		)
 	}, w.defaultOpts.errBackOff)
 }
 

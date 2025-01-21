@@ -12,11 +12,26 @@ type callback[Type any, Status StatusType] struct {
 
 type CallbackFunc[Type any, Status StatusType] func(ctx context.Context, r *Run[Type, Status], reader io.Reader) (Status, error)
 
-func (w *Workflow[Type, Status]) Callback(ctx context.Context, foreignID string, status Status, payload io.Reader) error {
+func (w *Workflow[Type, Status]) Callback(
+	ctx context.Context,
+	foreignID string,
+	status Status,
+	payload io.Reader,
+) error {
 	updateFn := newUpdater[Type, Status](w.recordStore.Lookup, w.recordStore.Store, w.statusGraph, w.clock)
 
 	for _, s := range w.callback[status] {
-		err := processCallback(ctx, w, status, s.CallbackFunc, foreignID, payload, w.recordStore.Latest, w.recordStore.Store, updateFn)
+		err := processCallback(
+			ctx,
+			w,
+			status,
+			s.CallbackFunc,
+			foreignID,
+			payload,
+			w.recordStore.Latest,
+			w.recordStore.Store,
+			updateFn,
+		)
 		if err != nil {
 			return err
 		}
@@ -38,7 +53,7 @@ func processCallback[Type any, Status StatusType](
 	store storeFunc,
 	updater updater[Type, Status],
 ) error {
-	wr, err := latest(ctx, w.Name, foreignID)
+	wr, err := latest(ctx, w.Name(), foreignID)
 	if err != nil {
 		return err
 	}
@@ -67,7 +82,7 @@ func processCallback[Type any, Status StatusType](
 	if skipUpdate(next) {
 		w.logger.maybeDebug(ctx, "skipping update", map[string]string{
 			"description":   skipUpdateDescription(next),
-			"workflow_name": w.Name,
+			"workflow_name": w.Name(),
 			"foreign_id":    run.ForeignID,
 			"run_id":        run.RunID,
 			"run_state":     run.RunState.String(),

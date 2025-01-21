@@ -25,7 +25,7 @@ const (
 func NewBuilder[Type any, Status StatusType](name string) *Builder[Type, Status] {
 	return &Builder[Type, Status]{
 		workflow: &Workflow[Type, Status]{
-			Name:          name,
+			name:          name,
 			clock:         clock.RealClock{},
 			consumers:     make(map[Status]consumerConfig[Type, Status]),
 			callback:      make(map[Status][]callback[Type, Status]),
@@ -46,7 +46,11 @@ type Builder[Type any, Status StatusType] struct {
 	workflow *Workflow[Type, Status]
 }
 
-func (b *Builder[Type, Status]) AddStep(from Status, c ConsumerFunc[Type, Status], allowedDestinations ...Status) *stepUpdater[Type, Status] {
+func (b *Builder[Type, Status]) AddStep(
+	from Status,
+	c ConsumerFunc[Type, Status],
+	allowedDestinations ...Status,
+) *stepUpdater[Type, Status] {
 	if _, exists := b.workflow.consumers[from]; exists {
 		panic("'AddStep(" + from.String() + ",' already exists. Only one Step can be configured to consume the status")
 	}
@@ -101,7 +105,12 @@ func (b *Builder[Type, Status]) AddCallback(from Status, fn CallbackFunc[Type, S
 	b.workflow.callback[from] = append(b.workflow.callback[from], c)
 }
 
-func (b *Builder[Type, Status]) AddTimeout(from Status, timer TimerFunc[Type, Status], tf TimeoutFunc[Type, Status], allowedDestinations ...Status) *timeoutUpdater[Type, Status] {
+func (b *Builder[Type, Status]) AddTimeout(
+	from Status,
+	timer TimerFunc[Type, Status],
+	tf TimeoutFunc[Type, Status],
+	allowedDestinations ...Status,
+) *timeoutUpdater[Type, Status] {
 	timeouts := b.workflow.timeouts[from]
 
 	t := timeout[Type, Status]{
@@ -150,7 +159,11 @@ func (s *timeoutUpdater[Type, Status]) WithOptions(opts ...Option) {
 	s.workflow.timeouts[s.from] = timeout
 }
 
-func (b *Builder[Type, Status]) AddConnector(name string, csc ConnectorConstructor, cf ConnectorFunc[Type, Status]) *connectorUpdater[Type, Status] {
+func (b *Builder[Type, Status]) AddConnector(
+	name string,
+	csc ConnectorConstructor,
+	cf ConnectorFunc[Type, Status],
+) *connectorUpdater[Type, Status] {
 	for _, config := range b.workflow.connectorConfigs {
 		if config.name == name {
 			panic("connector names need to be unique")
@@ -199,7 +212,12 @@ func (b *Builder[Type, Status]) OnComplete(hook RunStateChangeHookFunc[Type, Sta
 	b.workflow.runStateChangeHooks[RunStateCompleted] = hook
 }
 
-func (b *Builder[Type, Status]) Build(eventStreamer EventStreamer, recordStore RecordStore, roleScheduler RoleScheduler, opts ...BuildOption) *Workflow[Type, Status] {
+func (b *Builder[Type, Status]) Build(
+	eventStreamer EventStreamer,
+	recordStore RecordStore,
+	roleScheduler RoleScheduler,
+	opts ...BuildOption,
+) *Workflow[Type, Status] {
 	b.workflow.eventStreamer = eventStreamer
 	b.workflow.recordStore = recordStore
 	b.workflow.scheduler = roleScheduler

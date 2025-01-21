@@ -16,6 +16,9 @@ import (
 )
 
 type API[Type any, Status StatusType] interface {
+	// Name returns the name of the implemented workflow.
+	Name() string
+
 	// Trigger will kickstart a workflow for the provided foreignID starting from the provided starting status. There
 	// is no limitation as to where you start the workflow from. For workflows that have data preceding the initial
 	// trigger that needs to be used in the workflow, using WithInitialValue will allow you to provide pre-populated
@@ -25,7 +28,12 @@ type API[Type any, Status StatusType] interface {
 	// This especially helps when connecting other workflows as the foreignID is the only way to connect the streams. The
 	// same goes for Callback as you will need the foreignID to connect the callback back to the workflow instance that
 	// was run.
-	Trigger(ctx context.Context, foreignID string, startingStatus Status, opts ...TriggerOption[Type, Status]) (runID string, err error)
+	Trigger(
+		ctx context.Context,
+		foreignID string,
+		startingStatus Status,
+		opts ...TriggerOption[Type, Status],
+	) (runID string, err error)
 
 	// Schedule takes a cron spec and will call Trigger at the specified intervals. Schedule is a blocking call and all
 	// schedule errors will be retried indefinitely. The same options are available for Schedule as they are
@@ -50,7 +58,7 @@ type API[Type any, Status StatusType] interface {
 }
 
 type Workflow[Type any, Status StatusType] struct {
-	Name      string
+	name      string
 	ctx       context.Context
 	cancel    context.CancelFunc
 	clock     clock.Clock
@@ -83,6 +91,10 @@ type Workflow[Type any, Status StatusType] struct {
 	// PauseAfterErrCount. The tracking of errors is done in a way where errors need to be unique per process
 	// (consumer / timeout).
 	errorCounter errorcounter.ErrorCounter
+}
+
+func (w *Workflow[Type, Status]) Name() string {
+	return w.name
 }
 
 func (w *Workflow[Type, Status]) Run(ctx context.Context) {
@@ -173,7 +185,7 @@ func (w *Workflow[Type, Status]) run(
 	for {
 		err := runOnce(
 			w.ctx,
-			w.Name,
+			w.Name(),
 			role,
 			processName,
 			w.updateState,

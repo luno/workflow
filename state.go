@@ -35,7 +35,7 @@ func (w *Workflow[Type, Status]) updateState(processName string, s State) {
 	w.internalStateMu.Lock()
 	defer w.internalStateMu.Unlock()
 
-	metrics.ProcessStates.WithLabelValues(w.Name, processName).Set(float64(s))
+	metrics.ProcessStates.WithLabelValues(w.Name(), processName).Set(float64(s))
 
 	w.internalState[processName] = s
 }

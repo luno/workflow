@@ -43,7 +43,7 @@ func TestExampleWorkflow(t *testing.T) {
 	// Give time for go routine to spin up
 	time.Sleep(200 * time.Millisecond)
 
-	_, err := recordStore.Latest(ctx, wf.Name, foreignID)
+	_, err := recordStore.Latest(ctx, wf.Name(), foreignID)
 	// Expect there to be no entries yet
 	require.True(t, errors.Is(err, workflow.ErrRecordNotFound))
 
@@ -52,7 +52,7 @@ func TestExampleWorkflow(t *testing.T) {
 	// Allow scheduling to take place
 	time.Sleep(200 * time.Millisecond)
 
-	firstScheduled, err := recordStore.Latest(ctx, wf.Name, foreignID)
+	firstScheduled, err := recordStore.Latest(ctx, wf.Name(), foreignID)
 	require.Nil(t, err)
 
 	require.Equal(t, "schedule trigger example", firstScheduled.WorkflowName)
@@ -63,7 +63,7 @@ func TestExampleWorkflow(t *testing.T) {
 	// Allow scheduling to take place
 	time.Sleep(200 * time.Millisecond)
 
-	secondScheduled, err := recordStore.Latest(ctx, wf.Name, foreignID)
+	secondScheduled, err := recordStore.Latest(ctx, wf.Name(), foreignID)
 	require.Nil(t, err)
 
 	require.Equal(t, "schedule trigger example", secondScheduled.WorkflowName)
