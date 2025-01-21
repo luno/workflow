@@ -1,6 +1,6 @@
 module github.com/luno/workflow/adapters/kafkastreamer
 
-go 1.22.3
+go 1.23.2
 
 replace github.com/luno/workflow => ../..
 
