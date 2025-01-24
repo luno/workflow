@@ -232,7 +232,7 @@ func TestAddTimeoutDontAllowLag(t *testing.T) {
 }
 
 func TestConnectorConstruction(t *testing.T) {
-	fn := func(ctx context.Context, w *Workflow[string, testStatus], e *ConnectorEvent) error {
+	fn := func(ctx context.Context, w API[string, testStatus], e *ConnectorEvent) error {
 		return nil
 	}
 
