@@ -7,7 +7,7 @@ require (
 	github.com/prometheus/client_golang v1.20.4
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.9.0
-	google.golang.org/protobuf v1.35.1
+	google.golang.org/protobuf v1.36.4
 	k8s.io/utils v0.0.0-20240921022957-49e7df575cb6
 )
 
