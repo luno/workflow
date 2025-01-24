@@ -34,7 +34,7 @@ func RunConnectorTest(t *testing.T, maker func(seedEvents []workflow.ConnectorEv
 	builder.AddConnector(
 		"tester",
 		constructor,
-		func(ctx context.Context, w *workflow.Workflow[User, SyncStatus], e *workflow.ConnectorEvent) error {
+		func(ctx context.Context, w workflow.API[User, SyncStatus], e *workflow.ConnectorEvent) error {
 			_, err := w.Trigger(ctx, e.ForeignID, SyncStatusStarted, workflow.WithInitialValue[User, SyncStatus](&User{
 				UID: e.ForeignID,
 			}))

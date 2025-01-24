@@ -519,7 +519,7 @@ func TestConnector(t *testing.T) {
 	buidler.AddConnector(
 		"my-test-connector",
 		connector,
-		func(ctx context.Context, w *workflow.Workflow[typeX, status], e *workflow.ConnectorEvent) error {
+		func(ctx context.Context, w workflow.API[typeX, status], e *workflow.ConnectorEvent) error {
 			_, err := w.Trigger(ctx, e.ForeignID, StatusStart, workflow.WithInitialValue[typeX, status](&typeX{
 				Val: "trigger set value",
 			}))
