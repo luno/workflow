@@ -1,6 +1,8 @@
 package workflow
 
-import "strconv"
+import (
+	"strconv"
+)
 
 func MakeFilter(filters ...RecordFilter) *recordFilters {
 	var rf recordFilters
@@ -49,7 +51,7 @@ func FilterByForeignID(val string) RecordFilter {
 	}
 }
 
-func FilterByStatus[statusType ~int | ~int32 | ~int64](status statusType) RecordFilter {
+func FilterByStatus[statusType ~int | ~int8 | ~int16 | ~int32 | ~int64](status statusType) RecordFilter {
 	return func(filters *recordFilters) {
 		i := strconv.FormatInt(int64(status), 10)
 		filters.byStatus = makeFilterValue(i)
