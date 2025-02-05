@@ -237,7 +237,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 				0,
 				100,
 				workflow.OrderTypeAscending,
-				workflow.FilterByStatus(int64(status)),
+				workflow.FilterByStatus(status),
 			)
 			require.Nil(t, err)
 			require.Equal(t, count, len(ls))
@@ -360,7 +360,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 				0,
 				100,
 				workflow.OrderTypeAscending,
-				workflow.FilterByStatus(int64(status)),
+				workflow.FilterByStatus(status),
 			)
 			require.Nil(t, err)
 			require.Equal(t, count, len(ls))

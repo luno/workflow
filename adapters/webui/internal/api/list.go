@@ -67,7 +67,7 @@ func List(listRecords ListWorkflowRecords, stringer Stringer) http.HandlerFunc {
 		}
 
 		if req.FilterByStatus != 0 {
-			filters = append(filters, workflow.FilterByStatus(int64(req.FilterByStatus)))
+			filters = append(filters, workflow.FilterByStatus(req.FilterByStatus))
 		}
 
 		list, err := listRecords(r.Context(), req.WorkflowName, req.Offset, req.Limit, order, filters...)
