@@ -179,13 +179,17 @@ func NewTestingRun[Type any, Status StatusType](
 	wr Record,
 	object Type,
 	opts ...TestingRunOption,
-) Run[Type, Status] {
+) *Run[Type, Status] {
+	if t == nil {
+		panic("Cannot use NewTestingRun without *testing.T parameter")
+	}
+
 	var options testingRunOpts
 	for _, opt := range opts {
 		opt(&options)
 	}
 
-	return Run[Type, Status]{
+	return &Run[Type, Status]{
 		TypedRecord: TypedRecord[Type, Status]{
 			Record: wr,
 			Status: Status(wr.Status),

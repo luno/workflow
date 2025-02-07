@@ -21,3 +21,13 @@ func TestNewTestingRun(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, status(workflow.SkipTypeRunStateUpdate), cancelStatus)
 }
+
+func TestNewTestingRun_requiresTestingParam(t *testing.T) {
+	require.PanicsWithValue(t,
+		"Cannot use NewTestingRun without *testing.T parameter",
+		func() {
+			_ = workflow.NewTestingRun[string, status](nil, workflow.Record{}, "test")
+		},
+	)
+
+}

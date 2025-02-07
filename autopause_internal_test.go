@@ -78,7 +78,7 @@ func Test_maybeAutoPause(t *testing.T) {
 				counter,
 				testErr,
 				processName,
-				&r,
+				r,
 				&logger{},
 			)
 			require.ErrorIs(t, err, tc.expectedErr)
