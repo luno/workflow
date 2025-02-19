@@ -292,3 +292,12 @@ func (w *Workflow[Type, Status]) Stop() {
 		}
 	}
 }
+
+func workflowImplementation[Type any, Status StatusType](api API[Type, Status]) *Workflow[Type, Status] {
+	w, ok := api.(*Workflow[Type, Status])
+	if !ok {
+		panic("*workflow.Workflow required for testing utility functions")
+	}
+
+	return w
+}

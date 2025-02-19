@@ -38,7 +38,7 @@ func TestInternalState(t *testing.T) {
 	b.AddConnector(
 		"consume-other-stream",
 		memstreamer.NewConnector(nil),
-		func(ctx context.Context, w workflow.API[string, status], e *workflow.ConnectorEvent) error {
+		func(ctx context.Context, api workflow.API[string, status], e *workflow.ConnectorEvent) error {
 			return nil
 		},
 	).WithOptions(

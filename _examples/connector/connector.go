@@ -50,8 +50,8 @@ func Workflow(d Deps) *workflow.Workflow[GettingStarted, Status] {
 	builder.AddConnector(
 		"my-example-connector",
 		d.Connector,
-		func(ctx context.Context, w workflow.API[GettingStarted, Status], e *workflow.ConnectorEvent) error {
-			_, err := w.Trigger(
+		func(ctx context.Context, api workflow.API[GettingStarted, Status], e *workflow.ConnectorEvent) error {
+			_, err := api.Trigger(
 				ctx,
 				e.ForeignID,
 				StatusStarted,

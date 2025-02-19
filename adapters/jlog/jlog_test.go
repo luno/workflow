@@ -37,8 +37,8 @@ func TestError(t *testing.T) {
 	expected := `E 00:00:00.000 g/l/w/a/jlog/jlog.go:23: error(s) 
   test error
   - github.com/luno/workflow/adapters/jlog/jlog_test.go:34 TestError
-  - testing/testing.go:1689 tRunner
-  - runtime/asm_arm64.s:1222 goexit
+  - testing/testing.go:1690 tRunner
+  - runtime/asm_arm64.s:1223 goexit
 `
 	require.Equal(t, expected, buf.String())
 }

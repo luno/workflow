@@ -17,7 +17,7 @@ type ConnectorConsumer interface {
 	Close() error
 }
 
-type ConnectorFunc[Type any, Status StatusType] func(ctx context.Context, w API[Type, Status], e *ConnectorEvent) error
+type ConnectorFunc[Type any, Status StatusType] func(ctx context.Context, api API[Type, Status], e *ConnectorEvent) error
 
 type connectorConfig[Type any, Status StatusType] struct {
 	name        string
