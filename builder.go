@@ -239,6 +239,7 @@ func (b *Builder[Type, Status]) Build(
 	b.workflow.defaultOpts = bo.defaultOptions
 	b.workflow.outboxConfig = bo.outboxConfig
 	b.workflow.logger.debugMode = bo.debugMode
+	b.workflow.autoPauseRetryConfig = bo.autoPauseRetry
 
 	if bo.logger != nil {
 		b.workflow.logger.inner = bo.logger
@@ -259,12 +260,14 @@ type buildOptions struct {
 	outboxConfig   outboxConfig
 	timeoutStore   TimeoutStore
 	logger         Logger
+	autoPauseRetry autoPauseRetryConfig
 }
 
 func defaultBuildOptions() buildOptions {
 	return buildOptions{
 		outboxConfig:   defaultOutboxConfig(),
 		defaultOptions: defaultOptions(),
+		autoPauseRetry: defaultAutoPauseRetryConfig(),
 	}
 }
 
@@ -334,6 +337,28 @@ func WithCustomDelete[Type any](fn func(object *Type) error) BuildOption {
 
 			return Marshal(&t)
 		}
+	}
+}
+
+// WithPauseRetry sets custom retry parameters for all paused records. The default is set to retry records that
+// have been paused for an hour and will process in batches of 10 records at a time as to slowly introduce consumption.
+// limit refers to the number of paused records that should be assessed in one go.
+// pollingFrequency refers to the duration between checking for more paused records.
+// resumeAfter refers to the time that must elapse before a paused record is automatically resumed.
+func WithPauseRetry(limit int, pollingFrequency, resumeAfter time.Duration) BuildOption {
+	return func(bo *buildOptions) {
+		bo.autoPauseRetry.enabled = true
+		bo.autoPauseRetry.limit = limit
+		bo.autoPauseRetry.pollingFrequency = pollingFrequency
+		bo.autoPauseRetry.resumeAfter = resumeAfter
+	}
+}
+
+// DisablePauseRetry sets disables the automatic retries of paused records. Paused records will result in no new
+// workflow runs being able to be triggered for the provided foreign ID.
+func DisablePauseRetry() BuildOption {
+	return func(bo *buildOptions) {
+		bo.autoPauseRetry.enabled = false
 	}
 }
 

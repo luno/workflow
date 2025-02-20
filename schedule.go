@@ -44,6 +44,7 @@ func (w *Workflow[Type, Status]) Schedule(
 	role := makeRole(w.Name(), strconv.FormatInt(int64(startingStatus), 10), foreignID, "scheduler", spec)
 	processName := makeRole(startingStatus.String(), foreignID, "scheduler", spec)
 
+	w.launching.Add(1)
 	w.run(role, processName, func(ctx context.Context) error {
 		latestEntry, err := w.recordStore.Latest(ctx, w.Name(), foreignID)
 		if errors.Is(err, ErrRecordNotFound) {
