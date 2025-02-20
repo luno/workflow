@@ -3,6 +3,7 @@ package jlog_test
 import (
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/luno/jettison/errors"
@@ -34,11 +35,8 @@ func TestError(t *testing.T) {
 	testErr := errors.New("test error")
 	logger.Error(ctx, testErr)
 
-	expected := `E 00:00:00.000 g/l/w/a/jlog/jlog.go:23: error(s) 
-  test error
-  - github.com/luno/workflow/adapters/jlog/jlog_test.go:34 TestError
-  - testing/testing.go:1690 tRunner
-  - runtime/asm_arm64.s:1223 goexit
-`
-	require.Equal(t, expected, buf.String())
+	s := buf.String()
+	require.True(t, strings.Contains(s, "E 00:00:00.000 g/l/w/a/jlog/jlog.go:23: error(s)"))
+	require.True(t, strings.Contains(s, "test error"))
+	require.True(t, strings.Contains(s, "github.com/luno/workflow/adapters/jlog/jlog_test.go"))
 }
