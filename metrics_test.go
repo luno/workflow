@@ -117,7 +117,7 @@ func TestMetricProcessStates(t *testing.T) {
 workflow_process_states{process_name="example-delete-consumer",workflow_name="example"} 2
 workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="example"} 2
 workflow_process_states{process_name="start-consumer-1-of-1",workflow_name="example"} 2
-workflow_process_states{process_name="example-paused-records-auto-retry",workflow_name="example"} 2
+workflow_process_states{process_name="example-paused-records-retry",workflow_name="example"} 2
 `
 
 	err := testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
@@ -132,7 +132,7 @@ workflow_process_states{process_name="example-paused-records-auto-retry",workflo
 workflow_process_states{process_name="example-delete-consumer",workflow_name="example"} 1
 workflow_process_states{process_name="start-consumer-1-of-1",workflow_name="example"} 1
 workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="example"} 1
-workflow_process_states{process_name="example-paused-records-auto-retry",workflow_name="example"} 1
+workflow_process_states{process_name="example-paused-records-retry",workflow_name="example"} 1
 `
 
 	err = testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
@@ -217,7 +217,7 @@ workflow_process_states{process_name="example-delete-consumer",workflow_name="ex
 workflow_process_states{process_name="start-consumer-1-of-1", workflow_name="example"} 3
 workflow_process_states{process_name="middle-consumer-1-of-1", workflow_name="example"} 3
 workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="example"} 3
-workflow_process_states{process_name="example-paused-records-auto-retry",workflow_name="example"} 3
+workflow_process_states{process_name="example-paused-records-retry",workflow_name="example"} 3
 `
 
 	err := testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
@@ -237,7 +237,7 @@ workflow_process_states{process_name="example-delete-consumer",workflow_name="ex
 workflow_process_states{process_name="middle-consumer-1-of-1",workflow_name="example"} 2
 workflow_process_states{process_name="start-consumer-1-of-1",workflow_name="example"} 2
 workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="example"} 2
-workflow_process_states{process_name="example-paused-records-auto-retry",workflow_name="example"} 2
+workflow_process_states{process_name="example-paused-records-retry",workflow_name="example"} 2
 `
 
 	err = testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
@@ -253,7 +253,7 @@ workflow_process_states{process_name="example-delete-consumer",workflow_name="ex
 workflow_process_states{process_name="middle-consumer-1-of-1",workflow_name="example"} 1
 workflow_process_states{process_name="start-consumer-1-of-1",workflow_name="example"} 1
 workflow_process_states{process_name="outbox-consumer-1-of-1",workflow_name="example"} 1
-workflow_process_states{process_name="example-paused-records-auto-retry",workflow_name="example"} 1
+workflow_process_states{process_name="example-paused-records-retry",workflow_name="example"} 1
 `
 
 	err = testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))

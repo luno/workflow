@@ -634,7 +634,7 @@ func TestExpectedProcesses(t *testing.T) {
 		"outbox-consumer-1-of-1":                                true,
 		"user_sign_up-completed-run-state-change-hook-consumer": true,
 		"user_sign_up-delete-consumer":                          true,
-		"user_sign_up-paused-records-auto-retry":                true,
+		"user_sign_up-paused-records-retry":                     true,
 	}
 
 	w := acceptanceTestWorkflow().Build(

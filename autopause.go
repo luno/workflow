@@ -69,7 +69,7 @@ func defaultAutoPauseRetryConfig() autoPauseRetryConfig {
 }
 
 func autoRetryPausedRecordsForever[Type any, Status StatusType](w *Workflow[Type, Status]) {
-	role := makeRole(w.Name(), "paused-records-auto-retry")
+	role := makeRole(w.Name(), "paused-records-retry")
 	processName := role
 
 	w.run(role, processName, func(ctx context.Context) error {

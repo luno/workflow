@@ -79,7 +79,7 @@ func TestRetryOfPausedRecordsConfig(t *testing.T) {
 		t.Cleanup(w.Stop)
 
 		states := w.States()
-		_, processLaunched := states["example-paused-records-auto-retry"]
+		_, processLaunched := states["example-paused-records-retry"]
 		require.False(t, processLaunched)
 	})
 
@@ -96,7 +96,7 @@ func TestRetryOfPausedRecordsConfig(t *testing.T) {
 
 		states := w.States()
 		fmt.Println(states)
-		_, processLaunched := states["example-paused-records-auto-retry"]
+		_, processLaunched := states["example-paused-records-retry"]
 		require.True(t, processLaunched)
 	})
 }
