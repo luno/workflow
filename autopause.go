@@ -91,7 +91,7 @@ func autoRetryPausedRecordsForever[Type any, Status StatusType](w *Workflow[Type
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case <-w.clock.After(time.Millisecond): // Slow and constant drip feed of paused records back into running state.
+			case <-w.clock.After(w.autoPauseRetryConfig.pollingFrequency): // Slow and constant drip feed of paused records back into running state.
 				continue
 			}
 		}
