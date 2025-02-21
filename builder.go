@@ -342,9 +342,11 @@ func WithCustomDelete[Type any](fn func(object *Type) error) BuildOption {
 
 // WithPauseRetry sets custom retry parameters for all paused records. The default is set to retry records that
 // have been paused for an hour and will process in batches of 10 records at a time as to slowly introduce consumption.
-// limit refers to the number of paused records that should be assessed in one go.
-// pollingFrequency refers to the duration between checking for more paused records.
-// resumeAfter refers to the time that must elapse before a paused record is automatically resumed.
+//
+// Parameters:
+// - limit refers to the number of paused records that should be assessed in one cycle.
+// - pollingFrequency refers to the duration between each cycle.
+// - resumeAfter refers to the time that must elapse before a paused record is included in a cycle.
 func WithPauseRetry(limit int, pollingFrequency, resumeAfter time.Duration) BuildOption {
 	return func(bo *buildOptions) {
 		bo.autoPauseRetry.enabled = true
