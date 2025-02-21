@@ -13,13 +13,18 @@ import (
 
 func TriggerCallbackOn[Type any, Status StatusType, Payload any](
 	t testing.TB,
-	w *Workflow[Type, Status],
+	api API[Type, Status],
 	foreignID, runID string,
 	waitForStatus Status,
 	p Payload,
 ) {
 	if t == nil {
 		panic("TriggerCallbackOn can only be used for testing")
+	}
+
+	w, ok := api.(*Workflow[Type, Status])
+	if !ok {
+		panic("*workflow.Workflow required for testing utility functions")
 	}
 
 	_ = waitFor(t, w, foreignID, func(r *Record) (bool, error) {
@@ -35,12 +40,17 @@ func TriggerCallbackOn[Type any, Status StatusType, Payload any](
 
 func AwaitTimeoutInsert[Type any, Status StatusType](
 	t testing.TB,
-	w *Workflow[Type, Status],
+	api API[Type, Status],
 	foreignID, runID string,
 	waitFor Status,
 ) {
 	if t == nil {
 		panic("AwaitTimeoutInsert can only be used for testing")
+	}
+
+	w, ok := api.(*Workflow[Type, Status])
+	if !ok {
+		panic("*workflow.Workflow required for testing utility functions")
 	}
 
 	var found bool
@@ -73,13 +83,18 @@ func AwaitTimeoutInsert[Type any, Status StatusType](
 
 func Require[Type any, Status StatusType](
 	t testing.TB,
-	w *Workflow[Type, Status],
+	api API[Type, Status],
 	foreignID string,
 	waitForStatus Status,
 	expected Type,
 ) {
 	if t == nil {
 		panic("Require can only be used for testing")
+	}
+
+	w, ok := api.(*Workflow[Type, Status])
+	if !ok {
+		panic("*workflow.Workflow required for testing utility functions")
 	}
 
 	if !w.statusGraph.IsValid(int(waitForStatus)) {
@@ -114,12 +129,17 @@ func Require[Type any, Status StatusType](
 
 func WaitFor[Type any, Status StatusType](
 	t testing.TB,
-	w *Workflow[Type, Status],
+	api API[Type, Status],
 	foreignID string,
 	fn func(r *Run[Type, Status]) (bool, error),
 ) {
 	if t == nil {
 		panic("WaitFor can only be used for testing")
+	}
+
+	w, ok := api.(*Workflow[Type, Status])
+	if !ok {
+		panic("*workflow.Workflow required for testing utility functions")
 	}
 
 	waitFor(t, w, foreignID, func(r *Record) (bool, error) {
