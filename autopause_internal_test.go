@@ -129,7 +129,7 @@ func Test_retryPausedRecords(t *testing.T) {
 			func(ctx context.Context, workflowName string, offsetID int64, limit int, order OrderType, filters ...RecordFilter) ([]Record, error) {
 				filter := MakeFilter(filters...)
 				require.True(t, filter.byRunState.Enabled)
-				require.Equal(t, "3", filter.byRunState.Value)
+				require.Equal(t, "3", filter.byRunState.Value())
 				require.Equal(t, int64(0), offsetID)
 				require.Equal(t, 100, limit)
 				require.Equal(t, OrderTypeAscending, order)
