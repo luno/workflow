@@ -209,42 +209,28 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 	t.Run("List - WorkflowName", func(t *testing.T) {
 		store := factory()
 		ctx := context.Background()
-		config := map[status]int{
-			statusStarted: 10,
-			statusMiddle:  100,
-			statusEnd:     20,
-		}
-		for status, count := range config {
-			for i := 0; i < count; i++ {
-				newRecord := dummyWireRecord(t, workflowName)
-				newRecord.Status = int(status)
-
-				err := store.Store(ctx, newRecord)
-				require.Nil(t, err)
-
-				secondRecord := dummyWireRecord(t, secondWorkflowName)
-				newRecord.Status = int(status)
-
-				err = store.Store(ctx, secondRecord)
-				require.Nil(t, err)
-			}
-		}
-
-		for status, count := range config {
-			ls, err := store.List(
-				ctx,
-				workflowName,
-				0,
-				100,
-				workflow.OrderTypeAscending,
-				workflow.FilterByStatus(status),
-			)
+		for i := 0; i < 100; i++ {
+			newRecord := dummyWireRecord(t, workflowName)
+			err := store.Store(ctx, newRecord)
 			require.Nil(t, err)
-			require.Equal(t, count, len(ls))
 
-			for _, l := range ls {
-				require.Equal(t, l.Status, int(status))
-			}
+			secondRecord := dummyWireRecord(t, secondWorkflowName)
+			err = store.Store(ctx, secondRecord)
+			require.Nil(t, err)
+		}
+
+		ls, err := store.List(
+			ctx,
+			workflowName,
+			0,
+			2000,
+			workflow.OrderTypeAscending,
+		)
+		require.Nil(t, err)
+		require.Equal(t, 100, len(ls))
+
+		for _, l := range ls {
+			require.Equal(t, l.WorkflowName, workflowName)
 		}
 	})
 
@@ -266,7 +252,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 			ctx,
 			workflowName,
 			0,
-			100,
+			2000,
 			workflow.OrderTypeAscending,
 			workflow.FilterByForeignID(foreignIDs[0]),
 		)
@@ -317,12 +303,13 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 			}
 		}
 
+		// Testing for one RunState at a time
 		for runState, count := range config {
 			ls, err := store.List(
 				ctx,
 				workflowName,
 				0,
-				100,
+				2000,
 				workflow.OrderTypeAscending,
 				workflow.FilterByRunState(runState),
 			)
@@ -331,6 +318,35 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 
 			for _, l := range ls {
 				require.Equal(t, l.RunState, runState)
+			}
+		}
+
+		// Testing for multiple RunStates at a time
+		ls, err := store.List(
+			ctx,
+			workflowName,
+			0,
+			2000,
+			workflow.OrderTypeAscending,
+			workflow.FilterByRunState(workflow.RunStateRunning, workflow.RunStatePaused),
+		)
+		require.Nil(t, err)
+		require.Equal(
+			t,
+			103,
+			len(ls),
+			fmt.Sprintf(
+				"Expected to have %v entries of %v and %v",
+				103,
+				workflow.RunStateRunning.String(),
+				workflow.RunStatePaused.String(),
+			),
+		)
+
+		for _, l := range ls {
+			if l.RunState != workflow.RunStateRunning &&
+				l.RunState != workflow.RunStatePaused {
+				t.Fatalf("Unexpected run state: %v", l.RunState)
 			}
 		}
 	})

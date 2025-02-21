@@ -3,6 +3,9 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"strconv"
+	"strings"
+
 	"github.com/luno/jettison/errors"
 	"github.com/luno/workflow"
 )
@@ -91,7 +94,13 @@ func (s *SQLStore) Lookup(ctx context.Context, runID string) (*workflow.Record, 
 }
 
 func (s *SQLStore) Latest(ctx context.Context, workflowName, foreignID string) (*workflow.Record, error) {
-	ls, err := s.listWhere(ctx, s.reader, "workflow_name=? and foreign_id=? order by created_at desc limit 1", workflowName, foreignID)
+	ls, err := s.listWhere(
+		ctx,
+		s.reader,
+		"workflow_name=? and foreign_id=? order by created_at desc limit 1",
+		workflowName,
+		foreignID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +112,11 @@ func (s *SQLStore) Latest(ctx context.Context, workflowName, foreignID string) (
 	return &ls[0], nil
 }
 
-func (s *SQLStore) ListOutboxEvents(ctx context.Context, workflowName string, limit int64) ([]workflow.OutboxEvent, error) {
+func (s *SQLStore) ListOutboxEvents(
+	ctx context.Context,
+	workflowName string,
+	limit int64,
+) ([]workflow.OutboxEvent, error) {
 	return s.listOutboxWhere(ctx, s.reader, "workflow_name=? limit ?", workflowName, limit)
 }
 
@@ -116,42 +129,115 @@ func (s *SQLStore) DeleteOutboxEvent(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *SQLStore) List(ctx context.Context, workflowName string, offset int64, limit int, order workflow.OrderType, filters ...workflow.RecordFilter) ([]workflow.Record, error) {
+func (s *SQLStore) List(
+	ctx context.Context,
+	workflowName string,
+	offset int64,
+	limit int,
+	order workflow.OrderType,
+	filters ...workflow.RecordFilter,
+) ([]workflow.Record, error) {
 	filter := workflow.MakeFilter(filters...)
 
-	var (
-		filterStr    string
-		filterParams []any
-	)
-
-	filterStr += " run_id is not null"
+	wb := new(whereBuilder)
 
 	if workflowName != "" {
-		filterStr += " and workflow_name=?"
-		filterParams = append(filterParams, workflowName)
+		wb.Where("workflow_name", workflowName)
 	}
 
 	if filter.ByForeignID().Enabled {
-		filterStr += " and foreign_id=?"
-		filterParams = append(filterParams, filter.ByForeignID().Value)
+		if filter.ByForeignID().IsMultiMatch {
+			wb.Where("foreign_id", filter.ByForeignID().MultiValues()...)
+		} else {
+			wb.Where("foreign_id", filter.ByForeignID().Value())
+		}
 	}
 
 	if filter.ByStatus().Enabled {
-		filterStr += " and status=?"
-		filterParams = append(filterParams, filter.ByStatus().Value)
+		if filter.ByStatus().IsMultiMatch {
+			wb.Where("status", filter.ByStatus().MultiValues()...)
+		} else {
+			wb.Where("status", filter.ByStatus().Value())
+		}
 	}
 
 	if filter.ByRunState().Enabled {
-		filterStr += " and run_state=?"
-		filterParams = append(filterParams, filter.ByRunState().Value)
+		if filter.ByRunState().IsMultiMatch {
+			wb.Where("run_state", filter.ByRunState().MultiValues()...)
+		} else {
+			wb.Where("run_state", filter.ByRunState().Value())
+		}
 	}
 
 	if limit == 0 {
 		limit = defaultListLimit
 	}
 
-	params := filterParams
-	params = append(params, limit)
-	params = append(params, offset)
-	return s.listWhere(ctx, s.reader, filterStr+" order by created_at "+order.String()+" limit ? offset ?", params...)
+	wb.WhereNotNull("run_id")
+	wb.OrderBy("created_at", order)
+	wb.Limit(limit)
+	wb.Offset(offset)
+
+	where, params := wb.Finalise()
+	return s.listWhere(ctx, s.reader, where, params...)
+}
+
+type whereBuilder struct {
+	conditions []string
+	params     []any
+	orderField string
+	orderType  workflow.OrderType
+	offset     int64
+	limit      int
+}
+
+func (fq *whereBuilder) WhereNotNull(field string) {
+	fq.conditions = append(fq.conditions, field+" is not null")
+}
+
+func (fq *whereBuilder) Where(field string, values ...string) {
+	condition := " ( "
+	for i, value := range values {
+		condition += field + "=?"
+		if i < len(values)-1 {
+			condition += " OR "
+		}
+
+		fq.params = append(fq.params, value)
+	}
+	condition += " ) "
+
+	fq.conditions = append(fq.conditions, condition)
+}
+
+func (fq *whereBuilder) OrderBy(field string, orderType workflow.OrderType) {
+	fq.orderField = field
+	fq.orderType = orderType
+}
+
+func (fq *whereBuilder) Offset(offset int64) {
+	fq.offset = offset
+}
+
+func (fq *whereBuilder) Limit(limit int) {
+	fq.limit = limit
+}
+
+func (fq *whereBuilder) Finalise() (condition string, params []any) {
+	where := strings.Join(fq.conditions, " AND ")
+	if fq.orderField != "" {
+		where += " order by " + fq.orderField + " " + fq.orderType.String()
+	}
+
+	if fq.limit > 0 {
+		where += " limit ?"
+		fq.params = append(fq.params, strconv.Itoa(fq.limit))
+	}
+
+	if fq.offset > 0 {
+		where += " offset ?"
+		fq.params = append(fq.params, fq.offset)
+	}
+
+	return where, fq.params
 }

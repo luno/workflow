@@ -141,7 +141,11 @@ func (s *Store) Latest(ctx context.Context, workflowName, foreignID string) (*wo
 	}, nil
 }
 
-func (s *Store) ListOutboxEvents(ctx context.Context, workflowName string, limit int64) ([]workflow.OutboxEvent, error) {
+func (s *Store) ListOutboxEvents(
+	ctx context.Context,
+	workflowName string,
+	limit int64,
+) ([]workflow.OutboxEvent, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -177,7 +181,14 @@ func (s *Store) DeleteOutboxEvent(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *Store) List(ctx context.Context, workflowName string, offset int64, limit int, order workflow.OrderType, filters ...workflow.RecordFilter) ([]workflow.Record, error) {
+func (s *Store) List(
+	ctx context.Context,
+	workflowName string,
+	offset int64,
+	limit int,
+	order workflow.OrderType,
+	filters ...workflow.RecordFilter,
+) ([]workflow.Record, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -198,17 +209,17 @@ func (s *Store) List(ctx context.Context, workflowName string, offset int64, lim
 			continue
 		}
 
-		if filter.ByForeignID().Enabled && filter.ByForeignID().Value != record.ForeignID {
+		if filter.ByForeignID().Enabled && !filter.ByForeignID().Matches(record.ForeignID) {
 			continue
 		}
 
 		status := strconv.FormatInt(int64(record.Status), 10)
-		if filter.ByStatus().Enabled && filter.ByStatus().Value != status {
+		if filter.ByStatus().Enabled && !filter.ByStatus().Matches(status) {
 			continue
 		}
 
 		runState := strconv.FormatInt(int64(record.RunState), 10)
-		if filter.ByRunState().Enabled && filter.ByRunState().Value != runState {
+		if filter.ByRunState().Enabled && !filter.ByRunState().Matches(runState) {
 			continue
 		}
 
