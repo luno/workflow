@@ -76,15 +76,22 @@ type Workflow[Type any, Status StatusType] struct {
 	timeouts         map[Status]timeouts[Type, Status]
 	connectorConfigs []*connectorConfig[Type, Status]
 
-	defaultOpts         options
-	outboxConfig        outboxConfig
-	customDelete        customDelete
-	runStateChangeHooks map[RunState]RunStateChangeHookFunc[Type, Status]
+	defaultOpts          options
+	outboxConfig         outboxConfig
+	autoPauseRetryConfig autoPauseRetryConfig
+	customDelete         customDelete
+	runStateChangeHooks  map[RunState]RunStateChangeHookFunc[Type, Status]
 
 	internalStateMu sync.Mutex
 	// internalState holds the State of all expected consumers and timeout go routines using their role names
 	// as the key.
 	internalState map[string]State
+	// launching tracks the number of goroutines initiated but not yet running.
+	// There's a non-deterministic delay between spawning a goroutine (`go myFunc()`)
+	// and its addition to workflow's internalState. To ensure Run returns only after
+	// all processes are recorded in internalState, launching provides a way to track
+	// and block until this transition is complete.
+	launching sync.WaitGroup
 
 	statusGraph *graph.Graph
 	// errorCounter keeps a central in-mem state of errors from consumers and timeouts in order to implement
@@ -108,11 +115,15 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 		// Start the outbox consumers
 		if w.outboxConfig.parallelCount < 2 {
 			// Launch all consumers in runners
-			go outboxConsumer(w, w.outboxConfig, 1, 1)
+			track(w, func() {
+				outboxConsumer(w, w.outboxConfig, 1, 1)
+			})
 		} else {
 			// Run as sharded parallel consumers
 			for i := 1; i <= w.outboxConfig.parallelCount; i++ {
-				go outboxConsumer(w, w.outboxConfig, i, w.outboxConfig.parallelCount)
+				track(w, func() {
+					outboxConsumer(w, w.outboxConfig, i, w.outboxConfig.parallelCount)
+				})
 			}
 		}
 
@@ -125,11 +136,15 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 
 			if parallelCount < 2 {
 				// Launch all consumers in runners
-				go consumer(w, currentStatus, config, 1, 1)
+				track(w, func() {
+					consumer(w, currentStatus, config, 1, 1)
+				})
 			} else {
 				// Run as sharded parallel consumers
 				for i := 1; i <= parallelCount; i++ {
-					go consumer(w, currentStatus, config, i, parallelCount)
+					track(w, func() {
+						consumer(w, currentStatus, config, i, parallelCount)
+					})
 				}
 			}
 		}
@@ -138,8 +153,12 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 		// be optional for workflows where the timeout feature is not needed.
 		if w.timeoutStore != nil {
 			for status, timeouts := range w.timeouts {
-				go timeoutPoller(w, status, timeouts)
-				go timeoutAutoInserterConsumer(w, status, timeouts)
+				track(w, func() {
+					timeoutPoller(w, status, timeouts)
+				})
+				track(w, func() {
+					timeoutAutoInserterConsumer(w, status, timeouts)
+				})
 			}
 		}
 
@@ -152,11 +171,15 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 
 			if parallelCount < 2 {
 				// Launch all consumers in runners
-				go connectorConsumer(w, config, 1, 1)
+				track(w, func() {
+					connectorConsumer(w, config, 1, 1)
+				})
 			} else {
 				// Run as sharded parallel consumers
 				for i := 1; i <= config.parallelCount; i++ {
-					go connectorConsumer(w, config, i, config.parallelCount)
+					track(w, func() {
+						connectorConsumer(w, config, i, config.parallelCount)
+					})
 				}
 			}
 		}
@@ -164,12 +187,31 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 		// Launch all the run state change hooks that consume run state changes and respond according to the user's
 		// configuration.
 		for state, hook := range w.runStateChangeHooks {
-			go runStateChangeHookConsumer(w, state, hook)
+			track(w, func() {
+				runStateChangeHookConsumer(w, state, hook)
+			})
 		}
 
 		// Launch the delete consumer which will manage all data deletion requests.
-		go deleteConsumer(w)
+		track(w, func() {
+			deleteConsumer(w)
+		})
+
+		if w.autoPauseRetryConfig.enabled {
+			track(w, func() {
+				autoRetryPausedRecordsForever(w)
+			})
+		}
 	})
+
+	w.launching.Wait()
+}
+
+// track starts a new goroutine to execute the provided function and ensures
+// it is tracked using launching.
+func track[Type any, Status StatusType](w *Workflow[Type, Status], fn func()) {
+	w.launching.Add(1)
+	go fn()
 }
 
 // run is a standardise way of running blocking calls with a built-in retry mechanism.
@@ -181,6 +223,8 @@ func (w *Workflow[Type, Status]) run(
 ) {
 	w.updateState(processName, StateIdle)
 	defer w.updateState(processName, StateShutdown)
+	// Mark that another go routine has launched and been added to internal state
+	w.launching.Done()
 
 	for {
 		err := runOnce(

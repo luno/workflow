@@ -432,6 +432,28 @@ func TestWithDefaultOptions(t *testing.T) {
 	require.Equal(t, 700, wf.defaultOpts.pauseAfterErrCount)
 }
 
+func TestWithPauseAutoRetry(t *testing.T) {
+	b := NewBuilder[string, testStatus]("consumer lag")
+	b.AddStep(
+		statusStart,
+		func(ctx context.Context, r *Run[string, testStatus]) (testStatus, error) {
+			return statusEnd, nil
+		},
+		statusEnd,
+	)
+	wf := b.Build(
+		nil,
+		nil,
+		nil,
+		WithPauseRetry(200, time.Minute, time.Hour),
+	)
+
+	require.True(t, wf.autoPauseRetryConfig.enabled)
+	require.Equal(t, 200, wf.autoPauseRetryConfig.limit)
+	require.Equal(t, time.Minute, wf.autoPauseRetryConfig.pollingFrequency)
+	require.Equal(t, time.Hour, wf.autoPauseRetryConfig.resumeAfter)
+}
+
 func TestConnectorNamesAreUnique(t *testing.T) {
 	require.PanicsWithValue(t,
 		"connector names need to be unique",

@@ -103,22 +103,9 @@ func TestWorkflowAcceptanceTest(t *testing.T) {
 		cancel()
 	})
 
-	b := workflow.NewBuilder[MyType, status]("user sign up")
-	b.AddStep(StatusInitiated, createProfile, StatusProfileCreated)
-	b.AddStep(StatusProfileCreated, sendEmailConfirmation, StatusEmailConfirmationSent)
-	b.AddCallback(StatusEmailConfirmationSent, emailVerifiedCallback, StatusEmailVerified)
-	b.AddCallback(StatusEmailVerified, cellphoneNumberCallback, StatusCellphoneNumberSubmitted)
-	b.AddStep(StatusCellphoneNumberSubmitted, sendOTP, StatusOTPSent).WithOptions(workflow.ParallelCount(2))
-	b.AddCallback(StatusOTPSent, otpCallback, StatusOTPVerified)
-	b.AddTimeout(StatusOTPVerified, workflow.DurationTimerFunc[MyType, status](time.Hour), waitForAccountCoolDown, StatusCompleted)
-	b.OnComplete(func(ctx context.Context, record *workflow.TypedRecord[MyType, status]) error {
-		fmt.Println(fmt.Sprintf("Welcome %v 👋", record.Object.Name))
-		return nil
-	})
-
 	recordStore := memrecordstore.New()
 	clock := clock_testing.NewFakeClock(time.Now())
-	wf := b.Build(
+	wf := acceptanceTestWorkflow().Build(
 		memstreamer.New(),
 		recordStore,
 		memrolescheduler.New(),
@@ -176,6 +163,22 @@ func TestWorkflowAcceptanceTest(t *testing.T) {
 	require.Equal(t, expectedCellphone, actual.Cellphone)
 	require.Equal(t, expectedOTP, actual.OTP)
 	require.Equal(t, expectedOTPVerified, actual.OTPVerified)
+}
+
+func acceptanceTestWorkflow() *workflow.Builder[MyType, status] {
+	b := workflow.NewBuilder[MyType, status]("user sign up")
+	b.AddStep(StatusInitiated, createProfile, StatusProfileCreated)
+	b.AddStep(StatusProfileCreated, sendEmailConfirmation, StatusEmailConfirmationSent)
+	b.AddCallback(StatusEmailConfirmationSent, emailVerifiedCallback, StatusEmailVerified)
+	b.AddCallback(StatusEmailVerified, cellphoneNumberCallback, StatusCellphoneNumberSubmitted)
+	b.AddStep(StatusCellphoneNumberSubmitted, sendOTP, StatusOTPSent).WithOptions(workflow.ParallelCount(2))
+	b.AddCallback(StatusOTPSent, otpCallback, StatusOTPVerified)
+	b.AddTimeout(StatusOTPVerified, workflow.DurationTimerFunc[MyType, status](time.Hour), waitForAccountCoolDown, StatusCompleted)
+	b.OnComplete(func(ctx context.Context, record *workflow.TypedRecord[MyType, status]) error {
+		fmt.Println(fmt.Sprintf("Welcome %v 👋", record.Object.Name))
+		return nil
+	})
+	return b
 }
 
 func BenchmarkWorkflow(b *testing.B) {
@@ -618,4 +621,33 @@ func TestStepConsumerLag(t *testing.T) {
 func TestName(t *testing.T) {
 	wf := workflow.NewBuilder[string, status]("test name").Build(nil, nil, nil)
 	require.Equal(t, "test name", wf.Name())
+}
+
+func TestExpectedProcesses(t *testing.T) {
+	expected := map[string]bool{
+		"cellphone_number_submitted-consumer-1-of-2":            true,
+		"cellphone_number_submitted-consumer-2-of-2":            true,
+		"initiated-consumer-1-of-1":                             true,
+		"name_created-consumer-1-of-1":                          true,
+		"otp_verified-timeout-auto-inserter-consumer":           true,
+		"otp_verified-timeout-consumer":                         true,
+		"outbox-consumer-1-of-1":                                true,
+		"user_sign_up-completed-run-state-change-hook-consumer": true,
+		"user_sign_up-delete-consumer":                          true,
+		"user_sign_up-paused-records-retry":                     true,
+	}
+
+	w := acceptanceTestWorkflow().Build(
+		memstreamer.New(),
+		memrecordstore.New(),
+		memrolescheduler.New(),
+		workflow.WithTimeoutStore(memtimeoutstore.New()),
+	)
+
+	w.Run(context.Background())
+	t.Cleanup(w.Stop)
+
+	for process := range w.States() {
+		require.True(t, expected[process])
+	}
 }

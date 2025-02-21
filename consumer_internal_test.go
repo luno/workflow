@@ -208,13 +208,10 @@ func TestConsume(t *testing.T) {
 		require.NotNil(t, err)
 
 		err = consume(ctx, w, current, consumer, ack, store, updater, processName, 3)
-		require.NotNil(t, err)
-
-		err = consume(ctx, w, current, consumer, ack, store, updater, processName, 3)
 		require.Nil(t, err)
 
 		expectedCalls := map[string]int{
-			"consumerFunc": 4,
+			"consumerFunc": 3,
 			"ack":          1,
 			"updater":      0,
 			"store":        1,

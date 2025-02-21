@@ -118,6 +118,7 @@ func TestWorkflow_ScheduleShutdown(t *testing.T) {
 		"start-consumer-1-of-1":           workflow.StateRunning,
 		"outbox-consumer-1-of-1":          workflow.StateRunning,
 		"example-delete-consumer":         workflow.StateRunning,
+		"example-paused-records-retry":    workflow.StateRunning,
 	}, wf.States())
 
 	wf.Stop()
@@ -127,6 +128,7 @@ func TestWorkflow_ScheduleShutdown(t *testing.T) {
 		"start-consumer-1-of-1":           workflow.StateShutdown,
 		"outbox-consumer-1-of-1":          workflow.StateShutdown,
 		"example-delete-consumer":         workflow.StateShutdown,
+		"example-paused-records-retry":    workflow.StateShutdown,
 	}, wf.States())
 }
 
