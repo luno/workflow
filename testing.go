@@ -176,20 +176,20 @@ func waitFor[Type any, Status StatusType](
 	// Reset the offset run through all the changes and not just from the offset
 	// testingStore.SetSnapshotOffset(w.name, foreignID, runID, 0)
 
-	var wr *Record
-	for wr == nil {
+	var wr Record
+	for wr.RunID == "" {
 		snapshots := testingStore.Snapshots(w.Name(), foreignID, runID)
 		for _, r := range snapshots {
 			ok, err := fn(r)
 			require.Nil(t, err)
 
 			if ok {
-				wr = r
+				wr = *r
 			}
 		}
 	}
 
-	return wr
+	return &wr
 }
 
 // NewTestingRun should be used when testing logic that defines a workflow.Run as a parameter. This is usually the
