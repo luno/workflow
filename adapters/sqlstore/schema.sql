@@ -11,12 +11,9 @@ create table workflow_records (
 
     primary key(run_id),
 
-    index by_workflow_name_foreign_id_run_id_status (workflow_name, foreign_id, run_id, status),
-    index by_workflow_name_foreign_id_created_at (workflow_name, foreign_id, created_at desc),
-    index by_workflow_name_status_created_at (workflow_name, status, created_at desc),
-    index by_run_id_created_at (run_id, created_at),
-    index by_status_run_state_created_at (run_state, status, created_at),
-    index by_run_state (run_state)
+    index by_workflow_name_foreign_id_status (workflow_name, foreign_id, status),
+    index by_run_state (run_state),
+    index by_created_at (created_at)
 );
 
 create table workflow_outbox (
