@@ -53,15 +53,13 @@ func (f Filter) Matches(findValue string) bool {
 		return f.value == findValue
 	}
 
-	var found bool
 	for _, filterValue := range f.MultiValues() {
 		if filterValue == findValue {
-			found = true
-			break
+			return true
 		}
 	}
 
-	return found
+	return false
 }
 
 func (f Filter) MultiValues() []string {
