@@ -44,8 +44,8 @@ func TestConsume(t *testing.T) {
 	t.Run("Golden path consume - Initiated", func(t *testing.T) {
 		calls := map[string]int{
 			"consumerFunc": 0,
-			"ack":          0,
 			"updater":      0,
+			"lookup":       0,
 		}
 
 		currentRecord := &Record{
@@ -63,11 +63,6 @@ func TestConsume(t *testing.T) {
 			return statusEnd, nil
 		})
 
-		ack := func() error {
-			calls["ack"] += 1
-			return nil
-		}
-
 		updater := func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error {
 			calls["updater"] += 1
 			require.Equal(t, "new data", *record.Object)
@@ -79,13 +74,29 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		err := consume(ctx, w, currentRecord, consumer, ack, store, updater, processName, 0)
+		lookup := func(ctx context.Context, runID string) (*Record, error) {
+			calls["lookup"] += 1
+			return currentRecord, nil
+		}
+
+		err := stepConsumer(
+			w.Name(),
+			"",
+			consumer,
+			testStatus(current.Status),
+			lookup,
+			store,
+			w.logger,
+			updater,
+			0,
+			w.errorCounter,
+		)(ctx, &Event{})
 		require.Nil(t, err)
 
 		expectedCalls := map[string]int{
 			"consumerFunc": 1,
-			"ack":          1,
 			"updater":      1,
+			"lookup":       1,
 		}
 		require.Equal(t, expectedCalls, calls)
 	})
@@ -93,8 +104,8 @@ func TestConsume(t *testing.T) {
 	t.Run("Golden path consume - Running", func(t *testing.T) {
 		calls := map[string]int{
 			"consumerFunc": 0,
-			"ack":          0,
 			"updater":      0,
+			"lookup":       0,
 		}
 
 		consumer := ConsumerFunc[string, testStatus](func(ctx context.Context, r *Run[string, testStatus]) (testStatus, error) {
@@ -103,11 +114,6 @@ func TestConsume(t *testing.T) {
 			return statusEnd, nil
 		})
 
-		ack := func() error {
-			calls["ack"] += 1
-			return nil
-		}
-
 		updater := func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error {
 			calls["updater"] += 1
 			require.Equal(t, "new data", *record.Object)
@@ -119,12 +125,28 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		err := consume(ctx, w, current, consumer, ack, store, updater, processName, 0)
+		lookup := func(ctx context.Context, runID string) (*Record, error) {
+			calls["lookup"] += 1
+			return current, nil
+		}
+
+		err := stepConsumer(
+			w.Name(),
+			"",
+			consumer,
+			testStatus(current.Status),
+			lookup,
+			store,
+			w.logger,
+			updater,
+			0,
+			w.errorCounter,
+		)(ctx, &Event{})
 		require.Nil(t, err)
 
 		expectedCalls := map[string]int{
 			"consumerFunc": 1,
-			"ack":          1,
+			"lookup":       1,
 			"updater":      1,
 		}
 		require.Equal(t, expectedCalls, calls)
@@ -133,9 +155,8 @@ func TestConsume(t *testing.T) {
 	t.Run("Skip consume", func(t *testing.T) {
 		calls := map[string]int{
 			"consumerFunc": 0,
-			"ack":          0,
 			"updater":      0,
-			"storeAndEmit": 0,
+			"lookup":       0,
 		}
 
 		consumer := ConsumerFunc[string, testStatus](func(ctx context.Context, r *Run[string, testStatus]) (testStatus, error) {
@@ -143,11 +164,6 @@ func TestConsume(t *testing.T) {
 			return testStatus(SkipTypeDefault), nil
 		})
 
-		ack := func() error {
-			calls["ack"] += 1
-			return nil
-		}
-
 		updater := func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error {
 			calls["updater"] += 1
 			return nil
@@ -158,27 +174,40 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		err := consume(ctx, w, current, consumer, ack, store, updater, processName, 0)
+		lookup := func(ctx context.Context, runID string) (*Record, error) {
+			calls["lookup"] += 1
+			return current, nil
+		}
+
+		err := stepConsumer(
+			w.Name(),
+			"",
+			consumer,
+			testStatus(current.Status),
+			lookup,
+			store,
+			w.logger,
+			updater,
+			0,
+			w.errorCounter,
+		)(ctx, &Event{})
 		require.Nil(t, err)
 
 		expectedCalls := map[string]int{
 			"consumerFunc": 1,
-			"ack":          1,
 			"updater":      0,
-			"storeAndEmit": 0,
+			"lookup":       1,
 		}
 		require.Equal(t, expectedCalls, calls)
 	})
 
 	t.Run("Pause record after exceeding allowed error count", func(t *testing.T) {
-		t.Parallel()
 		counter.Clear(testErr, processName, current.RunID)
 
 		calls := map[string]int{
 			"consumerFunc": 0,
-			"ack":          0,
 			"updater":      0,
-			"store":        0,
+			"lookup":       0,
 		}
 
 		consumer := ConsumerFunc[string, testStatus](func(ctx context.Context, r *Run[string, testStatus]) (testStatus, error) {
@@ -186,11 +215,6 @@ func TestConsume(t *testing.T) {
 			return 0, testErr
 		})
 
-		ack := func() error {
-			calls["ack"] += 1
-			return nil
-		}
-
 		updater := func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error {
 			calls["updater"] += 1
 			return nil
@@ -201,18 +225,37 @@ func TestConsume(t *testing.T) {
 			return nil
 		}
 
-		err := consume(ctx, w, current, consumer, ack, store, updater, processName, 3)
+		lookup := func(ctx context.Context, runID string) (*Record, error) {
+			calls["lookup"] += 1
+			return current, nil
+		}
+
+		consume := stepConsumer(
+			w.Name(),
+			"",
+			consumer,
+			testStatus(current.Status),
+			lookup,
+			store,
+			w.logger,
+			updater,
+			3,
+			w.errorCounter,
+		)
+		require.Nil(t, err)
+
+		err := consume(ctx, &Event{})
 		require.NotNil(t, err)
 
-		err = consume(ctx, w, current, consumer, ack, store, updater, processName, 3)
+		err = consume(ctx, &Event{})
 		require.NotNil(t, err)
 
-		err = consume(ctx, w, current, consumer, ack, store, updater, processName, 3)
+		err = consume(ctx, &Event{})
 		require.Nil(t, err)
 
 		expectedCalls := map[string]int{
 			"consumerFunc": 3,
-			"ack":          1,
+			"lookup":       3,
 			"updater":      0,
 			"store":        1,
 		}

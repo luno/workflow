@@ -247,13 +247,19 @@ func TestTimeout(t *testing.T) {
 
 	b := workflow.NewBuilder[MyType, status]("user sign up")
 
-	b.AddStep(StatusInitiated, func(ctx context.Context, t *workflow.Run[MyType, status]) (status, error) {
+	b.AddStep(StatusInitiated, func(ctx context.Context, r *workflow.Run[MyType, status]) (status, error) {
 		return StatusProfileCreated, nil
 	}, StatusProfileCreated)
 
-	b.AddTimeout(StatusProfileCreated, workflow.DurationTimerFunc[MyType, status](time.Hour), func(ctx context.Context, t *workflow.Run[MyType, status], now time.Time) (status, error) {
-		return StatusCompleted, nil
-	}, StatusCompleted).WithOptions(
+	b.AddTimeout(
+		StatusProfileCreated,
+		workflow.DurationTimerFunc[MyType, status](time.Hour),
+		func(ctx context.Context, r *workflow.Run[MyType, status], now time.Time) (status, error) {
+			r.Object.UserID = expectedUserID
+			return StatusCompleted, nil
+		},
+		StatusCompleted,
+	).WithOptions(
 		workflow.PollingFrequency(100 * time.Millisecond),
 	)
 
@@ -270,8 +276,6 @@ func TestTimeout(t *testing.T) {
 	wf.Run(ctx)
 	t.Cleanup(wf.Stop)
 
-	start := time.Now()
-
 	runID, err := wf.Trigger(ctx, "example", StatusInitiated)
 	require.Nil(t, err)
 
@@ -280,12 +284,10 @@ func TestTimeout(t *testing.T) {
 	// Advance time forward by one hour to trigger the timeout
 	clock.Step(time.Hour)
 
-	_, err = wf.Await(ctx, "example", runID, StatusCompleted)
+	got, err := wf.Await(ctx, "example", runID, StatusCompleted)
 	require.Nil(t, err)
 
-	end := time.Now()
-
-	require.True(t, end.Sub(start) < 1*time.Second)
+	require.Equal(t, expectedUserID, got.Object.UserID)
 }
 
 var (
@@ -625,16 +627,16 @@ func TestName(t *testing.T) {
 
 func TestExpectedProcesses(t *testing.T) {
 	expected := map[string]bool{
-		"cellphone_number_submitted-consumer-1-of-2":            true,
-		"cellphone_number_submitted-consumer-2-of-2":            true,
-		"initiated-consumer-1-of-1":                             true,
-		"name_created-consumer-1-of-1":                          true,
-		"otp_verified-timeout-auto-inserter-consumer":           true,
-		"otp_verified-timeout-consumer":                         true,
-		"outbox-consumer-1-of-1":                                true,
-		"user_sign_up-completed-run-state-change-hook-consumer": true,
-		"user_sign_up-delete-consumer":                          true,
-		"user_sign_up-paused-records-retry":                     true,
+		"cellphone_number_submitted-consumer-1-of-2":  true,
+		"cellphone_number_submitted-consumer-2-of-2":  true,
+		"initiated-consumer-1-of-1":                   true,
+		"name_created-consumer-1-of-1":                true,
+		"otp_verified-timeout-auto-inserter-consumer": true,
+		"otp_verified-timeout-consumer":               true,
+		"outbox-consumer":                             true,
+		"completed-run-state-change-hook-consumer":    true,
+		"delete-consumer":                             true,
+		"paused-records-retry-consumer":               true,
 	}
 
 	w := acceptanceTestWorkflow().Build(
@@ -648,6 +650,6 @@ func TestExpectedProcesses(t *testing.T) {
 	t.Cleanup(w.Stop)
 
 	for process := range w.States() {
-		require.True(t, expected[process])
+		require.Truef(t, expected[process], "process '%s' is missing expected value", process)
 	}
 }

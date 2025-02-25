@@ -38,7 +38,7 @@ func TestRetryOfPausedRecords(t *testing.T) {
 		memstreamer.New(),
 		memrecordstore.New(),
 		memrolescheduler.New(),
-		workflow.WithPauseRetry(10, time.Millisecond, time.Millisecond*10),
+		workflow.WithPauseRetry(time.Millisecond*10),
 	)
 
 	ctx := context.Background()
@@ -79,7 +79,7 @@ func TestRetryOfPausedRecordsConfig(t *testing.T) {
 		t.Cleanup(w.Stop)
 
 		states := w.States()
-		_, processLaunched := states["example-paused-records-retry"]
+		_, processLaunched := states["paused-records-retry-consumer"]
 		require.False(t, processLaunched)
 	})
 
@@ -95,8 +95,7 @@ func TestRetryOfPausedRecordsConfig(t *testing.T) {
 		t.Cleanup(w.Stop)
 
 		states := w.States()
-		fmt.Println(states)
-		_, processLaunched := states["example-paused-records-retry"]
+		_, processLaunched := states["paused-records-retry-consumer"]
 		require.True(t, processLaunched)
 	})
 }

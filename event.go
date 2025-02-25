@@ -122,13 +122,3 @@ func MakeOutboxEventData(record Record) (OutboxEventData, error) {
 		Data:         data,
 	}, nil
 }
-
-type Header string
-
-const (
-	HeaderWorkflowName Header = "workflow_name"
-	HeaderForeignID    Header = "foreign_id"
-	HeaderTopic        Header = "topic"
-	HeaderRunID        Header = "run_id"
-	HeaderRunState     Header = "run_state"
-)

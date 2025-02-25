@@ -239,7 +239,7 @@ func (b *Builder[Type, Status]) Build(
 	b.workflow.defaultOpts = bo.defaultOptions
 	b.workflow.outboxConfig = bo.outboxConfig
 	b.workflow.logger.debugMode = bo.debugMode
-	b.workflow.autoPauseRetryConfig = bo.autoPauseRetry
+	b.workflow.pausedRecordsRetry = bo.autoPauseRetry
 
 	if bo.logger != nil {
 		b.workflow.logger.inner = bo.logger
@@ -260,14 +260,14 @@ type buildOptions struct {
 	outboxConfig   outboxConfig
 	timeoutStore   TimeoutStore
 	logger         Logger
-	autoPauseRetry autoPauseRetryConfig
+	autoPauseRetry pausedRecordsRetry
 }
 
 func defaultBuildOptions() buildOptions {
 	return buildOptions{
 		outboxConfig:   defaultOutboxConfig(),
 		defaultOptions: defaultOptions(),
-		autoPauseRetry: defaultAutoPauseRetryConfig(),
+		autoPauseRetry: defaultPausedRecordsRetry(),
 	}
 }
 
@@ -344,14 +344,10 @@ func WithCustomDelete[Type any](fn func(object *Type) error) BuildOption {
 // have been paused for an hour and will process in batches of 10 records at a time as to slowly introduce consumption.
 //
 // Parameters:
-// - limit refers to the number of paused records that should be assessed in one cycle.
-// - pollingFrequency refers to the duration between each cycle.
 // - resumeAfter refers to the time that must elapse before a paused record is included in a cycle.
-func WithPauseRetry(limit int, pollingFrequency, resumeAfter time.Duration) BuildOption {
+func WithPauseRetry(resumeAfter time.Duration) BuildOption {
 	return func(bo *buildOptions) {
 		bo.autoPauseRetry.enabled = true
-		bo.autoPauseRetry.limit = limit
-		bo.autoPauseRetry.pollingFrequency = pollingFrequency
 		bo.autoPauseRetry.resumeAfter = resumeAfter
 	}
 }

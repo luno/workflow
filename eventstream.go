@@ -26,6 +26,17 @@ type Consumer interface {
 // will likely not keep track of which records / events have been consumed.
 type Ack func() error
 
+type Header string
+
+const (
+	HeaderWorkflowName  Header = "workflow_name"
+	HeaderForeignID     Header = "foreign_id"
+	HeaderTopic         Header = "topic"
+	HeaderRunID         Header = "run_id"
+	HeaderRunState      Header = "run_state"
+	HeaderConnectorData Header = "connector_data"
+)
+
 type ConsumerOptions struct {
 	PollFrequency time.Duration
 	Lag           time.Duration

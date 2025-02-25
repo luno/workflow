@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/luno/workflow/internal/errorcounter"
 	"github.com/luno/workflow/internal/metrics"
 )
 
@@ -27,7 +28,7 @@ type consumerConfig[Type any, Status StatusType] struct {
 	pauseAfterErrCount int
 }
 
-func consumer[Type any, Status StatusType](
+func consumeStepEvents[Type any, Status StatusType](
 	w *Workflow[Type, Status],
 	currentStatus Status,
 	p consumerConfig[Type, Status],
@@ -80,7 +81,7 @@ func consumer[Type any, Status StatusType](
 	}
 
 	w.run(role, processName, func(ctx context.Context) error {
-		streamConsumer, err := w.eventStreamer.NewConsumer(
+		stream, err := w.eventStreamer.NewConsumer(
 			ctx,
 			topic,
 			role,
@@ -89,104 +90,65 @@ func consumer[Type any, Status StatusType](
 		if err != nil {
 			return err
 		}
-		defer streamConsumer.Close()
+		defer stream.Close()
 
-		return consumeForever[Type, Status](
+		updater := newUpdater[Type, Status](w.recordStore.Lookup, w.recordStore.Store, w.statusGraph, w.clock)
+		return Consume(
 			ctx,
-			w,
-			p.consumer,
+			w.Name(),
+			processName,
+			stream,
+			stepConsumer(
+				w.Name(),
+				processName,
+				p.consumer,
+				currentStatus,
+				w.recordStore.Lookup,
+				w.recordStore.Store,
+				w.logger,
+				updater,
+				pauseAfterErrCount,
+				w.errorCounter,
+			),
+			w.clock,
 			lag,
 			lagAlert,
-			pauseAfterErrCount,
-			streamConsumer,
-			currentStatus,
-			processName,
-			shard,
-			totalShards,
+			shardFilter(shard, totalShards),
 		)
 	}, errBackOff)
 }
 
-func consumeForever[Type any, Status StatusType](
-	ctx context.Context,
-	w *Workflow[Type, Status],
-	consumerFunc ConsumerFunc[Type, Status],
-	lag time.Duration,
-	lagAlert time.Duration,
-	pauseAfterErrCount int,
-	streamConsumer Consumer,
-	status Status,
+func stepConsumer[Type any, Status StatusType](
+	workflowName string,
 	processName string,
-	shard, totalShards int,
-) error {
-	updater := newUpdater[Type, Status](w.recordStore.Lookup, w.recordStore.Store, w.statusGraph, w.clock)
-	for {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-
-		e, ack, err := streamConsumer.Recv(ctx)
-		if err != nil {
-			return err
-		}
-
-		// Wait until the event's timestamp matches or is older than the specified lag.
-		delay := lag - w.clock.Since(e.CreatedAt)
-		if lag > 0 && delay > 0 {
-			t := w.clock.NewTimer(delay)
-			select {
-			case <-ctx.Done():
-				t.Stop()
-				return ctx.Err()
-			case <-t.C():
-				// Resume to consume the event now that it matches or is older than specified lag.
-			}
-		}
-
-		// Push metrics and alerting around the age of the event being processed.
-		pushLagMetricAndAlerting(w.Name(), processName, e.CreatedAt, lagAlert, w.clock)
-
-		shouldFilter := FilterUsing(e,
-			shardFilter(shard, totalShards),
-		)
-		if shouldFilter {
-			err = ack()
-			if err != nil {
-				return err
-			}
-
-			metrics.ProcessSkippedEvents.WithLabelValues(w.Name(), processName, "filtered out").Inc()
-			continue
-		}
-
-		record, err := w.recordStore.Lookup(ctx, e.ForeignID)
+	stepLogic ConsumerFunc[Type, Status],
+	currentStatus Status,
+	lookupFn lookupFunc,
+	store storeFunc,
+	logger Logger,
+	updater updater[Type, Status],
+	pauseAfterErrCount int,
+	errorCounter errorcounter.ErrorCounter,
+) func(ctx context.Context, e *Event) error {
+	return func(ctx context.Context, e *Event) error {
+		record, err := lookupFn(ctx, e.ForeignID)
 		if errors.Is(err, ErrRecordNotFound) {
-			err = ack()
-			if err != nil {
-				return err
-			}
-
-			metrics.ProcessSkippedEvents.WithLabelValues(w.Name(), processName, "record not found").Inc()
-			continue
+			metrics.ProcessSkippedEvents.WithLabelValues(workflowName, processName, "record not found").Inc()
+			return nil
 		} else if err != nil {
 			return err
 		}
 
 		// Check to see if record is in expected state. If the status isn't in the expected state then skip for
 		// idempotency.
-		if record.Status != int(status) {
-			err = ack()
-			if err != nil {
-				return err
-			}
-
-			metrics.ProcessSkippedEvents.WithLabelValues(w.Name(), processName, "record status not in expected state").
+		if record.Status != int(currentStatus) {
+			metrics.ProcessSkippedEvents.WithLabelValues(workflowName, processName, "record status not in expected state").
 				Inc()
-			continue
+			return nil
 		}
 
 		if record.RunState.Stopped() {
-			w.logger.maybeDebug(ctx, "Skipping consumption of stopped workflow record", map[string]string{
+			logger.Debug(ctx, "Skipping consumption of stopped workflow record", map[string]string{
 				"event_id":       strconv.FormatInt(e.ID, 10),
 				"workflow":       record.WorkflowName,
 				"run_id":         record.RunID,
@@ -195,23 +157,54 @@ func consumeForever[Type any, Status StatusType](
 				"current_status": strconv.FormatInt(int64(record.Status), 10),
 				"run_state":      record.RunState.String(),
 			})
-
-			err = ack()
-			if err != nil {
-				return err
-			}
-
-			metrics.ProcessSkippedEvents.WithLabelValues(w.Name(), processName, "record stopped").Inc()
-			continue
+			metrics.ProcessSkippedEvents.WithLabelValues(workflowName, processName, "record stopped").Inc()
+			return nil
 		}
 
-		t2 := w.clock.Now()
-		err = consume(ctx, w, record, consumerFunc, ack, w.recordStore.Store, updater, processName, pauseAfterErrCount)
+		run, err := buildRun[Type, Status](store, record)
 		if err != nil {
 			return err
 		}
 
-		metrics.ProcessLatency.WithLabelValues(w.Name(), processName).Observe(w.clock.Since(t2).Seconds())
+		next, err := stepLogic(ctx, run)
+		if err != nil {
+			originalErr := err
+			paused, err := maybePause(ctx, pauseAfterErrCount, errorCounter, originalErr, processName, run, logger)
+			if err != nil {
+				return fmt.Errorf("pause error: %v, meta: %v", err, map[string]string{
+					"run_id":     record.RunID,
+					"foreign_id": record.ForeignID,
+				})
+			}
+
+			if paused {
+				// Move onto the next event as a record has been paused and a new event is emitted
+				// when it is resumed.
+				return nil
+			}
+
+			// The record was not paused and the original error is not nil. Pass back up for retrying.
+			return fmt.Errorf("consumer error: %v, meta: %v", originalErr, map[string]string{
+				"run_id":     record.RunID,
+				"foreign_id": record.ForeignID,
+			})
+		}
+
+		if skipUpdate(next) {
+			logger.Debug(ctx, "skipping update", map[string]string{
+				"description":   skipUpdateDescription(next),
+				"workflow_name": workflowName,
+				"foreign_id":    run.ForeignID,
+				"run_id":        run.RunID,
+				"run_state":     run.RunState.String(),
+				"record_status": run.Status.String(),
+			})
+
+			metrics.ProcessSkippedEvents.WithLabelValues(workflowName, processName, "next value specified skip").Inc()
+			return nil
+		}
+
+		return updater(ctx, Status(record.Status), next, run)
 	}
 }
 
@@ -227,66 +220,4 @@ func wait(ctx context.Context, d time.Duration) error {
 	case <-t.C:
 		return nil
 	}
-}
-
-func consume[Type any, Status StatusType](
-	ctx context.Context,
-	w *Workflow[Type, Status],
-	current *Record,
-	cf ConsumerFunc[Type, Status],
-	ack Ack,
-	store storeFunc,
-	updater updater[Type, Status],
-	processName string,
-	pauseAfterErrCount int,
-) error {
-	run, err := buildRun[Type, Status](store, current)
-	if err != nil {
-		return err
-	}
-
-	next, err := cf(ctx, run)
-	if err != nil {
-		originalErr := err
-		paused, err := maybePause(ctx, pauseAfterErrCount, w.errorCounter, originalErr, processName, run, w.logger)
-		if err != nil {
-			return fmt.Errorf("pause error: %v, meta: %v", err, map[string]string{
-				"run_id":     current.RunID,
-				"foreign_id": current.ForeignID,
-			})
-		}
-
-		if paused {
-			// Move onto the next event as a record has been paused and a new event is emitted
-			// when it is resumed.
-			return ack()
-		}
-
-		// The record was not paused and the original error is not nil. Pass back up for retrying.
-		return fmt.Errorf("consumer error: %v, meta: %v", originalErr, map[string]string{
-			"run_id":     current.RunID,
-			"foreign_id": current.ForeignID,
-		})
-	}
-
-	if skipUpdate(next) {
-		w.logger.maybeDebug(ctx, "skipping update", map[string]string{
-			"description":   skipUpdateDescription(next),
-			"workflow_name": w.Name(),
-			"foreign_id":    run.ForeignID,
-			"run_id":        run.RunID,
-			"run_state":     run.RunState.String(),
-			"record_status": run.Status.String(),
-		})
-
-		metrics.ProcessSkippedEvents.WithLabelValues(w.Name(), processName, "next value specified skip").Inc()
-		return ack()
-	}
-
-	err = updater(ctx, Status(current.Status), next, run)
-	if err != nil {
-		return err
-	}
-
-	return ack()
 }

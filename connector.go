@@ -2,10 +2,12 @@ package workflow
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"hash"
+	"hash/fnv"
 	"strconv"
 	"time"
-
-	"github.com/luno/workflow/internal/metrics"
 )
 
 type ConnectorConstructor interface {
@@ -71,65 +73,93 @@ func connectorConsumer[Type any, Status StatusType](
 		}
 		defer consumer.Close()
 
-		return connectForever(ctx, w, config.connectorFn, lag, lagAlert, consumer, processName, shard, totalShards)
+		return Consume(
+			ctx,
+			w.Name(),
+			processName,
+			newConnectorStreamer(consumer),
+			func(ctx context.Context, e *Event) error {
+				ce, err := streamerEventToConnectorEvent(e)
+				if err != nil {
+					return err
+				}
+
+				return config.connectorFn(ctx, w, ce)
+			},
+			w.clock,
+			lag,
+			lagAlert,
+			shardFilter(shard, totalShards),
+		)
 	}, errBackOff)
 }
 
-func connectForever[Type any, Status StatusType](
-	ctx context.Context,
-	w *Workflow[Type, Status],
-	connectorFn ConnectorFunc[Type, Status],
-	lag time.Duration,
-	lagAlert time.Duration,
-	consumer ConnectorConsumer,
-	processName string,
-	shard, totalShards int,
-) error {
-	for {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
+type connectorStreamer struct {
+	hasher   hash.Hash64
+	consumer ConnectorConsumer
+}
 
-		e, ack, err := consumer.Recv(ctx)
-		if err != nil {
-			return err
-		}
-
-		// Wait until the event's timestamp matches or is older than the specified lag.
-		delay := lag - w.clock.Since(e.CreatedAt)
-		if lag > 0 && delay > 0 {
-			t := w.clock.NewTimer(delay)
-			select {
-			case <-ctx.Done():
-				t.Stop()
-				return ctx.Err()
-			case <-t.C():
-				// Resume to consume the event now that it matches or is older than specified lag.
-			}
-		}
-
-		// Push metrics and alerting around the age of the event being processed.
-		pushLagMetricAndAlerting(w.Name(), processName, e.CreatedAt, lagAlert, w.clock)
-
-		shouldFilter := FilterConnectorEventUsing(e,
-			shardConnectorEventFilter(shard, totalShards),
-		)
-		if shouldFilter {
-			err = ack()
-			if err != nil {
-				return err
-			}
-
-			continue
-		}
-
-		t2 := w.clock.Now()
-		err = connectorFn(ctx, w, e)
-		if err != nil {
-			return err
-		}
-
-		metrics.ProcessLatency.WithLabelValues(w.Name(), processName).Observe(w.clock.Since(t2).Seconds())
-		return ack()
+func newConnectorStreamer(cc ConnectorConsumer) *connectorStreamer {
+	return &connectorStreamer{
+		hasher:   fnv.New64(),
+		consumer: cc,
 	}
+}
+
+func (c connectorStreamer) Recv(ctx context.Context) (*Event, Ack, error) {
+	e, ack, err := c.consumer.Recv(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	streamerEvent, err := connectorEventToEvent(c.hasher, e)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return streamerEvent, ack, nil
+}
+
+func (c connectorStreamer) Close() error {
+	return c.Close()
+}
+
+var _ Consumer = (*connectorStreamer)(nil)
+
+func streamerEventToConnectorEvent(e *Event) (*ConnectorEvent, error) {
+	data, ok := e.Headers[HeaderConnectorData]
+	if !ok {
+		return nil, fmt.Errorf("no connector data found in event")
+	}
+
+	var ce ConnectorEvent
+	err := json.Unmarshal([]byte(data), &ce)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ce, nil
+}
+
+func connectorEventToEvent(hasher hash.Hash64, e *ConnectorEvent) (*Event, error) {
+	hasher.Reset()
+	_, err := hasher.Write([]byte(e.ID))
+	if err != nil {
+		return nil, err
+	}
+
+	b, err := json.Marshal(e)
+	if err != nil {
+		return nil, err
+	}
+
+	// Not all fields are populated connectorEventToEvent is tightly coupled the consumer above and how it works.
+	return &Event{
+		ID:        int64(hasher.Sum64()), // Event ID is only used for consistent sharding filter
+		ForeignID: e.ForeignID,
+		Headers: map[Header]string{
+			HeaderConnectorData: string(b),
+		},
+		CreatedAt: e.CreatedAt,
+	}, nil
 }

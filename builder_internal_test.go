@@ -445,13 +445,11 @@ func TestWithPauseAutoRetry(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		WithPauseRetry(200, time.Minute, time.Hour),
+		WithPauseRetry(time.Minute),
 	)
 
-	require.True(t, wf.autoPauseRetryConfig.enabled)
-	require.Equal(t, 200, wf.autoPauseRetryConfig.limit)
-	require.Equal(t, time.Minute, wf.autoPauseRetryConfig.pollingFrequency)
-	require.Equal(t, time.Hour, wf.autoPauseRetryConfig.resumeAfter)
+	require.True(t, wf.pausedRecordsRetry.enabled)
+	require.Equal(t, time.Minute, wf.pausedRecordsRetry.resumeAfter)
 }
 
 func TestConnectorNamesAreUnique(t *testing.T) {
