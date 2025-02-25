@@ -2,13 +2,11 @@ package workflow
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"k8s.io/utils/clock"
 
 	"github.com/luno/workflow/internal/errorcounter"
-	"github.com/luno/workflow/internal/metrics"
 )
 
 // maybePause will either return a nil error if it has failed to pause the record and should be retried. A non-nil
@@ -90,8 +88,6 @@ func pausedRecordsRetryConsumer[Type any, Status StatusType](w *Workflow[Type, S
 			autoRetryConsumer(
 				w.recordStore.Lookup,
 				w.recordStore.Store,
-				w.Name(),
-				processName,
 				w.clock,
 				w.pausedRecordsRetry.resumeAfter,
 			),
@@ -105,19 +101,13 @@ func pausedRecordsRetryConsumer[Type any, Status StatusType](w *Workflow[Type, S
 func autoRetryConsumer(
 	lookupFn lookupFunc,
 	store storeFunc,
-	workflowName, processName string,
 	clock clock.Clock,
 	retryInterval time.Duration,
 ) func(ctx context.Context, e *Event) error {
 	return func(ctx context.Context, e *Event) error {
 		record, err := lookupFn(ctx, e.ForeignID)
 		if err != nil {
-			if errors.Is(err, ErrRecordNotFound) {
-				metrics.ProcessSkippedEvents.WithLabelValues(workflowName, processName, "record not found").Inc()
-				return nil
-			} else {
-				return err
-			}
+			return err
 		}
 
 		threshold := clock.Now().Add(-retryInterval)
