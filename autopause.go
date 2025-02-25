@@ -82,7 +82,7 @@ func pausedRecordsRetryConsumer[Type any, Status StatusType](w *Workflow[Type, S
 			lagAlert = w.pausedRecordsRetry.resumeAfter + time.Minute*5
 		}
 
-		return Consume(
+		return consume(
 			ctx,
 			w.Name(),
 			processName,

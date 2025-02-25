@@ -9,7 +9,7 @@ import (
 	"github.com/luno/workflow/internal/metrics"
 )
 
-func Consume(
+func consume(
 	ctx context.Context,
 	workflowName string,
 	processName string,

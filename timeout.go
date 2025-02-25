@@ -271,7 +271,7 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](
 		defer stream.Close()
 
 		updater := newUpdater[Type, Status](w.recordStore.Lookup, w.recordStore.Store, w.statusGraph, w.clock)
-		return Consume(
+		return consume(
 			ctx,
 			w.Name(),
 			processName,

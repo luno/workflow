@@ -73,7 +73,7 @@ func connectorConsumer[Type any, Status StatusType](
 		}
 		defer consumer.Close()
 
-		return Consume(
+		return consume(
 			ctx,
 			w.Name(),
 			processName,

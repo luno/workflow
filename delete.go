@@ -25,7 +25,7 @@ func deleteConsumer[Type any, Status StatusType](w *Workflow[Type, Status]) {
 		}
 		defer stream.Close()
 
-		return Consume(
+		return consume(
 			ctx,
 			w.Name(),
 			processName,

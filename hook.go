@@ -35,7 +35,7 @@ func runStateChangeHookConsumer[Type any, Status StatusType](
 		}
 		defer stream.Close()
 
-		return Consume(
+		return consume(
 			ctx,
 			w.Name(),
 			processName,
