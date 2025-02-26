@@ -64,11 +64,11 @@ func consumeStepEvents[Type any, Status StatusType](
 	}
 
 	w.run(role, processName, func(ctx context.Context) error {
-		stream, err := w.eventStreamer.NewConsumer(
+		stream, err := w.eventStreamer.NewReceiver(
 			ctx,
 			topic,
 			role,
-			WithConsumerPollFrequency(pollingFrequency),
+			WithReceiverPollFrequency(pollingFrequency),
 		)
 		if err != nil {
 			return err

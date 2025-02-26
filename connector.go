@@ -124,7 +124,7 @@ func (c connectorStreamer) Close() error {
 	return c.Close()
 }
 
-var _ Consumer = (*connectorStreamer)(nil)
+var _ EventReceiver = (*connectorStreamer)(nil)
 
 func streamerEventToConnectorEvent(e *Event) (*ConnectorEvent, error) {
 	data, ok := e.Headers[HeaderConnectorData]

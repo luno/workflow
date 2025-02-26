@@ -64,11 +64,11 @@ func pausedRecordsRetryConsumer[Type any, Status StatusType](w *Workflow[Type, S
 	)
 	w.run(role, processName, func(ctx context.Context) error {
 		topic := RunStateChangeTopic(w.Name())
-		stream, err := w.eventStreamer.NewConsumer(
+		stream, err := w.eventStreamer.NewReceiver(
 			ctx,
 			topic,
 			role,
-			WithConsumerPollFrequency(w.defaultOpts.pollingFrequency),
+			WithReceiverPollFrequency(w.defaultOpts.pollingFrequency),
 		)
 		if err != nil {
 			return err

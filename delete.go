@@ -14,11 +14,11 @@ func deleteConsumer[Type any, Status StatusType](w *Workflow[Type, Status]) {
 	processName := makeRole("delete", "consumer")
 	w.run(role, processName, func(ctx context.Context) error {
 		topic := DeleteTopic(w.Name())
-		stream, err := w.eventStreamer.NewConsumer(
+		stream, err := w.eventStreamer.NewReceiver(
 			ctx,
 			topic,
 			role,
-			WithConsumerPollFrequency(w.defaultOpts.pollingFrequency),
+			WithReceiverPollFrequency(w.defaultOpts.pollingFrequency),
 		)
 		if err != nil {
 			return err

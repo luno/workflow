@@ -259,11 +259,11 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](
 		}
 
 		topic := Topic(w.Name(), int(status))
-		stream, err := w.eventStreamer.NewConsumer(
+		stream, err := w.eventStreamer.NewReceiver(
 			ctx,
 			topic,
 			role,
-			WithConsumerPollFrequency(pollingFrequency),
+			WithReceiverPollFrequency(pollingFrequency),
 		)
 		if err != nil {
 			return err

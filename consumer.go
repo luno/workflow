@@ -30,7 +30,7 @@ func consume(
 	ctx context.Context,
 	workflowName string,
 	processName string,
-	stream Consumer,
+	receiver EventReceiver,
 	consumeFn func(ctx context.Context, e *Event) error,
 	clock clock.Clock,
 	lag time.Duration,
@@ -42,7 +42,7 @@ func consume(
 			return ctx.Err()
 		}
 
-		e, ack, err := stream.Recv(ctx)
+		e, ack, err := receiver.Recv(ctx)
 		if err != nil {
 			return err
 		}

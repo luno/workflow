@@ -24,11 +24,11 @@ func runStateChangeHookConsumer[Type any, Status StatusType](
 	processName := makeRole(runState.String(), "run-state-change-hook", "consumer")
 	w.run(role, processName, func(ctx context.Context) error {
 		topic := RunStateChangeTopic(w.Name())
-		stream, err := w.eventStreamer.NewConsumer(
+		stream, err := w.eventStreamer.NewReceiver(
 			ctx,
 			topic,
 			role,
-			WithConsumerPollFrequency(w.defaultOpts.pollingFrequency),
+			WithReceiverPollFrequency(w.defaultOpts.pollingFrequency),
 		)
 		if err != nil {
 			return err

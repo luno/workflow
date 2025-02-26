@@ -5,18 +5,23 @@ import (
 	"time"
 )
 
-// EventStreamer implementations should all be tested with adaptertest.TestEventStreamer
+// EventStreamer defines the event streaming adapter interface / api and all implementations should all be
+// tested with adaptertest.TestEventStreamer to ensure the behaviour is compatible with workflow.
 type EventStreamer interface {
-	NewProducer(ctx context.Context, topic string) (Producer, error)
-	NewConsumer(ctx context.Context, topic string, name string, opts ...ConsumerOption) (Consumer, error)
+	NewSender(ctx context.Context, topic string) (EventSender, error)
+	NewReceiver(ctx context.Context, topic string, name string, opts ...ReceiverOption) (EventReceiver, error)
 }
 
-type Producer interface {
+// EventSender defines the common interface that the EventStreamer adapter must implement for allowing the workflow
+// to send events to the event streamer.
+type EventSender interface {
 	Send(ctx context.Context, foreignID string, statusType int, headers map[Header]string) error
 	Close() error
 }
 
-type Consumer interface {
+// EventReceiver defines the common interface that the EventStreamer adapter must implement for allowing the workflow
+// to receive events.
+type EventReceiver interface {
 	Recv(ctx context.Context) (*Event, Ack, error)
 	Close() error
 }
@@ -37,15 +42,15 @@ const (
 	HeaderConnectorData Header = "connector_data"
 )
 
-type ConsumerOptions struct {
+type ReceiverOptions struct {
 	PollFrequency time.Duration
 	Lag           time.Duration
 }
 
-type ConsumerOption func(*ConsumerOptions)
+type ReceiverOption func(*ReceiverOptions)
 
-func WithConsumerPollFrequency(d time.Duration) ConsumerOption {
-	return func(opt *ConsumerOptions) {
+func WithReceiverPollFrequency(d time.Duration) ReceiverOption {
+	return func(opt *ReceiverOptions) {
 		opt.PollFrequency = d
 	}
 }

@@ -126,7 +126,7 @@ func purgeOutbox[Type any, Status StatusType](
 
 		t0 := clock.Now()
 		topic := headers[HeaderTopic]
-		producer, err := stream.NewProducer(ctx, topic)
+		producer, err := stream.NewSender(ctx, topic)
 		if err != nil {
 			return err
 		}
