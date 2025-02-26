@@ -92,108 +92,81 @@ func Test_maybeAutoPause(t *testing.T) {
 func Test_retryPausedRecords(t *testing.T) {
 	t.Run("Golden path", func(t *testing.T) {
 		ctx := context.Background()
-		nw := time.Now()
-		clock := clock_testing.NewFakeClock(nw)
-		retryInterval := 20 * time.Minute
-		recordList := []Record{
-			{
-				RunID:     "A",
-				RunState:  RunStatePaused,
-				UpdatedAt: clock.Now().Add(-time.Hour),
-			},
-			{
-				RunID:     "B",
-				RunState:  RunStatePaused,
-				UpdatedAt: clock.Now().Add(-time.Hour * 48),
-			},
-			{
-				RunID:     "C",
-				RunState:  RunStatePaused,
-				UpdatedAt: clock.Now().Add(-time.Second),
-			},
-			{
-				RunID:     "D",
-				RunState:  RunStatePaused,
-				UpdatedAt: clock.Now().Add(-retryInterval),
-			},
-			{
-				RunID:     "E",
-				RunState:  RunStatePaused,
-				UpdatedAt: clock.Now().Add(-time.Minute * 10),
-			},
-		}
-		updateCounter := make(map[string]int)
-		err := retryPausedRecords(
-			ctx,
-			"example workflow",
-			func(ctx context.Context, workflowName string, offsetID int64, limit int, order OrderType, filters ...RecordFilter) ([]Record, error) {
-				filter := MakeFilter(filters...)
-				require.True(t, filter.byRunState.Enabled)
-				require.Equal(t, "3", filter.byRunState.Value)
-				require.Equal(t, int64(0), offsetID)
-				require.Equal(t, 100, limit)
-				require.Equal(t, OrderTypeAscending, order)
-				return recordList, nil
+		clock := clock_testing.NewFakeClock(time.Now())
+		var calledUpdate bool
+		err := autoRetryConsumer(
+			func(ctx context.Context, runID string) (*Record, error) {
+				return &Record{
+					RunState:  RunStatePaused,
+					UpdatedAt: clock.Now().Add(-time.Hour),
+				}, nil
 			},
 			func(ctx context.Context, record *Record) error {
-				// Require that the record is updated to RunStateRunning
+				calledUpdate = true
 				require.Equal(t, RunStateRunning, record.RunState)
-				updateCounter[record.RunID] += 1
 				return nil
 			},
 			clock,
-			"process-name",
-			100,
-			retryInterval,
-		)
+			time.Hour,
+		)(ctx, &Event{})
 		require.NoError(t, err)
-
-		require.Equal(t, map[string]int{
-			"A": 1,
-			"B": 1,
-			"D": 1,
-		}, updateCounter)
+		require.True(t, calledUpdate)
 	})
 
-	t.Run("Returns error from listing records failure", func(t *testing.T) {
+	t.Run("Return non-nil error on lookup", func(t *testing.T) {
+		ctx := context.Background()
+		clock := clock_testing.NewFakeClock(time.Now())
 		testErr := errors.New("test error")
-		err := retryPausedRecords(
-			context.Background(),
-			"example workflow",
-			func(ctx context.Context, workflowName string, offsetID int64, limit int, order OrderType, filters ...RecordFilter) ([]Record, error) {
+		err := autoRetryConsumer(
+			func(ctx context.Context, runID string) (*Record, error) {
 				return nil, testErr
 			},
 			nil,
-			&clock_testing.FakeClock{},
-			"process-name",
-			100,
-			time.Minute,
-		)
-		require.Error(t, err, testErr)
+			clock,
+			time.Hour,
+		)(ctx, &Event{})
+		require.Error(t, testErr, err)
 	})
 
-	t.Run("Returns error when updating record to Running fails", func(t *testing.T) {
-		testErr := errors.New("test error")
+	t.Run("Return non-nil error from store func", func(t *testing.T) {
+		ctx := context.Background()
 		clock := clock_testing.NewFakeClock(time.Now())
-		err := retryPausedRecords(
-			context.Background(),
-			"example workflow",
-			func(ctx context.Context, workflowName string, offsetID int64, limit int, order OrderType, filters ...RecordFilter) ([]Record, error) {
-				return []Record{
-					{
-						RunState:  RunStatePaused,
-						UpdatedAt: clock.Now().Add(-time.Hour),
-					},
+		testErr := errors.New("test error")
+		err := autoRetryConsumer(
+			func(ctx context.Context, runID string) (*Record, error) {
+				return &Record{
+					RunState:  RunStatePaused,
+					CreatedAt: clock.Now(),
 				}, nil
 			},
 			func(ctx context.Context, record *Record) error {
 				return testErr
 			},
 			clock,
-			"process-name",
-			100,
-			time.Minute,
-		)
-		require.Error(t, err, testErr)
+			time.Hour,
+		)(ctx, &Event{})
+		require.Error(t, testErr, err)
+	})
+
+	t.Run("Golden path - return nil with no update if before resume time", func(t *testing.T) {
+		ctx := context.Background()
+		clock := clock_testing.NewFakeClock(time.Now())
+		var calledUpdate bool
+		err := autoRetryConsumer(
+			func(ctx context.Context, runID string) (*Record, error) {
+				return &Record{
+					RunState:  RunStatePaused,
+					UpdatedAt: clock.Now(),
+				}, nil
+			},
+			func(ctx context.Context, record *Record) error {
+				calledUpdate = true
+				return nil
+			},
+			clock,
+			time.Hour,
+		)(ctx, &Event{})
+		require.NoError(t, err)
+		require.False(t, calledUpdate)
 	})
 }

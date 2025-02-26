@@ -30,7 +30,7 @@ func trigger[Type any, Status StatusType](
 	}
 
 	if !w.statusGraph.IsValid(int(startingStatus)) {
-		w.logger.maybeDebug(
+		w.logger.Debug(
 			w.ctx,
 			fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name()),
 			map[string]string{},

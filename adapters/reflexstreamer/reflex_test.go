@@ -31,7 +31,7 @@ func TestStreamerGapFiller(t *testing.T) {
 	jtest.RequireNil(t, err)
 
 	constructor := reflexstreamer.New(dbc, dbc, eventsTable, cTable.ToStore(dbc))
-	consumer, err := constructor.NewConsumer(context.Background(), "", "")
+	consumer, err := constructor.NewReceiver(context.Background(), "", "")
 	jtest.RequireNil(t, err)
 
 	for range 2 {

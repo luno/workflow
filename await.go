@@ -42,11 +42,11 @@ func awaitWorkflowStatusByForeignID[Type any, Status StatusType](
 		topic = RunStateChangeTopic(w.Name())
 	}
 
-	stream, err := w.eventStreamer.NewConsumer(
+	stream, err := w.eventStreamer.NewReceiver(
 		ctx,
 		topic,
 		role,
-		WithConsumerPollFrequency(pollFrequency),
+		WithReceiverPollFrequency(pollFrequency),
 	)
 	if err != nil {
 		return nil, err

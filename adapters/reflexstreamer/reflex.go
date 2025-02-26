@@ -34,7 +34,7 @@ type constructor struct {
 	registerGapFiller sync.Once
 }
 
-func (c *constructor) NewProducer(ctx context.Context, topic string) (workflow.Producer, error) {
+func (c *constructor) NewSender(ctx context.Context, topic string) (workflow.EventSender, error) {
 	return &Producer{
 		topic:       topic,
 		writer:      c.writer,
@@ -79,8 +79,13 @@ func (p *Producer) Close() error {
 	return nil
 }
 
-func (c *constructor) NewConsumer(ctx context.Context, topic string, name string, opts ...workflow.ConsumerOption) (workflow.Consumer, error) {
-	var copts workflow.ConsumerOptions
+func (c *constructor) NewReceiver(
+	ctx context.Context,
+	topic string,
+	name string,
+	opts ...workflow.ReceiverOption,
+) (workflow.EventReceiver, error) {
+	var copts workflow.ReceiverOptions
 	for _, opt := range opts {
 		opt(&copts)
 	}
@@ -123,7 +128,7 @@ type Consumer struct {
 	cursor       reflex.CursorStore
 	reader       *sql.DB
 	streamClient reflex.StreamClient
-	options      workflow.ConsumerOptions
+	options      workflow.ReceiverOptions
 }
 
 func (c *Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, error) {

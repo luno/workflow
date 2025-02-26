@@ -25,8 +25,8 @@ type logger struct {
 	inner     Logger
 }
 
-// maybeDebug only writes the log if the Workflow was built using WithDebugMode
-func (l *logger) maybeDebug(ctx context.Context, msg string, meta map[string]string) {
+// Debug only writes the log if the Workflow was built using WithDebugMode
+func (l *logger) Debug(ctx context.Context, msg string, meta map[string]string) {
 	if !l.debugMode {
 		return
 	}

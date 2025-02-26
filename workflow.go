@@ -76,11 +76,11 @@ type Workflow[Type any, Status StatusType] struct {
 	timeouts         map[Status]timeouts[Type, Status]
 	connectorConfigs []*connectorConfig[Type, Status]
 
-	defaultOpts          options
-	outboxConfig         outboxConfig
-	autoPauseRetryConfig autoPauseRetryConfig
-	customDelete         customDelete
-	runStateChangeHooks  map[RunState]RunStateChangeHookFunc[Type, Status]
+	defaultOpts         options
+	outboxConfig        outboxConfig
+	pausedRecordsRetry  pausedRecordsRetry
+	customDelete        customDelete
+	runStateChangeHooks map[RunState]RunStateChangeHookFunc[Type, Status]
 
 	internalStateMu sync.Mutex
 	// internalState holds the State of all expected consumers and timeout go routines using their role names
@@ -112,22 +112,12 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 		w.cancel = cancel
 		w.calledRun = true
 
-		// Start the outbox consumers
-		if w.outboxConfig.parallelCount < 2 {
-			// Launch all consumers in runners
-			track(w, func() {
-				outboxConsumer(w, w.outboxConfig, 1, 1)
-			})
-		} else {
-			// Run as sharded parallel consumers
-			for i := 1; i <= w.outboxConfig.parallelCount; i++ {
-				track(w, func() {
-					outboxConsumer(w, w.outboxConfig, i, w.outboxConfig.parallelCount)
-				})
-			}
-		}
+		// Start the outbox consumer
+		track(w, func() {
+			outboxConsumer(w, w.outboxConfig)
+		})
 
-		// Start the state transition consumers
+		// Start the state step consumers
 		for currentStatus, config := range w.consumers {
 			parallelCount := w.defaultOpts.parallelCount
 			if config.parallelCount != 0 {
@@ -137,13 +127,13 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 			if parallelCount < 2 {
 				// Launch all consumers in runners
 				track(w, func() {
-					consumer(w, currentStatus, config, 1, 1)
+					consumeStepEvents(w, currentStatus, config, 1, 1)
 				})
 			} else {
 				// Run as sharded parallel consumers
 				for i := 1; i <= parallelCount; i++ {
 					track(w, func() {
-						consumer(w, currentStatus, config, i, parallelCount)
+						consumeStepEvents(w, currentStatus, config, i, parallelCount)
 					})
 				}
 			}
@@ -197,9 +187,10 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 			deleteConsumer(w)
 		})
 
-		if w.autoPauseRetryConfig.enabled {
+		// Only start the paused record retry consumer if enabled.
+		if w.pausedRecordsRetry.enabled {
 			track(w, func() {
-				autoRetryPausedRecordsForever(w)
+				pausedRecordsRetryConsumer(w)
 			})
 		}
 	})
@@ -240,7 +231,7 @@ func (w *Workflow[Type, Status]) run(
 			errBackOff,
 		)
 		if err != nil {
-			w.logger.maybeDebug(w.ctx, "shutting down process", map[string]string{
+			w.logger.Debug(w.ctx, "shutting down process", map[string]string{
 				"role":         role,
 				"process_name": processName,
 			})

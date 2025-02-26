@@ -53,7 +53,7 @@ type consumer struct {
 	cursorStore *cursorStore
 	cursorName  string
 	clock       clock.Clock
-	options     workflow.ConsumerOptions
+	options     workflow.ReceiverOptions
 }
 
 func (c *consumer) Recv(ctx context.Context) (*workflow.ConnectorEvent, workflow.Ack, error) {

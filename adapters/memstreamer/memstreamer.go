@@ -51,7 +51,7 @@ type StreamConstructor struct {
 	cursorStore *cursorStore
 }
 
-func (s StreamConstructor) NewProducer(ctx context.Context, topic string) (workflow.Producer, error) {
+func (s StreamConstructor) NewSender(ctx context.Context, topic string) (workflow.EventSender, error) {
 	s.stream.mu.Lock()
 	defer s.stream.mu.Unlock()
 
@@ -63,11 +63,16 @@ func (s StreamConstructor) NewProducer(ctx context.Context, topic string) (workf
 	}, nil
 }
 
-func (s StreamConstructor) NewConsumer(ctx context.Context, topic string, name string, opts ...workflow.ConsumerOption) (workflow.Consumer, error) {
+func (s StreamConstructor) NewReceiver(
+	ctx context.Context,
+	topic string,
+	name string,
+	opts ...workflow.ReceiverOption,
+) (workflow.EventReceiver, error) {
 	s.stream.mu.Lock()
 	defer s.stream.mu.Unlock()
 
-	var options workflow.ConsumerOptions
+	var options workflow.ReceiverOptions
 	for _, opt := range opts {
 		opt(&options)
 	}
@@ -92,7 +97,7 @@ type Stream struct {
 	topic       string
 	name        string
 	clock       clock.Clock
-	options     workflow.ConsumerOptions
+	options     workflow.ReceiverOptions
 }
 
 func (s *Stream) Send(ctx context.Context, foreignID string, statusType int, headers map[workflow.Header]string) error {
@@ -147,8 +152,8 @@ func (s *Stream) Close() error {
 }
 
 var (
-	_ workflow.Producer = (*Stream)(nil)
-	_ workflow.Consumer = (*Stream)(nil)
+	_ workflow.EventSender   = (*Stream)(nil)
+	_ workflow.EventReceiver = (*Stream)(nil)
 )
 
 func newCursorStore() *cursorStore {

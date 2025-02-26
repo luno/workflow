@@ -22,8 +22,8 @@ type StreamConstructor struct {
 	brokers []string
 }
 
-func (s StreamConstructor) NewProducer(ctx context.Context, topic string) (workflow.Producer, error) {
-	return &Producer{
+func (s StreamConstructor) NewSender(ctx context.Context, topic string) (workflow.EventSender, error) {
+	return &Sender{
 		Topic: topic,
 		Writer: &kafka.Writer{
 			Addr:                   kafka.TCP(s.brokers...),
@@ -35,15 +35,15 @@ func (s StreamConstructor) NewProducer(ctx context.Context, topic string) (workf
 	}, nil
 }
 
-type Producer struct {
+type Sender struct {
 	Topic         string
 	Writer        *kafka.Writer
 	WriterTimeout time.Duration
 }
 
-var _ workflow.Producer = (*Producer)(nil)
+var _ workflow.EventSender = (*Sender)(nil)
 
-func (p *Producer) Send(ctx context.Context, foreignID string, statusType int, headers map[workflow.Header]string) error {
+func (p *Sender) Send(ctx context.Context, foreignID string, statusType int, headers map[workflow.Header]string) error {
 	for ctx.Err() == nil {
 		ctx, cancel := context.WithTimeout(ctx, p.WriterTimeout)
 		defer cancel()
@@ -76,12 +76,17 @@ func (p *Producer) Send(ctx context.Context, foreignID string, statusType int, h
 	return ctx.Err()
 }
 
-func (p *Producer) Close() error {
+func (p *Sender) Close() error {
 	return p.Writer.Close()
 }
 
-func (s StreamConstructor) NewConsumer(ctx context.Context, topic string, name string, opts ...workflow.ConsumerOption) (workflow.Consumer, error) {
-	var copts workflow.ConsumerOptions
+func (s StreamConstructor) NewReceiver(
+	ctx context.Context,
+	topic string,
+	name string,
+	opts ...workflow.ReceiverOption,
+) (workflow.EventReceiver, error) {
+	var copts workflow.ReceiverOptions
 	for _, opt := range opts {
 		opt(&copts)
 	}
@@ -101,7 +106,7 @@ func (s StreamConstructor) NewConsumer(ctx context.Context, topic string, name s
 		MaxWait:        time.Second,
 	})
 
-	return &Consumer{
+	return &Receiver{
 		topic:   topic,
 		name:    name,
 		reader:  kafkaReader,
@@ -109,17 +114,17 @@ func (s StreamConstructor) NewConsumer(ctx context.Context, topic string, name s
 	}, nil
 }
 
-type Consumer struct {
+type Receiver struct {
 	topic   string
 	name    string
 	reader  *kafka.Reader
-	options workflow.ConsumerOptions
+	options workflow.ReceiverOptions
 }
 
-func (c *Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, error) {
+func (r *Receiver) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, error) {
 	var commit []kafka.Message
 	for ctx.Err() == nil {
-		m, err := c.reader.FetchMessage(ctx)
+		m, err := r.reader.FetchMessage(ctx)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -147,7 +152,7 @@ func (c *Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, err
 
 		return event,
 			func() error {
-				return c.reader.CommitMessages(ctx, commit...)
+				return r.reader.CommitMessages(ctx, commit...)
 			},
 			nil
 	}
@@ -155,8 +160,8 @@ func (c *Consumer) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, err
 	return nil, nil, ctx.Err()
 }
 
-func (c *Consumer) Close() error {
-	return c.reader.Close()
+func (r *Receiver) Close() error {
+	return r.reader.Close()
 }
 
-var _ workflow.Consumer = (*Consumer)(nil)
+var _ workflow.EventReceiver = (*Receiver)(nil)

@@ -61,7 +61,7 @@ func pollTimeouts[Type any, Status StatusType](
 			}
 
 			if r.RunState.Stopped() {
-				w.logger.maybeDebug(ctx, "Skipping processing of timeout of stopped workflow record", map[string]string{
+				w.logger.Debug(ctx, "Skipping processing of timeout of stopped workflow record", map[string]string{
 					"workflow":       r.WorkflowName,
 					"run_id":         r.RunID,
 					"foreign_id":     r.ForeignID,
@@ -137,7 +137,7 @@ func processTimeout[Type any, Status StatusType](
 	}
 
 	if skipUpdate(next) {
-		w.logger.maybeDebug(ctx, "skipping update", map[string]string{
+		w.logger.Debug(ctx, "skipping update", map[string]string{
 			"description":   skipUpdateDescription(next),
 			"workflow_name": w.Name(),
 			"foreign_id":    run.ForeignID,
@@ -259,29 +259,38 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](
 		}
 
 		topic := Topic(w.Name(), int(status))
-		consumerStream, err := w.eventStreamer.NewConsumer(
+		stream, err := w.eventStreamer.NewReceiver(
 			ctx,
 			topic,
 			role,
-			WithConsumerPollFrequency(pollingFrequency),
+			WithReceiverPollFrequency(pollingFrequency),
 		)
 		if err != nil {
 			return err
 		}
-		defer consumerStream.Close()
+		defer stream.Close()
 
-		return consumeForever(
+		updater := newUpdater[Type, Status](w.recordStore.Lookup, w.recordStore.Store, w.statusGraph, w.clock)
+		return consume(
 			ctx,
-			w,
-			consumerFunc,
+			w.Name(),
+			processName,
+			stream,
+			stepConsumer(
+				w.Name(),
+				processName,
+				consumerFunc,
+				status,
+				w.recordStore.Lookup,
+				w.recordStore.Store,
+				w.logger,
+				updater,
+				pauseAfterErrCount,
+				w.errorCounter,
+			),
+			w.clock,
 			0,
 			lagAlert,
-			pauseAfterErrCount,
-			consumerStream,
-			status,
-			processName,
-			1,
-			1,
 		)
 	}, errBackOff)
 }

@@ -2,7 +2,6 @@ package workflow
 
 import (
 	"context"
-	"strconv"
 	"time"
 
 	"google.golang.org/protobuf/proto"
@@ -12,29 +11,9 @@ import (
 	"github.com/luno/workflow/internal/outboxpb"
 )
 
-func outboxConsumer[Type any, Status StatusType](
-	w *Workflow[Type, Status],
-	config outboxConfig,
-	shard, totalShards int,
-) {
-	role := makeRole(
-		w.Name(),
-		"outbox",
-		"consumer",
-		strconv.FormatInt(int64(shard), 10),
-		"of",
-		strconv.FormatInt(int64(totalShards), 10),
-	)
-
-	// processName can change in value if the string value of the status enum is changed. It should not be used for
-	// storing in the record store, event streamer, timeoutstore, or offset store.
-	processName := makeRole(
-		"outbox",
-		"consumer",
-		strconv.FormatInt(int64(shard), 10),
-		"of",
-		strconv.FormatInt(int64(totalShards), 10),
-	)
+func outboxConsumer[Type any, Status StatusType](w *Workflow[Type, Status], config outboxConfig) {
+	role := makeRole(w.Name(), "outbox", "consumer")
+	processName := makeRole("outbox", "consumer")
 
 	errBackOff := w.outboxConfig.errBackOff
 	if config.errBackOff > 0 {
@@ -62,15 +41,12 @@ func outboxConsumer[Type any, Status StatusType](
 			pollingFrequency,
 			lagAlert,
 			config.limit,
-			shard,
-			totalShards,
 		)
 	}, errBackOff)
 }
 
 func defaultOutboxConfig() outboxConfig {
 	return outboxConfig{
-		parallelCount:    1,
 		errBackOff:       defaultOutboxErrBackOff,
 		pollingFrequency: defaultOutboxPollingFrequency,
 		lagAlert:         defaultOutboxLagAlert,
@@ -79,17 +55,10 @@ func defaultOutboxConfig() outboxConfig {
 }
 
 type outboxConfig struct {
-	parallelCount    int
 	errBackOff       time.Duration
 	pollingFrequency time.Duration
 	lagAlert         time.Duration
 	limit            int64
-}
-
-func WithOutboxParallelCount(count int) BuildOption {
-	return func(bo *buildOptions) {
-		bo.outboxConfig.parallelCount = count
-	}
 }
 
 func WithOutboxPollingFrequency(d time.Duration) BuildOption {
@@ -121,17 +90,19 @@ func purgeOutbox[Type any, Status StatusType](
 	workflowName string,
 	processName string,
 	recordStore RecordStore,
-	streamer EventStreamer,
+	stream EventStreamer,
 	clock clock.Clock,
 	pollingFrequency time.Duration,
 	lagAlert time.Duration,
 	lookupLimit int64,
-	shard int,
-	totalShards int,
 ) error {
 	events, err := recordStore.ListOutboxEvents(ctx, workflowName, lookupLimit)
 	if err != nil {
 		return err
+	}
+
+	if len(events) == 0 {
+		return wait(ctx, pollingFrequency)
 	}
 
 	// Send the events to the EventStreamer.
@@ -147,30 +118,20 @@ func purgeOutbox[Type any, Status StatusType](
 			headers[Header(k)] = v
 		}
 
-		event := &Event{
-			ForeignID: outboxRecord.RunId,
-			Type:      int(outboxRecord.Type),
-			Headers:   headers,
-			CreatedAt: e.CreatedAt,
-		}
-
-		// Exclude events that should not be consumed by this shard instance
-		shouldExclude := shardFilter(shard, totalShards)(event)
-		if shouldExclude {
-			continue
-		}
+		foreignID := outboxRecord.RunId
+		eventType := int(outboxRecord.Type)
 
 		// Push metrics and alerting around the age of the event being processed.
-		pushLagMetricAndAlerting(workflowName, processName, event.CreatedAt, lagAlert, clock)
+		pushLagMetricAndAlerting(workflowName, processName, e.CreatedAt, lagAlert, clock)
 
 		t0 := clock.Now()
 		topic := headers[HeaderTopic]
-		producer, err := streamer.NewProducer(ctx, topic)
+		producer, err := stream.NewSender(ctx, topic)
 		if err != nil {
 			return err
 		}
 
-		err = producer.Send(ctx, event.ForeignID, event.Type, event.Headers)
+		err = producer.Send(ctx, foreignID, eventType, headers)
 		if err != nil {
 			return err
 		}
@@ -184,5 +145,5 @@ func purgeOutbox[Type any, Status StatusType](
 		metrics.ProcessLatency.WithLabelValues(workflowName, processName).Observe(clock.Since(t0).Seconds())
 	}
 
-	return wait(ctx, pollingFrequency)
+	return nil
 }

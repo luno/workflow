@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"hash/fnv"
+	"strconv"
 )
 
 // EventFilter can be passed to the event streaming implementation to allow specific consumers to have an
@@ -16,16 +17,6 @@ func FilterUsing(e *Event, filters ...EventFilter) bool {
 	}
 
 	return false
-}
-
-func shardFilter(shard, totalShards int) EventFilter {
-	return func(e *Event) bool {
-		if totalShards > 1 {
-			return e.ID%int64(totalShards) != int64(shard)-1
-		}
-
-		return false
-	}
 }
 
 // ConnectorEventFilter can be passed to the event streaming implementation to allow specific consumers to have an
@@ -60,6 +51,16 @@ func shardConnectorEventFilter(shard, totalShards int) ConnectorEventFilter {
 	}
 }
 
+func shardFilter(shard, totalShards int) EventFilter {
+	return func(e *Event) bool {
+		if totalShards > 1 {
+			return e.ID%int64(totalShards) != int64(shard)-1
+		}
+
+		return false
+	}
+}
+
 func filterByForeignID(foreignID string) EventFilter {
 	return func(e *Event) bool {
 		fid, ok := e.Headers[HeaderForeignID]
@@ -79,5 +80,16 @@ func filterByRunID(runID string) EventFilter {
 		}
 
 		return rID != runID
+	}
+}
+
+func filterByRunState(runState RunState) EventFilter {
+	return func(e *Event) bool {
+		rs, ok := e.Headers[HeaderRunState]
+		if !ok {
+			return false
+		}
+
+		return rs != strconv.FormatInt(int64(runState), 10)
 	}
 }
