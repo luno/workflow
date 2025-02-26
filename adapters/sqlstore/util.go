@@ -9,7 +9,14 @@ import (
 	"github.com/luno/workflow"
 )
 
-func (s *SQLStore) create(ctx context.Context, tx *sql.Tx, workflowName, foreignID, runID string, status int, object []byte, runState int) error {
+func (s *SQLStore) create(
+	ctx context.Context,
+	tx *sql.Tx,
+	workflowName, foreignID, runID string,
+	status int,
+	object []byte,
+	runState int,
+) error {
 	_, err := tx.ExecContext(ctx, "insert into "+s.recordTableName+" set "+
 		" workflow_name=?, foreign_id=?, run_id=?, run_state=?, status=?, object=?, created_at=now(), updated_at=now() ",
 		workflowName,
@@ -32,7 +39,14 @@ func (s *SQLStore) create(ctx context.Context, tx *sql.Tx, workflowName, foreign
 	return nil
 }
 
-func (s *SQLStore) update(ctx context.Context, tx *sql.Tx, runID string, status int, object []byte, runState int) error {
+func (s *SQLStore) update(
+	ctx context.Context,
+	tx *sql.Tx,
+	runID string,
+	status int,
+	object []byte,
+	runState int,
+) error {
 	_, err := tx.ExecContext(ctx, "update "+s.recordTableName+" set "+
 		" run_state=?, status=?, object=?, updated_at=now() where run_id=?",
 		runState,
@@ -51,7 +65,13 @@ func (s *SQLStore) update(ctx context.Context, tx *sql.Tx, runID string, status 
 	return nil
 }
 
-func (s *SQLStore) insertOutboxEvent(ctx context.Context, tx *sql.Tx, id string, workflowName string, data []byte) (int64, error) {
+func (s *SQLStore) insertOutboxEvent(
+	ctx context.Context,
+	tx *sql.Tx,
+	id string,
+	workflowName string,
+	data []byte,
+) (int64, error) {
 	resp, err := tx.ExecContext(ctx, "insert into "+s.outboxTableName+" set "+
 		" id=?, workflow_name=?, data=?, created_at=now() ",
 		id,
@@ -96,7 +116,12 @@ func (s *SQLStore) listWhere(ctx context.Context, dbc *sql.DB, where string, arg
 	return res, nil
 }
 
-func (s *SQLStore) listOutboxWhere(ctx context.Context, dbc *sql.DB, where string, args ...any) ([]workflow.OutboxEvent, error) {
+func (s *SQLStore) listOutboxWhere(
+	ctx context.Context,
+	dbc *sql.DB,
+	where string,
+	args ...any,
+) ([]workflow.OutboxEvent, error) {
 	rows, err := dbc.QueryContext(ctx, s.outboxSelectPrefix+where, args...)
 	if err != nil {
 		return nil, errors.Wrap(err, "listOutboxWhere")
