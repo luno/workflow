@@ -7,7 +7,7 @@ replace github.com/luno/workflow => ../..
 replace github.com/luno/workflow/adapters/webui => ../../adapters/webui
 
 require (
-	github.com/luno/workflow v0.2.2
+	github.com/luno/workflow v0.2.5
 	github.com/luno/workflow/adapters/webui v0.0.0-20250107170539-40c87581acfc
 )
 
