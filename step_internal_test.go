@@ -14,7 +14,7 @@ import (
 	internal_logger "github.com/luno/workflow/internal/logger"
 )
 
-func TestConsume(t *testing.T) {
+func Test_stepConsumer(t *testing.T) {
 	ctx := context.Background()
 	counter := errorcounter.New()
 	processName := "processName"

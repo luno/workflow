@@ -2,12 +2,10 @@ package workflow
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"strconv"
 	"time"
 
-	"github.com/luno/workflow/internal/errorcounter"
+	"k8s.io/utils/clock"
+
 	"github.com/luno/workflow/internal/metrics"
 )
 
@@ -28,196 +26,93 @@ type consumerConfig[Type any, Status StatusType] struct {
 	pauseAfterErrCount int
 }
 
-func consumeStepEvents[Type any, Status StatusType](
-	w *Workflow[Type, Status],
-	currentStatus Status,
-	p consumerConfig[Type, Status],
-	shard, totalShards int,
-) {
-	role := makeRole(
-		w.Name(),
-		strconv.FormatInt(int64(currentStatus), 10),
-		"consumer",
-		strconv.FormatInt(int64(shard), 10),
-		"of",
-		strconv.FormatInt(int64(totalShards), 10),
-	)
-
-	// processName can change in value if the string value of the status enum is changed. It should not be used for
-	// storing in the record store, event streamer, timeoutstore, or offset store.
-	processName := makeRole(
-		currentStatus.String(),
-		"consumer",
-		strconv.FormatInt(int64(shard), 10),
-		"of",
-		strconv.FormatInt(int64(totalShards), 10),
-	)
-
-	topic := Topic(w.Name(), int(currentStatus))
-
-	errBackOff := w.defaultOpts.errBackOff
-	if p.errBackOff > 0 {
-		errBackOff = p.errBackOff
-	}
-
-	pollingFrequency := w.defaultOpts.pollingFrequency
-	if p.pollingFrequency > 0 {
-		pollingFrequency = p.pollingFrequency
-	}
-
-	lagAlert := w.defaultOpts.lagAlert
-	if p.lagAlert > 0 {
-		lagAlert = p.lagAlert
-	}
-
-	pauseAfterErrCount := w.defaultOpts.pauseAfterErrCount
-	if p.pauseAfterErrCount != 0 {
-		pauseAfterErrCount = p.pauseAfterErrCount
-	}
-
-	lag := w.defaultOpts.lag
-	if p.lag > 0 {
-		lag = p.lag
-	}
-
-	w.run(role, processName, func(ctx context.Context) error {
-		stream, err := w.eventStreamer.NewConsumer(
-			ctx,
-			topic,
-			role,
-			WithConsumerPollFrequency(pollingFrequency),
-		)
-		if err != nil {
-			return err
-		}
-		defer stream.Close()
-
-		updater := newUpdater[Type, Status](w.recordStore.Lookup, w.recordStore.Store, w.statusGraph, w.clock)
-		return consume(
-			ctx,
-			w.Name(),
-			processName,
-			stream,
-			stepConsumer(
-				w.Name(),
-				processName,
-				p.consumer,
-				currentStatus,
-				w.recordStore.Lookup,
-				w.recordStore.Store,
-				w.logger,
-				updater,
-				pauseAfterErrCount,
-				w.errorCounter,
-			),
-			w.clock,
-			lag,
-			lagAlert,
-			shardFilter(shard, totalShards),
-		)
-	}, errBackOff)
-}
-
-func stepConsumer[Type any, Status StatusType](
+func consume(
+	ctx context.Context,
 	workflowName string,
 	processName string,
-	stepLogic ConsumerFunc[Type, Status],
-	currentStatus Status,
-	lookupFn lookupFunc,
-	store storeFunc,
-	logger Logger,
-	updater updater[Type, Status],
-	pauseAfterErrCount int,
-	errorCounter errorcounter.ErrorCounter,
-) func(ctx context.Context, e *Event) error {
-	return func(ctx context.Context, e *Event) error {
-		record, err := lookupFn(ctx, e.ForeignID)
-		if errors.Is(err, ErrRecordNotFound) {
-			metrics.ProcessSkippedEvents.WithLabelValues(workflowName, processName, "record not found").Inc()
-			return nil
-		} else if err != nil {
-			return err
+	stream Consumer,
+	consumeFn func(ctx context.Context, e *Event) error,
+	clock clock.Clock,
+	lag time.Duration,
+	lagAlert time.Duration,
+	filters ...EventFilter,
+) error {
+	for {
+		if ctx.Err() != nil {
+			return ctx.Err()
 		}
 
-		// Check to see if record is in expected state. If the status isn't in the expected state then skip for
-		// idempotency.
-		if record.Status != int(currentStatus) {
-			metrics.ProcessSkippedEvents.WithLabelValues(workflowName, processName, "record status not in expected state").
-				Inc()
-			return nil
-		}
-
-		if record.RunState.Stopped() {
-			logger.Debug(ctx, "Skipping consumption of stopped workflow record", map[string]string{
-				"event_id":       strconv.FormatInt(e.ID, 10),
-				"workflow":       record.WorkflowName,
-				"run_id":         record.RunID,
-				"foreign_id":     record.ForeignID,
-				"process_name":   processName,
-				"current_status": strconv.FormatInt(int64(record.Status), 10),
-				"run_state":      record.RunState.String(),
-			})
-			metrics.ProcessSkippedEvents.WithLabelValues(workflowName, processName, "record stopped").Inc()
-			return nil
-		}
-
-		run, err := buildRun[Type, Status](store, record)
+		e, ack, err := stream.Recv(ctx)
 		if err != nil {
 			return err
 		}
 
-		next, err := stepLogic(ctx, run)
-		if err != nil {
-			originalErr := err
-			paused, err := maybePause(ctx, pauseAfterErrCount, errorCounter, originalErr, processName, run, logger)
+		// Wait until the event's timestamp matches or is older than the specified lag.
+		delay := lag - clock.Since(e.CreatedAt)
+		if lag > 0 && delay > 0 {
+			t := clock.NewTimer(delay)
+			select {
+			case <-ctx.Done():
+				t.Stop()
+				return ctx.Err()
+			case <-t.C():
+				// Resume to consume the event now that it matches or is older than specified lag.
+			}
+		}
+
+		// Push metrics and alerting around the age of the event being processed.
+		pushLagMetricAndAlerting(workflowName, processName, e.CreatedAt, lagAlert, clock)
+
+		shouldFilter := FilterUsing(e, filters...)
+		if shouldFilter {
+			err = ack()
 			if err != nil {
-				return fmt.Errorf("pause error: %v, meta: %v", err, map[string]string{
-					"run_id":     record.RunID,
-					"foreign_id": record.ForeignID,
-				})
+				return err
 			}
 
-			if paused {
-				// Move onto the next event as a record has been paused and a new event is emitted
-				// when it is resumed.
-				return nil
-			}
-
-			// The record was not paused and the original error is not nil. Pass back up for retrying.
-			return fmt.Errorf("consumer error: %v, meta: %v", originalErr, map[string]string{
-				"run_id":     record.RunID,
-				"foreign_id": record.ForeignID,
-			})
+			metrics.ProcessSkippedEvents.WithLabelValues(workflowName, processName, "filtered out").Inc()
+			continue
 		}
 
-		if skipUpdate(next) {
-			logger.Debug(ctx, "skipping update", map[string]string{
-				"description":   skipUpdateDescription(next),
-				"workflow_name": workflowName,
-				"foreign_id":    run.ForeignID,
-				"run_id":        run.RunID,
-				"run_state":     run.RunState.String(),
-				"record_status": run.Status.String(),
-			})
-
-			metrics.ProcessSkippedEvents.WithLabelValues(workflowName, processName, "next value specified skip").Inc()
-			return nil
+		t0 := clock.Now()
+		err = consumeFn(ctx, e)
+		if err != nil {
+			return err
 		}
 
-		return updater(ctx, Status(record.Status), next, run)
+		err = ack()
+		if err != nil {
+			return err
+		}
+
+		metrics.ProcessLatency.WithLabelValues(workflowName, processName).Observe(clock.Since(t0).Seconds())
 	}
 }
 
-func wait(ctx context.Context, d time.Duration) error {
-	if d == 0 {
-		return nil
-	}
+// pushLagMetricAndAlerting will push metrics around the age of the event being processed. If the age of the event is
+// greater than the threshold then the processName for the workflow specified (workflowName) will be set to 1 which
+// signals that this process for this workflow is in an alerting state.
+//
+// See internal/metrics/metrics.go for the prometheus metrics configured.
+func pushLagMetricAndAlerting(
+	workflowName string,
+	processName string,
+	timestamp time.Time,
+	lagThreshold time.Duration,
+	clock clock.Clock,
+) {
+	t0 := clock.Now()
+	lag := t0.Sub(timestamp)
+	metrics.ConsumerLag.WithLabelValues(workflowName, processName).Set(lag.Seconds())
 
-	t := time.NewTimer(d)
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-t.C:
-		return nil
+	// If lag alert is set then check if the consumer is lagging and push value of 1 to the lag alert
+	// gauge if it is lagging. If it is not lagging then push 0.
+	if lagThreshold > 0 {
+		alert := 0.0
+		if lag > lagThreshold {
+			alert = 1
+		}
+
+		metrics.ConsumerLagAlert.WithLabelValues(workflowName, processName).Set(alert)
 	}
 }
