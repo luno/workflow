@@ -169,7 +169,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 		ctx := context.Background()
 
 		seedCount := 1000
-		for i := 0; i < seedCount; i++ {
+		for i := range seedCount {
 			name := workflowName
 			if i > seedCount/2 {
 				name = secondWorkflowName
@@ -209,7 +209,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 	t.Run("List - WorkflowName", func(t *testing.T) {
 		store := factory()
 		ctx := context.Background()
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			newRecord := dummyWireRecord(t, workflowName)
 			err := store.Store(ctx, newRecord)
 			require.Nil(t, err)
@@ -239,7 +239,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 		ctx := context.Background()
 		foreignIDs := []string{"MSDVUI-OBEWF-BYUIOW", "FRELBJK-SRGIUE-RGTJDSF"}
 		for _, foreignID := range foreignIDs {
-			for i := 0; i < 20; i++ {
+			for range 20 {
 				wr := dummyWireRecord(t, workflowName)
 				wr.ForeignID = foreignID
 
@@ -294,7 +294,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 			workflow.RunStateDataDeleted: 15,
 		}
 		for runState, count := range config {
-			for i := 0; i < count; i++ {
+			for range count {
 				wr := dummyWireRecord(t, workflowName)
 				wr.RunState = runState
 
@@ -360,7 +360,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 			statusEnd:     20,
 		}
 		for status, count := range config {
-			for i := 0; i < count; i++ {
+			for range count {
 				newRecord := dummyWireRecord(t, workflowName)
 				newRecord.Status = int(status)
 
