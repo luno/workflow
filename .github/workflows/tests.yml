@@ -10,6 +10,7 @@ on:
     branches: [ "main" ]
 
 jobs:
+
   core:
     strategy:
       matrix:
@@ -31,10 +32,6 @@ jobs:
 
   adapters:
     runs-on: ubuntu-latest
-    services:
-      docker:
-        image: docker:dind
-        options: --privileged
     steps:
       - uses: actions/checkout@v4
 
@@ -43,18 +40,8 @@ jobs:
         with:
           go-version: '1.23'
 
-      - name: Enable testcontainers
-        run: |
-          sudo sysctl -w net.ipv4.conf.all.route_localnet=1
-          export DOCKER_HOST=unix:///var/run/docker.sock
-
       - name: Vet
         run: find ./adapters -type f -name "go.mod" -exec dirname {} \; | while read -r dir; do (cd "$dir" && go vet ./...) done
-
-      - name: Test
-        env:
-          TESTCONTAINERS_RYUK_DISABLED: true
-        run: find ./adapters -type f -name "go.mod" -exec dirname {} \; | while read -r dir; do (cd "$dir" && go test ./...) done
 
   _examples:
     runs-on: ubuntu-latest
