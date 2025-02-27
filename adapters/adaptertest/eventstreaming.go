@@ -2,6 +2,7 @@ package adaptertest
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -40,68 +41,137 @@ func (s SyncStatus) String() string {
 	}
 }
 
-func RunEventStreamerTest(t *testing.T, constructor workflow.EventStreamer) {
-	b := workflow.NewBuilder[User, SyncStatus]("sync user 2")
-	b.AddStep(
-		SyncStatusStarted,
-		setEmail(),
-		SyncStatusEmailSet,
-	).WithOptions(
-		workflow.PollingFrequency(time.Millisecond*200),
-		workflow.ParallelCount(5),
-	)
-	b.AddTimeout(
-		SyncStatusEmailSet,
-		coolDownTimerFunc(),
-		coolDownTimeout(),
-		SyncStatusRegulationTimeout,
-	).WithOptions(
-		workflow.PollingFrequency(time.Millisecond * 200),
-	)
-	b.AddStep(
-		SyncStatusRegulationTimeout,
-		generateUserID(),
-		SyncStatusCompleted,
-	).WithOptions(
-		workflow.PollingFrequency(time.Millisecond*200),
-		workflow.ParallelCount(5),
-	)
+func RunEventStreamerTest(t *testing.T, factory func() workflow.EventStreamer) {
+	t.Run("ReceiverOption - Ensure StreamFromLatest is implemented", func(t *testing.T) {
+		streamer := factory()
+		ctx := context.Background()
+		topic := "test-1"
+		sender, err := streamer.NewSender(ctx, topic)
+		require.NoError(t, err)
 
-	now := time.Date(2023, time.April, 9, 8, 30, 0, 0, time.UTC)
-	clock := clock_testing.NewFakeClock(now)
+		err = sender.Send(ctx, "123", 4, map[workflow.Header]string{
+			workflow.HeaderTopic: topic,
+		})
+		require.NoError(t, err)
 
-	wf := b.Build(
-		constructor,
-		memrecordstore.New(),
-		memrolescheduler.New(),
-		workflow.WithClock(clock),
-		workflow.WithTimeoutStore(memtimeoutstore.New()),
-	)
+		err = sender.Send(ctx, "456", 5, map[workflow.Header]string{
+			workflow.HeaderTopic: topic,
+		})
+		require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(func() {
-		cancel()
+		var wg sync.WaitGroup
+
+		receiver, err := streamer.NewReceiver(ctx, topic, "my-receiver", workflow.StreamFromLatest())
+		require.NoError(t, err)
+
+		t.Run("Should only receive events that come in after connecting", func(t *testing.T) {
+			wg.Add(1)
+			go func() {
+				go func() {
+					err = sender.Send(ctx, "789", 5, map[workflow.Header]string{
+						workflow.HeaderTopic: topic,
+					})
+					require.Nil(t, err)
+				}()
+
+				e, ack, err := receiver.Recv(ctx)
+				require.Nil(t, err)
+				require.Equal(t, "789", e.ForeignID)
+
+				err = ack()
+				require.Nil(t, err)
+
+				wg.Done()
+			}()
+
+			wg.Wait()
+		})
+
+		err = receiver.Close()
+		require.Nil(t, err)
+
+		t.Run("StreamFromLatest should have no affect when offset is committed", func(t *testing.T) {
+			err = sender.Send(ctx, "101", 5, map[workflow.Header]string{
+				workflow.HeaderTopic: topic,
+			})
+			require.Nil(t, err)
+
+			secondReceiver, err := streamer.NewReceiver(ctx, topic, "my-receiver", workflow.StreamFromLatest())
+			require.Nil(t, err)
+
+			// Should receive event send when receiver wasn't receiving events based on the offset being set.
+			e, ack, err := secondReceiver.Recv(ctx)
+			require.Nil(t, err)
+			require.Equal(t, "101", e.ForeignID)
+
+			err = ack()
+			require.Nil(t, err)
+		})
 	})
-	wf.Run(ctx)
-	t.Cleanup(wf.Stop)
 
-	foreignID := "1"
-	u := User{
-		CountryCode: "GB",
-	}
-	runId, err := wf.Trigger(ctx, foreignID, SyncStatusStarted, workflow.WithInitialValue[User, SyncStatus](&u))
-	require.Nil(t, err)
+	t.Run("Acceptance test - full workflow run through", func(t *testing.T) {
+		b := workflow.NewBuilder[User, SyncStatus]("sync user 2")
+		b.AddStep(
+			SyncStatusStarted,
+			setEmail(),
+			SyncStatusEmailSet,
+		).WithOptions(
+			workflow.PollingFrequency(time.Millisecond*200),
+			workflow.ParallelCount(5),
+		)
+		b.AddTimeout(
+			SyncStatusEmailSet,
+			coolDownTimerFunc(),
+			coolDownTimeout(),
+			SyncStatusRegulationTimeout,
+		).WithOptions(
+			workflow.PollingFrequency(time.Millisecond * 200),
+		)
+		b.AddStep(
+			SyncStatusRegulationTimeout,
+			generateUserID(),
+			SyncStatusCompleted,
+		).WithOptions(
+			workflow.PollingFrequency(time.Millisecond*200),
+			workflow.ParallelCount(5),
+		)
 
-	workflow.AwaitTimeoutInsert(t, wf, foreignID, runId, SyncStatusEmailSet)
+		now := time.Date(2023, time.April, 9, 8, 30, 0, 0, time.UTC)
+		clock := clock_testing.NewFakeClock(now)
 
-	clock.Step(time.Hour)
+		wf := b.Build(
+			factory(),
+			memrecordstore.New(),
+			memrolescheduler.New(),
+			workflow.WithClock(clock),
+			workflow.WithTimeoutStore(memtimeoutstore.New()),
+		)
 
-	record, err := wf.Await(ctx, foreignID, runId, SyncStatusCompleted)
-	require.Nil(t, err)
+		ctx, cancel := context.WithCancel(context.Background())
+		t.Cleanup(func() {
+			cancel()
+		})
+		wf.Run(ctx)
+		t.Cleanup(wf.Stop)
 
-	require.Equal(t, "andrew@workflow.com", record.Object.Email)
-	require.Equal(t, SyncStatusCompleted.String(), record.Status.String())
-	require.NotEmpty(t, record.Object.UID)
+		foreignID := "1"
+		u := User{
+			CountryCode: "GB",
+		}
+		runId, err := wf.Trigger(ctx, foreignID, SyncStatusStarted, workflow.WithInitialValue[User, SyncStatus](&u))
+		require.Nil(t, err)
+
+		workflow.AwaitTimeoutInsert(t, wf, foreignID, runId, SyncStatusEmailSet)
+
+		clock.Step(time.Hour)
+
+		record, err := wf.Await(ctx, foreignID, runId, SyncStatusCompleted)
+		require.Nil(t, err)
+
+		require.Equal(t, "andrew@workflow.com", record.Object.Email)
+		require.Equal(t, SyncStatusCompleted.String(), record.Status.String())
+		require.NotEmpty(t, record.Object.UID)
+	})
 }
 
 func setEmail() func(ctx context.Context, t *workflow.Run[User, SyncStatus]) (SyncStatus, error) {

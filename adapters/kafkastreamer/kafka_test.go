@@ -4,12 +4,13 @@ import (
 	"context"
 	"strconv"
 	"testing"
-	"time"
 
+	"github.com/IBM/sarama"
 	"github.com/luno/workflow"
 	"github.com/luno/workflow/adapters/adaptertest"
-	"github.com/segmentio/kafka-go"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	kafkacontainer "github.com/testcontainers/testcontainers-go/modules/kafka"
 
 	"github.com/luno/workflow/adapters/kafkastreamer"
 )
@@ -17,48 +18,53 @@ import (
 const brokerAddress = "localhost:9092"
 
 func TestStreamer(t *testing.T) {
-	constructor := kafkastreamer.New([]string{brokerAddress})
-	adaptertest.RunEventStreamerTest(t, constructor)
+	adaptertest.RunEventStreamerTest(t, func() workflow.EventStreamer {
+		ctx := context.Background()
+
+		kafkaInstance, err := kafkacontainer.Run(ctx, "confluentinc/confluent-local:7.5.0", kafkacontainer.WithClusterID("kraftCluster"))
+		testcontainers.CleanupContainer(t, kafkaInstance)
+		require.NoError(t, err)
+
+		brokers, err := kafkaInstance.Brokers(ctx)
+		require.NoError(t, err)
+
+		return kafkastreamer.New(brokers)
+	})
 }
 
 func TestConnector(t *testing.T) {
-	config := kafka.ReaderConfig{
-		Brokers:        []string{brokerAddress},
-		Topic:          "test-connector-topic",
-		ReadBackoffMin: time.Millisecond * 100,
-		ReadBackoffMax: time.Second,
-		StartOffset:    kafka.FirstOffset,
-		QueueCapacity:  1000,
-		MinBytes:       10,  // 10B
-		MaxBytes:       1e9, // 9MB
-		MaxWait:        time.Second,
-	}
-	translator := func(m kafka.Message) workflow.ConnectorEvent {
-		return workflow.ConnectorEvent{
+	ctx := context.Background()
+	topic := "connector-topic"
+	kafkaInstance, err := kafkacontainer.Run(ctx, "confluentinc/confluent-local:7.5.0", kafkacontainer.WithClusterID("kraftCluster"))
+	testcontainers.CleanupContainer(t, kafkaInstance)
+	require.NoError(t, err)
+
+	brokers, err := kafkaInstance.Brokers(ctx)
+	require.NoError(t, err)
+
+	translator := func(m *sarama.ConsumerMessage) *workflow.ConnectorEvent {
+		return &workflow.ConnectorEvent{
 			ID:        strconv.FormatInt(m.Offset, 10),
 			ForeignID: string(m.Key),
 			Type:      m.Topic,
-			CreatedAt: m.Time,
+			CreatedAt: m.Timestamp,
 		}
 	}
-	constructor := kafkastreamer.NewConnector(config, translator)
+	config := sarama.NewConfig()
+	config.Producer.Return.Successes = true
+	constructor := kafkastreamer.NewConnector(brokers, config, translator, topic)
 	adaptertest.RunConnectorTest(t, func(seedEvents []workflow.ConnectorEvent) workflow.ConnectorConstructor {
-		writer := &kafka.Writer{
-			Addr:                   kafka.TCP(brokerAddress),
-			Topic:                  "test-connector-topic",
-			AllowAutoTopicCreation: true,
-			RequiredAcks:           kafka.RequireOne,
-		}
-		defer writer.Close()
+		producer, err := sarama.NewSyncProducer(brokers, config)
+		require.NoError(t, err)
 
-		ctx := context.Background()
 		for _, e := range seedEvents {
-
-			m := kafka.Message{
-				Key: []byte(e.ForeignID),
+			m := &sarama.ProducerMessage{
+				Topic: topic,
+				Key:   sarama.StringEncoder(e.ForeignID),
 			}
-			err := writer.WriteMessages(ctx, m)
-			require.Nil(t, err)
+
+			_, _, err := producer.SendMessage(m)
+			require.NoError(t, err)
 		}
 
 		return constructor

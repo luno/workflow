@@ -6,6 +6,7 @@ import (
 
 	"github.com/luno/jettison/jtest"
 	"github.com/luno/reflex/rsql"
+	"github.com/luno/workflow"
 	"github.com/luno/workflow/adapters/adaptertest"
 	"github.com/stretchr/testify/require"
 
@@ -16,8 +17,9 @@ func TestStreamer(t *testing.T) {
 	eventsTable := rsql.NewEventsTable("workflow_events", rsql.WithEventMetadataField("metadata"))
 	dbc := ConnectForTesting(t)
 	cTable := rsql.NewCursorsTable("cursors")
-	constructor := reflexstreamer.New(dbc, dbc, eventsTable, cTable.ToStore(dbc))
-	adaptertest.RunEventStreamerTest(t, constructor)
+	adaptertest.RunEventStreamerTest(t, func() workflow.EventStreamer {
+		return reflexstreamer.New(dbc, dbc, eventsTable, cTable.ToStore(dbc))
+	})
 }
 
 func TestStreamerGapFiller(t *testing.T) {

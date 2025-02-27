@@ -9,8 +9,9 @@ import (
 )
 
 func TestStreamer(t *testing.T) {
-	constructor := memstreamer.New()
-	adaptertest.RunEventStreamerTest(t, constructor)
+	adaptertest.RunEventStreamerTest(t, func() workflow.EventStreamer {
+		return memstreamer.New()
+	})
 }
 
 func TestConnector(t *testing.T) {

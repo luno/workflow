@@ -47,6 +47,7 @@ func awaitWorkflowStatusByForeignID[Type any, Status StatusType](
 		topic,
 		role,
 		WithReceiverPollFrequency(pollFrequency),
+		StreamFromLatest(),
 	)
 	if err != nil {
 		return nil, err
