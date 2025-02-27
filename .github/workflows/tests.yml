@@ -54,7 +54,7 @@ jobs:
       - name: Test
         env:
           TESTCONTAINERS_RYUK_DISABLED: true
-        run: go test -v ./adapters/kafkastreamer/...
+        run: find ./adapters -type f -name "go.mod" -exec dirname {} \; | while read -r dir; do (cd "$dir" && go test ./...) done
 
   _examples:
     runs-on: ubuntu-latest
