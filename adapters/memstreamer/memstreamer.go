@@ -122,9 +122,15 @@ func (s *Stream) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, error
 		log := *s.log
 
 		cursorOffset := s.cursorStore.Get(s.name)
-		if len(log)-1 < cursorOffset {
-			time.Sleep(time.Millisecond * 10)
+		if s.options.StreamFromHead && cursorOffset == 0 {
+			s.cursorStore.Set(s.name, len(log))
 			s.mu.Unlock()
+			continue
+		}
+
+		if len(log)-1 < cursorOffset {
+			s.mu.Unlock()
+			time.Sleep(time.Millisecond)
 			continue
 		}
 
