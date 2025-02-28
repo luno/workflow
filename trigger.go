@@ -93,10 +93,17 @@ func trigger[Type any, Status StatusType](
 }
 
 type triggerOpts[Type any, Status StatusType] struct {
-	initialValue *Type
+	startingPoint Status
+	initialValue  *Type
 }
 
 type TriggerOption[Type any, Status StatusType] func(o *triggerOpts[Type, Status])
+
+func WithStartAt[Type any, Status StatusType](startingStatus Status) TriggerOption[Type, Status] {
+	return func(o *triggerOpts[Type, Status]) {
+		o.startingPoint = startingStatus
+	}
+}
 
 func WithInitialValue[Type any, Status StatusType](t *Type) TriggerOption[Type, Status] {
 	return func(o *triggerOpts[Type, Status]) {

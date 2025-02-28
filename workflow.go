@@ -19,10 +19,11 @@ type API[Type any, Status StatusType] interface {
 	// Name returns the name of the implemented workflow.
 	Name() string
 
-	// Trigger will kickstart a workflow for the provided foreignID starting from the provided starting status. There
-	// is no limitation as to where you start the workflow from. For workflows that have data preceding the initial
-	// trigger that needs to be used in the workflow, using WithInitialValue will allow you to provide pre-populated
-	// fields of Type that can be accessed by the consumers.
+	// Trigger will kickstart a workflow Run for the provided foreignID starting from the default entrypoint to
+	// the workflow which is the first "from" status added via the builder
+	// (e.g. builder.AddStep(FromStatus, func{}, ToStatus). There is no limitation as to where you start the workflow
+	// from and can do so via the WithStartAt trigger option. WithInitialValue should be used when you need data to be
+	// present in the workflow Run before it starts. This can be used to reduce the need for duplicating reads.
 	//
 	// foreignID should not be random and should be deterministic for the thing that you are running the workflow for.
 	// This especially helps when connecting other workflows as the foreignID is the only way to connect the streams. The
@@ -31,7 +32,6 @@ type API[Type any, Status StatusType] interface {
 	Trigger(
 		ctx context.Context,
 		foreignID string,
-		startingStatus Status,
 		opts ...TriggerOption[Type, Status],
 	) (runID string, err error)
 
