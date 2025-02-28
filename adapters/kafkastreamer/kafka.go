@@ -3,7 +3,7 @@ package kafkastreamer
 import (
 	"context"
 	"errors"
-	"fmt"
+	"log/slog"
 	"strconv"
 	"time"
 
@@ -125,8 +125,7 @@ func (s StreamConstructor) NewReceiver(
 				// Exit on context cancellation
 				return
 			} else if err != nil {
-				err = fmt.Errorf("kafka consumer exited unexpectedly: %w", err)
-				fmt.Println(err)
+				slog.Error("kafka consumer exited unexpectedly", err.Error())
 				time.Sleep(time.Second)
 				continue
 			}
