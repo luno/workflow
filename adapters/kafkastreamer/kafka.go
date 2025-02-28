@@ -101,7 +101,7 @@ func (s StreamConstructor) NewReceiver(
 		opt(&copts)
 	}
 
-	consumerConfig := s.sharedConfig
+	consumerConfig := *s.sharedConfig
 	if copts.PollFrequency != 0 {
 		consumerConfig.Consumer.MaxWaitTime = copts.PollFrequency
 		consumerConfig.Consumer.Retry.Backoff = copts.PollFrequency
@@ -111,7 +111,7 @@ func (s StreamConstructor) NewReceiver(
 		consumerConfig.Consumer.Offsets.Initial = sarama.OffsetNewest
 	}
 
-	cg, err := sarama.NewConsumerGroup(s.brokers, name, consumerConfig)
+	cg, err := sarama.NewConsumerGroup(s.brokers, name, &consumerConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ var _ workflow.EventReceiver = (*Receiver)(nil)
 func newMessageProcessor(ctx context.Context) *msgProcessor {
 	return &msgProcessor{
 		ctx:      ctx,
-		ready:    make(chan bool),
+		ready:    make(chan bool, 1),
 		iterator: make(chan func() (*workflow.Event, workflow.Ack, error)),
 	}
 }
@@ -203,9 +203,14 @@ func (mp *msgProcessor) Cleanup(_ sarama.ConsumerGroupSession) error { return ni
 // ConsumeClaim processes messages from Kafka
 func (mp *msgProcessor) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	mp.ready <- true
+
 	for {
 		select {
 		case m := <-claim.Messages():
+			if mp.ctx.Err() != nil {
+				return mp.ctx.Err()
+			}
+
 			mp.iterator <- func() (*workflow.Event, workflow.Ack, error) {
 				statusType, err := strconv.ParseInt(string(m.Value), 10, 64)
 				if err != nil {
