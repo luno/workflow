@@ -125,12 +125,20 @@ func (s StreamConstructor) NewReceiver(
 				// Exit on context cancellation
 				return
 			} else if err != nil {
-				slog.Error("kafka consumer exited unexpectedly", err.Error())
-				time.Sleep(time.Second)
+				slog.Error("kafka consumer exited unexpectedly", "error", err.Error())
+
+				err = wait(ctx, time.Second)
+				if err != nil {
+					return
+				}
+
 				continue
 			}
 
-			time.Sleep(time.Millisecond * 250)
+			err = wait(ctx, time.Millisecond*250)
+			if err != nil {
+				return
+			}
 		}
 	}()
 
@@ -227,5 +235,19 @@ func (mp *msgProcessor) ConsumeClaim(session sarama.ConsumerGroupSession, claim 
 		case <-session.Context().Done():
 			return nil
 		}
+	}
+}
+
+func wait(ctx context.Context, d time.Duration) error {
+	if d == 0 {
+		return nil
+	}
+
+	t := time.NewTimer(d)
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-t.C:
+		return nil
 	}
 }
