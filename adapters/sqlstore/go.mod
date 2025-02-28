@@ -8,7 +8,7 @@ replace github.com/luno/workflow => ../..
 
 require (
 	github.com/corverroos/truss v0.0.0-20210514115035-9e5e1b0851a9
-	github.com/go-sql-driver/mysql v1.8.1
+	github.com/go-sql-driver/mysql v1.9.0
 	github.com/luno/jettison v0.0.0-20250226173148-39bbdb7ea038
 	github.com/luno/workflow v0.2.5
 )
