@@ -108,7 +108,7 @@ func (c *constructor) NewReceiver(
 	}
 
 	var streamOpts []reflex.StreamOption
-	if copts.StreamFromHead && cursor == "" {
+	if copts.StreamFromLatest && cursor == "" {
 		streamOpts = append(streamOpts, reflex.WithStreamFromHead())
 	}
 

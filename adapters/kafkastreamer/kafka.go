@@ -107,7 +107,7 @@ func (s StreamConstructor) NewReceiver(
 		consumerConfig.Consumer.Retry.Backoff = copts.PollFrequency
 	}
 	consumerConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
-	if copts.StreamFromHead {
+	if copts.StreamFromLatest {
 		consumerConfig.Consumer.Offsets.Initial = sarama.OffsetNewest
 	}
 
@@ -207,39 +207,46 @@ func (mp *msgProcessor) ConsumeClaim(session sarama.ConsumerGroupSession, claim 
 	for {
 		select {
 		case m := <-claim.Messages():
-			if mp.ctx.Err() != nil {
+			select {
+			case mp.iterator <- consume(session, m):
+			case <-mp.ctx.Done():
 				return mp.ctx.Err()
-			}
-
-			mp.iterator <- func() (*workflow.Event, workflow.Ack, error) {
-				statusType, err := strconv.ParseInt(string(m.Value), 10, 64)
-				if err != nil {
-					return nil, nil, err
-				}
-
-				headers := make(map[workflow.Header]string)
-				for _, header := range m.Headers {
-					headers[workflow.Header(header.Key)] = string(header.Value)
-				}
-
-				event := &workflow.Event{
-					ID:        m.Offset + 1,
-					ForeignID: string(m.Key),
-					Type:      int(statusType),
-					Headers:   headers,
-					CreatedAt: m.Timestamp,
-				}
-
-				return event, func() error {
-					session.MarkMessage(m, "")
-					return nil
-				}, nil
 			}
 		case <-mp.ctx.Done():
 			return nil
 		case <-session.Context().Done():
 			return nil
 		}
+	}
+}
+
+func consume(
+	session sarama.ConsumerGroupSession,
+	m *sarama.ConsumerMessage,
+) func() (*workflow.Event, workflow.Ack, error) {
+	return func() (*workflow.Event, workflow.Ack, error) {
+		statusType, err := strconv.ParseInt(string(m.Value), 10, 64)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		headers := make(map[workflow.Header]string)
+		for _, header := range m.Headers {
+			headers[workflow.Header(header.Key)] = string(header.Value)
+		}
+
+		event := &workflow.Event{
+			ID:        m.Offset + 1,
+			ForeignID: string(m.Key),
+			Type:      int(statusType),
+			Headers:   headers,
+			CreatedAt: m.Timestamp,
+		}
+
+		return event, func() error {
+			session.MarkMessage(m, "")
+			return nil
+		}, nil
 	}
 }
 

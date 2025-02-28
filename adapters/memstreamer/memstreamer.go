@@ -122,7 +122,7 @@ func (s *Stream) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, error
 		s.mu.Unlock()
 
 		cursorOffset := s.cursorStore.Get(s.name)
-		if s.options.StreamFromHead && cursorOffset == 0 {
+		if s.options.StreamFromLatest && cursorOffset == 0 {
 			s.cursorStore.Set(s.name, len(log))
 			continue
 		}

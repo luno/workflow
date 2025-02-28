@@ -43,8 +43,8 @@ const (
 )
 
 type ReceiverOptions struct {
-	PollFrequency  time.Duration
-	StreamFromHead bool
+	PollFrequency    time.Duration
+	StreamFromLatest bool
 }
 
 type ReceiverOption func(*ReceiverOptions)
@@ -60,6 +60,6 @@ func WithReceiverPollFrequency(d time.Duration) ReceiverOption {
 // this should have no affect and consumption should resume from where it left off previously.
 func StreamFromLatest() ReceiverOption {
 	return func(opt *ReceiverOptions) {
-		opt.StreamFromHead = true
+		opt.StreamFromLatest = true
 	}
 }
