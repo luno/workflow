@@ -3,7 +3,7 @@ package kafkastreamer
 import (
 	"context"
 	"errors"
-	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/IBM/sarama"
@@ -44,13 +44,20 @@ func (c *connector) Make(ctx context.Context, name string) (workflow.ConnectorCo
 				// Exit on context cancellation
 				return
 			} else if err != nil {
-				err = fmt.Errorf("kafka consumer exited unexpectedly: %w", err)
-				fmt.Println(err)
-				time.Sleep(time.Second)
+				slog.Error("kafka consumer exited unexpectedly", "error", err.Error())
+
+				err = wait(ctx, time.Second)
+				if err != nil {
+					return
+				}
+
 				continue
 			}
 
-			time.Sleep(time.Millisecond * 250)
+			err = wait(ctx, time.Millisecond*250)
+			if err != nil {
+				return
+			}
 		}
 	}()
 
@@ -93,7 +100,7 @@ func (c *consumer) Close() error {
 func newConnectorProcessor(ctx context.Context, translator Translator) *connectorProcessor {
 	return &connectorProcessor{
 		ctx:        ctx,
-		ready:      make(chan bool),
+		ready:      make(chan bool, 1),
 		translator: translator,
 		iterator:   make(chan func() (*workflow.ConnectorEvent, workflow.Ack, error)),
 	}
@@ -113,8 +120,20 @@ func (cp *connectorProcessor) Cleanup(_ sarama.ConsumerGroupSession) error { ret
 // ConsumeClaim processes messages from Kafka
 func (cp *connectorProcessor) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	cp.ready <- true
+
 	for {
 		select {
+		case m := <-claim.Messages():
+			select {
+			case cp.iterator <- consumeConnectorEvent(session, m, cp.translator):
+			case <-cp.ctx.Done():
+				return cp.ctx.Err()
+			}
+		case <-cp.ctx.Done():
+			return nil
+		case <-session.Context().Done():
+			return nil
+
 		case m := <-claim.Messages():
 			cp.iterator <- func() (*workflow.ConnectorEvent, workflow.Ack, error) {
 				return cp.translator(m), func() error {
@@ -127,5 +146,18 @@ func (cp *connectorProcessor) ConsumeClaim(session sarama.ConsumerGroupSession, 
 		case <-session.Context().Done():
 			return nil
 		}
+	}
+}
+
+func consumeConnectorEvent(
+	session sarama.ConsumerGroupSession,
+	m *sarama.ConsumerMessage,
+	t Translator,
+) func() (*workflow.ConnectorEvent, workflow.Ack, error) {
+	return func() (*workflow.ConnectorEvent, workflow.Ack, error) {
+		return t(m), func() error {
+			session.MarkMessage(m, "")
+			return nil
+		}, nil
 	}
 }
