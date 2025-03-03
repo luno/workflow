@@ -107,7 +107,12 @@ func (c *constructor) NewReceiver(
 		return nil, errors.Wrap(err, "failed to collect cursor")
 	}
 
-	streamClient, err := table.ToStream(c.reader)(ctx, cursor)
+	var streamOpts []reflex.StreamOption
+	if copts.StreamFromLatest && cursor == "" {
+		streamOpts = append(streamOpts, reflex.WithStreamFromHead())
+	}
+
+	streamClient, err := table.ToStream(c.reader)(ctx, cursor, streamOpts...)
 	if err != nil {
 		return nil, err
 	}

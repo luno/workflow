@@ -3,7 +3,6 @@ package memstreamer
 import (
 	"context"
 	"sync"
-	"time"
 
 	"k8s.io/utils/clock"
 
@@ -120,11 +119,15 @@ func (s *Stream) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, error
 	for ctx.Err() == nil {
 		s.mu.Lock()
 		log := *s.log
+		s.mu.Unlock()
 
 		cursorOffset := s.cursorStore.Get(s.name)
+		if s.options.StreamFromLatest && cursorOffset == 0 {
+			s.cursorStore.Set(s.name, len(log))
+			continue
+		}
+
 		if len(log)-1 < cursorOffset {
-			time.Sleep(time.Millisecond * 10)
-			s.mu.Unlock()
 			continue
 		}
 
@@ -133,11 +136,9 @@ func (s *Stream) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, error
 		// Skip events that are not related to this topic
 		if s.topic != e.Headers[workflow.HeaderTopic] {
 			s.cursorStore.Set(s.name, cursorOffset+1)
-			s.mu.Unlock()
 			continue
 		}
 
-		s.mu.Unlock()
 		return e, func() error {
 			s.cursorStore.Set(s.name, cursorOffset+1)
 			return nil

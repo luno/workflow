@@ -3,41 +3,52 @@ package kafkastreamer
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strconv"
 	"time"
 
+	"github.com/IBM/sarama"
 	"github.com/luno/workflow"
-	"github.com/segmentio/kafka-go"
 )
 
 func New(brokers []string) *StreamConstructor {
 	return &StreamConstructor{
-		brokers: brokers,
+		sharedConfig: newConfig(),
+		brokers:      brokers,
 	}
+}
+
+func newConfig() *sarama.Config {
+	config := sarama.NewConfig()
+	config.Producer.Return.Successes = true
+	config.Producer.Return.Errors = true
+
+	return config
 }
 
 var _ workflow.EventStreamer = (*StreamConstructor)(nil)
 
 type StreamConstructor struct {
-	brokers []string
+	sharedConfig *sarama.Config
+	brokers      []string
 }
 
 func (s StreamConstructor) NewSender(ctx context.Context, topic string) (workflow.EventSender, error) {
+	producer, err := sarama.NewSyncProducer(s.brokers, s.sharedConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Sender{
-		Topic: topic,
-		Writer: &kafka.Writer{
-			Addr:                   kafka.TCP(s.brokers...),
-			Topic:                  topic,
-			AllowAutoTopicCreation: true,
-			RequiredAcks:           kafka.RequireOne,
-		},
+		Topic:         topic,
+		Writer:        producer,
 		WriterTimeout: time.Second * 10,
 	}, nil
 }
 
 type Sender struct {
 	Topic         string
-	Writer        *kafka.Writer
+	Writer        sarama.SyncProducer
 	WriterTimeout time.Duration
 }
 
@@ -45,26 +56,25 @@ var _ workflow.EventSender = (*Sender)(nil)
 
 func (p *Sender) Send(ctx context.Context, foreignID string, statusType int, headers map[workflow.Header]string) error {
 	for ctx.Err() == nil {
-		ctx, cancel := context.WithTimeout(ctx, p.WriterTimeout)
-		defer cancel()
-
-		var kHeaders []kafka.Header
+		var kHeaders []sarama.RecordHeader
 		for key, value := range headers {
-			kHeaders = append(kHeaders, kafka.Header{
-				Key:   string(key),
+			kHeaders = append(kHeaders, sarama.RecordHeader{
+				Key:   []byte(key),
 				Value: []byte(value),
 			})
 		}
 
-		msg := kafka.Message{
-			Key:     []byte(foreignID),
-			Value:   []byte(strconv.FormatInt(int64(statusType), 10)),
-			Headers: kHeaders,
-		}
-
-		err := p.Writer.WriteMessages(ctx, msg)
-		if errors.Is(err, kafka.LeaderNotAvailable) || errors.Is(err, context.DeadlineExceeded) {
-			time.Sleep(time.Millisecond * 250)
+		_, _, err := p.Writer.SendMessage(
+			&sarama.ProducerMessage{
+				Topic:     p.Topic,
+				Key:       sarama.StringEncoder(foreignID),
+				Value:     sarama.StringEncoder(strconv.FormatInt(int64(statusType), 10)),
+				Headers:   kHeaders,
+				Timestamp: time.Time{},
+			},
+		)
+		if err != nil && (errors.Is(err, sarama.ErrLeaderNotAvailable) || errors.Is(err, context.DeadlineExceeded)) {
+			time.Sleep(time.Millisecond * 100)
 			continue
 		} else if err != nil {
 			return err
@@ -91,47 +101,130 @@ func (s StreamConstructor) NewReceiver(
 		opt(&copts)
 	}
 
-	startOffset := kafka.FirstOffset
+	consumerConfig := *s.sharedConfig
+	if copts.PollFrequency != 0 {
+		consumerConfig.Consumer.MaxWaitTime = copts.PollFrequency
+		consumerConfig.Consumer.Retry.Backoff = copts.PollFrequency
+	}
+	consumerConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
+	if copts.StreamFromLatest {
+		consumerConfig.Consumer.Offsets.Initial = sarama.OffsetNewest
+	}
 
-	kafkaReader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:        s.brokers,
-		GroupID:        name,
-		Topic:          topic,
-		ReadBackoffMin: copts.PollFrequency,
-		ReadBackoffMax: copts.PollFrequency,
-		StartOffset:    startOffset,
-		QueueCapacity:  1000,
-		MinBytes:       10,  // 10B
-		MaxBytes:       1e9, // 9MB
-		MaxWait:        time.Second,
-	})
+	cg, err := sarama.NewConsumerGroup(s.brokers, name, &consumerConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	consumeCtx, cancel := context.WithCancel(ctx)
+	processor := newMessageProcessor(consumeCtx)
+	go func() {
+		for ctx.Err() == nil {
+			err := cg.Consume(consumeCtx, []string{topic}, processor)
+			if err != nil && errors.Is(err, context.Canceled) {
+				// Exit on context cancellation
+				return
+			} else if err != nil {
+				slog.Error("kafka consumer exited unexpectedly", "error", err.Error())
+
+				err = wait(ctx, time.Second)
+				if err != nil {
+					return
+				}
+
+				continue
+			}
+
+			err = wait(ctx, time.Millisecond*250)
+			if err != nil {
+				return
+			}
+		}
+	}()
+
+	// Wait for the processor to be ready
+	<-processor.ready
 
 	return &Receiver{
-		topic:   topic,
-		name:    name,
-		reader:  kafkaReader,
-		options: copts,
+		cancel:       cancel,
+		topic:        topic,
+		name:         name,
+		msgProcessor: processor,
+		options:      copts,
 	}, nil
 }
 
 type Receiver struct {
-	topic   string
-	name    string
-	reader  *kafka.Reader
-	options workflow.ReceiverOptions
+	cancel       context.CancelFunc
+	topic        string
+	name         string
+	msgProcessor *msgProcessor
+	options      workflow.ReceiverOptions
 }
 
 func (r *Receiver) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, error) {
-	var commit []kafka.Message
 	for ctx.Err() == nil {
-		m, err := r.reader.FetchMessage(ctx)
-		if err != nil {
-			return nil, nil, err
+		select {
+		case <-ctx.Done():
+			return nil, nil, ctx.Err()
+		case next := <-r.msgProcessor.iterator:
+			return next()
 		}
+	}
 
-		// Append the message to the commit slice to ensure we send all messages that have been processed
-		commit = append(commit, m)
+	return nil, nil, ctx.Err()
+}
 
+func (r *Receiver) Close() error {
+	r.cancel()
+	return nil
+}
+
+var _ workflow.EventReceiver = (*Receiver)(nil)
+
+func newMessageProcessor(ctx context.Context) *msgProcessor {
+	return &msgProcessor{
+		ctx:      ctx,
+		ready:    make(chan bool, 1),
+		iterator: make(chan func() (*workflow.Event, workflow.Ack, error)),
+	}
+}
+
+// msgProcessor implements the sarama.ConsumerGroupHandler interface
+type msgProcessor struct {
+	ctx      context.Context
+	ready    chan bool
+	iterator chan func() (*workflow.Event, workflow.Ack, error)
+}
+
+func (mp *msgProcessor) Setup(_ sarama.ConsumerGroupSession) error   { return nil }
+func (mp *msgProcessor) Cleanup(_ sarama.ConsumerGroupSession) error { return nil }
+
+// ConsumeClaim processes messages from Kafka
+func (mp *msgProcessor) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+	mp.ready <- true
+
+	for {
+		select {
+		case m := <-claim.Messages():
+			select {
+			case mp.iterator <- consume(session, m):
+			case <-mp.ctx.Done():
+				return mp.ctx.Err()
+			}
+		case <-mp.ctx.Done():
+			return nil
+		case <-session.Context().Done():
+			return nil
+		}
+	}
+}
+
+func consume(
+	session sarama.ConsumerGroupSession,
+	m *sarama.ConsumerMessage,
+) func() (*workflow.Event, workflow.Ack, error) {
+	return func() (*workflow.Event, workflow.Ack, error) {
 		statusType, err := strconv.ParseInt(string(m.Value), 10, 64)
 		if err != nil {
 			return nil, nil, err
@@ -143,25 +236,30 @@ func (r *Receiver) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, err
 		}
 
 		event := &workflow.Event{
-			ID:        m.Offset,
+			ID:        m.Offset + 1,
 			ForeignID: string(m.Key),
 			Type:      int(statusType),
 			Headers:   headers,
-			CreatedAt: m.Time,
+			CreatedAt: m.Timestamp,
 		}
 
-		return event,
-			func() error {
-				return r.reader.CommitMessages(ctx, commit...)
-			},
-			nil
+		return event, func() error {
+			session.MarkMessage(m, "")
+			return nil
+		}, nil
+	}
+}
+
+func wait(ctx context.Context, d time.Duration) error {
+	if d == 0 {
+		return nil
 	}
 
-	return nil, nil, ctx.Err()
+	t := time.NewTimer(d)
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-t.C:
+		return nil
+	}
 }
-
-func (r *Receiver) Close() error {
-	return r.reader.Close()
-}
-
-var _ workflow.EventReceiver = (*Receiver)(nil)

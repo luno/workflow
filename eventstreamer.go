@@ -43,8 +43,8 @@ const (
 )
 
 type ReceiverOptions struct {
-	PollFrequency time.Duration
-	Lag           time.Duration
+	PollFrequency    time.Duration
+	StreamFromLatest bool
 }
 
 type ReceiverOption func(*ReceiverOptions)
@@ -52,5 +52,14 @@ type ReceiverOption func(*ReceiverOptions)
 func WithReceiverPollFrequency(d time.Duration) ReceiverOption {
 	return func(opt *ReceiverOptions) {
 		opt.PollFrequency = d
+	}
+}
+
+// StreamFromLatest tells the event streamer to start streaming events from the most recent event if there is no
+// commited/stored offset (cursor for some event streaming platforms). If a consumer has received events before then
+// this should have no affect and consumption should resume from where it left off previously.
+func StreamFromLatest() ReceiverOption {
+	return func(opt *ReceiverOptions) {
+		opt.StreamFromLatest = true
 	}
 }
