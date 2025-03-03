@@ -25,7 +25,7 @@ func TestCallbackWorkflow(t *testing.T) {
 	wf.Run(ctx)
 
 	foreignID := "andrew"
-	runID, err := wf.Trigger(ctx, foreignID, callback.StatusStarted)
+	runID, err := wf.Trigger(ctx, foreignID)
 	require.Nil(t, err)
 
 	workflow.TriggerCallbackOn(t, wf, foreignID, runID, callback.StatusStarted, callback.EmailConfirmationResponse{
