@@ -123,7 +123,7 @@ func TestWorkflowAcceptanceTest(t *testing.T) {
 		UserID: expectedUserID,
 	}
 
-	runID, err := wf.Trigger(ctx, fid, StatusInitiated, workflow.WithInitialValue[MyType, status](&mt))
+	runID, err := wf.Trigger(ctx, fid, workflow.WithInitialValue[MyType, status](&mt))
 	require.Nil(t, err)
 
 	// Once in the correct status, trigger third party callbacks
@@ -228,7 +228,7 @@ func benchmarkWorkflow(b *testing.B, numberOfSteps int) {
 		UserID: expectedUserID,
 	}
 	for range b.N {
-		_, err := wf.Trigger(ctx, fid, 0, workflow.WithInitialValue[MyType, status](&mt))
+		_, err := wf.Trigger(ctx, fid, workflow.WithInitialValue[MyType, status](&mt))
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -276,7 +276,7 @@ func TestTimeout(t *testing.T) {
 	wf.Run(ctx)
 	t.Cleanup(wf.Stop)
 
-	runID, err := wf.Trigger(ctx, "example", StatusInitiated)
+	runID, err := wf.Trigger(ctx, "example")
 	require.Nil(t, err)
 
 	workflow.AwaitTimeoutInsert(t, wf, "example", runID, StatusProfileCreated)
@@ -399,10 +399,10 @@ func TestWorkflow_ErrWorkflowNotRunning(t *testing.T) {
 		cancel()
 	})
 
-	_, err := wf.Trigger(ctx, "andrew", StatusStart)
+	_, err := wf.Trigger(ctx, "andrew")
 	require.Equal(t, "trigger failed: workflow is not running", err.Error())
 
-	err = wf.Schedule("andrew", StatusStart, "@monthly")
+	err = wf.Schedule("andrew", "@monthly")
 	require.Equal(t, "schedule failed: workflow is not running", err.Error())
 }
 
@@ -434,7 +434,7 @@ func TestWorkflow_TestingRequire(t *testing.T) {
 	t.Cleanup(wf.Stop)
 
 	foreignID := "andrew"
-	_, err := wf.Trigger(ctx, foreignID, StatusStart)
+	_, err := wf.Trigger(ctx, foreignID)
 	require.Nil(t, err)
 
 	expected := MyType{
@@ -487,7 +487,7 @@ func TestTimeTimerFunc(t *testing.T) {
 	wf.Run(ctx)
 	t.Cleanup(wf.Stop)
 
-	runID, err := wf.Trigger(ctx, "Andrew Wormald", StatusStart)
+	runID, err := wf.Trigger(ctx, "Andrew Wormald")
 	require.Nil(t, err)
 
 	workflow.AwaitTimeoutInsert(t, wf, "Andrew Wormald", runID, StatusStart)
@@ -525,7 +525,7 @@ func TestConnector(t *testing.T) {
 		"my-test-connector",
 		connector,
 		func(ctx context.Context, api workflow.API[typeX, status], e *workflow.ConnectorEvent) error {
-			_, err := api.Trigger(ctx, e.ForeignID, StatusStart, workflow.WithInitialValue[typeX, status](&typeX{
+			_, err := api.Trigger(ctx, e.ForeignID, workflow.WithInitialValue[typeX, status](&typeX{
 				Val: "trigger set value",
 			}))
 			if err != nil {
@@ -599,7 +599,7 @@ func TestStepConsumerLag(t *testing.T) {
 	t.Cleanup(wf.Stop)
 
 	foreignID := "1"
-	_, err := wf.Trigger(ctx, foreignID, StatusStart, workflow.WithInitialValue[TimeWatcher, status](&TimeWatcher{
+	_, err := wf.Trigger(ctx, foreignID, workflow.WithInitialValue[TimeWatcher, status](&TimeWatcher{
 		StartTime: clock.Now(),
 	}))
 	require.Nil(t, err)

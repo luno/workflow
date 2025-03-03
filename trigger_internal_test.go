@@ -18,7 +18,7 @@ func Test_trigger(t *testing.T) {
 
 	t.Run("Expected non-nil error when Trigger called before Run()", func(t *testing.T) {
 		ctx := context.Background()
-		_, err := trigger(ctx, w, nil, "1", statusStart)
+		_, err := trigger(ctx, w, nil, "1")
 
 		require.Equal(t, "trigger failed: workflow is not running", err.Error())
 	})
@@ -27,7 +27,7 @@ func Test_trigger(t *testing.T) {
 		ctx := context.Background()
 		w.calledRun = true
 
-		_, err := trigger(ctx, w, nil, "1", statusEnd)
+		_, err := trigger(ctx, w, nil, "1", WithStartingPoint[string, testStatus](statusEnd))
 		require.Equal(t, fmt.Sprintf("trigger failed: status provided is not configured for workflow: %s", statusEnd), err.Error())
 	})
 
@@ -42,7 +42,7 @@ func Test_trigger(t *testing.T) {
 				RunState:     RunStateRunning,
 				Status:       int(statusMiddle),
 			}, nil
-		}, "1", statusStart)
+		}, "1")
 		require.True(t, errors.Is(err, ErrWorkflowInProgress))
 	})
 }

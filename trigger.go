@@ -11,10 +11,9 @@ import (
 func (w *Workflow[Type, Status]) Trigger(
 	ctx context.Context,
 	foreignID string,
-	startingStatus Status,
 	opts ...TriggerOption[Type, Status],
 ) (runID string, err error) {
-	return trigger(ctx, w, w.recordStore.Latest, foreignID, startingStatus, opts...)
+	return trigger(ctx, w, w.recordStore.Latest, foreignID, opts...)
 }
 
 func trigger[Type any, Status StatusType](
@@ -22,11 +21,24 @@ func trigger[Type any, Status StatusType](
 	w *Workflow[Type, Status],
 	lookup latestLookup,
 	foreignID string,
-	startingStatus Status,
 	opts ...TriggerOption[Type, Status],
 ) (runID string, err error) {
 	if !w.calledRun {
 		return "", fmt.Errorf("trigger failed: workflow is not running")
+	}
+
+	var o triggerOpts[Type, Status]
+	for _, fn := range opts {
+		fn(&o)
+	}
+
+	if len(w.statusGraph.Info().StartingNodes) < 1 {
+		return "", fmt.Errorf("workflow has no starting points")
+	}
+
+	startingStatus := Status(w.statusGraph.Info().StartingNodes[0])
+	if o.startingPoint != Status(0) {
+		startingStatus = o.startingPoint
 	}
 
 	if !w.statusGraph.IsValid(int(startingStatus)) {
@@ -37,11 +49,6 @@ func trigger[Type any, Status StatusType](
 		)
 
 		return "", fmt.Errorf("trigger failed: status provided is not configured for workflow: %s", startingStatus)
-	}
-
-	var o triggerOpts[Type, Status]
-	for _, fn := range opts {
-		fn(&o)
 	}
 
 	var t Type
@@ -99,7 +106,7 @@ type triggerOpts[Type any, Status StatusType] struct {
 
 type TriggerOption[Type any, Status StatusType] func(o *triggerOpts[Type, Status])
 
-func WithStartAt[Type any, Status StatusType](startingStatus Status) TriggerOption[Type, Status] {
+func WithStartingPoint[Type any, Status StatusType](startingStatus Status) TriggerOption[Type, Status] {
 	return func(o *triggerOpts[Type, Status]) {
 		o.startingPoint = startingStatus
 	}

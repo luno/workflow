@@ -110,7 +110,7 @@ func TestRequire(t *testing.T) {
 	t.Cleanup(wf.Stop)
 
 	fid := "10298309123"
-	_, err := wf.Trigger(ctx, fid, StatusStart)
+	_, err := wf.Trigger(ctx, fid)
 	require.Nil(t, err)
 
 	workflow.Require(t, wf, fid, StatusEnd, "Lower")
@@ -181,7 +181,7 @@ func TestWaitFor(t *testing.T) {
 	t.Cleanup(wf.Stop)
 
 	fid := "10298309123"
-	_, err := wf.Trigger(ctx, fid, StatusStart)
+	_, err := wf.Trigger(ctx, fid)
 	require.Nil(t, err)
 
 	workflow.WaitFor(t, wf, fid, func(r *workflow.Run[string, status]) (bool, error) {
@@ -197,11 +197,11 @@ func (a apiImpl[Type, Status]) Name() string {
 	return "test"
 }
 
-func (a apiImpl[Type, Status]) Trigger(ctx context.Context, foreignID string, startingStatus Status, opts ...workflow.TriggerOption[Type, Status]) (runID string, err error) {
+func (a apiImpl[Type, Status]) Trigger(ctx context.Context, foreignID string, opts ...workflow.TriggerOption[Type, Status]) (runID string, err error) {
 	return "", nil
 }
 
-func (a apiImpl[Type, Status]) Schedule(foreignID string, startingStatus Status, spec string, opts ...workflow.ScheduleOption[Type, Status]) error {
+func (a apiImpl[Type, Status]) Schedule(foreignID string, spec string, opts ...workflow.ScheduleOption[Type, Status]) error {
 	return nil
 }
 

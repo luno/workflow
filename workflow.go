@@ -38,7 +38,7 @@ type API[Type any, Status StatusType] interface {
 	// Schedule takes a cron spec and will call Trigger at the specified intervals. Schedule is a blocking call and all
 	// schedule errors will be retried indefinitely. The same options are available for Schedule as they are
 	// for Trigger.
-	Schedule(foreignID string, startingStatus Status, spec string, opts ...ScheduleOption[Type, Status]) error
+	Schedule(foreignID string, spec string, opts ...ScheduleOption[Type, Status]) error
 
 	// Await is a blocking call that returns the typed Run when the workflow of the specified run ID reaches the
 	// specified status.

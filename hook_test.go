@@ -29,7 +29,7 @@ func TestWorkflow_OnPauseHook(t *testing.T) {
 	})
 
 	foreignID := "andrew"
-	_, err := wf.Trigger(context.Background(), foreignID, StatusStart)
+	_, err := wf.Trigger(context.Background(), foreignID)
 	require.Nil(t, err)
 
 	wg.Wait()
@@ -51,7 +51,7 @@ func TestWorkflow_OnCancelHook(t *testing.T) {
 	})
 
 	foreignID := "andrew"
-	_, err := wf.Trigger(context.Background(), foreignID, StatusStart)
+	_, err := wf.Trigger(context.Background(), foreignID)
 	require.Nil(t, err)
 
 	wg.Wait()
@@ -73,7 +73,7 @@ func TestWorkflow_OnCompleteHook(t *testing.T) {
 	})
 
 	foreignID := "andrew"
-	_, err := wf.Trigger(context.Background(), foreignID, StatusStart)
+	_, err := wf.Trigger(context.Background(), foreignID)
 	require.Nil(t, err)
 
 	wg.Wait()

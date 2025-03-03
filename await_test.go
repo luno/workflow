@@ -33,7 +33,7 @@ func TestAwait(t *testing.T) {
 	wf.Run(ctx)
 	t.Cleanup(wf.Stop)
 
-	runID, err := wf.Trigger(ctx, "1", StatusStart)
+	runID, err := wf.Trigger(ctx, "1")
 	require.Nil(t, err)
 
 	res, err := wf.Await(ctx, "1", runID, StatusEnd, workflow.WithAwaitPollingFrequency(10*time.Nanosecond))

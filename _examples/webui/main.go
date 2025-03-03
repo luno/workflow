@@ -27,7 +27,7 @@ func main() {
 		"Customer 3",
 	}
 	for _, foreignID := range seed {
-		_, err := w.Trigger(ctx, foreignID, StatusStart)
+		_, err := w.Trigger(ctx, foreignID)
 		if err != nil {
 			panic(err)
 		}
