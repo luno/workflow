@@ -93,9 +93,11 @@ type Workflow[Type any, Status StatusType] struct {
 	// and block until this transition is complete.
 	launching sync.WaitGroup
 
-	statusGraph *graph.Graph
+	// defaultStartingPoint defines that status that the workflow run will start on when Trigger is called.
+	defaultStartingPoint Status
+	statusGraph          *graph.Graph
 	// errorCounter keeps a central in-mem state of errors from consumers and timeouts in order to implement
-	// PauseAfterErrCount. The tracking of errors is done in a way where errors need to be unique per process
+	// PauseAfterstatusGraphErrCount. The tracking of errors is done in a way where errors need to be unique per process
 	// (consumer / timeout).
 	errorCounter errorcounter.ErrorCounter
 }

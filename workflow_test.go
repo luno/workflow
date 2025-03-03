@@ -621,7 +621,9 @@ func TestStepConsumerLag(t *testing.T) {
 }
 
 func TestName(t *testing.T) {
-	wf := workflow.NewBuilder[string, status]("test name").Build(nil, nil, nil)
+	b := workflow.NewBuilder[string, status]("test name")
+	b.AddStep(StatusStart, nil, StatusEnd)
+	wf := b.Build(nil, nil, nil)
 	require.Equal(t, "test name", wf.Name())
 }
 

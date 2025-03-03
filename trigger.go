@@ -32,11 +32,7 @@ func trigger[Type any, Status StatusType](
 		fn(&o)
 	}
 
-	if len(w.statusGraph.Info().StartingNodes) < 1 {
-		return "", fmt.Errorf("workflow has no starting points")
-	}
-
-	startingStatus := Status(w.statusGraph.Info().StartingNodes[0])
+	startingStatus := w.defaultStartingPoint
 	if o.startingPoint != Status(0) {
 		startingStatus = o.startingPoint
 	}

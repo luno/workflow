@@ -103,6 +103,7 @@ func TestWithClock(t *testing.T) {
 	now := time.Now()
 	clock := clock_testing.NewFakeClock(now)
 	b := NewBuilder[string, testStatus]("determine starting points")
+	b.AddStep(statusStart, nil, statusMiddle)
 	wf := b.Build(nil, nil, nil, WithClock(clock))
 
 	clock.Step(time.Hour)
@@ -131,6 +132,7 @@ func TestBuildOptions(t *testing.T) {
 	}
 
 	b := NewBuilder[string, testStatus]("determine starting points")
+	b.AddStep(statusStart, nil, statusMiddle)
 	w := b.Build(
 		nil,
 		nil,
@@ -207,6 +209,16 @@ func TestAddTimeoutPollingFrequency(t *testing.T) {
 	require.Equal(t, time.Minute, b.workflow.timeouts[statusStart].pollingFrequency)
 }
 
+func TestDefaultStartingPoint(t *testing.T) {
+	require.PanicsWithValue(t,
+		"Workflow requires at least one starting point. Please provide at least one Step, Callback, or Timeout to add a starting point.",
+		func() {
+			b := NewBuilder[string, testStatus]("")
+			_ = b.Build(nil, nil, nil)
+		},
+	)
+}
+
 func TestAddTimeoutDontAllowParallelCount(t *testing.T) {
 	require.PanicsWithValue(t,
 		"Cannot configure parallel timeout",
@@ -248,6 +260,7 @@ func TestConnectorConstruction(t *testing.T) {
 		ErrBackOff(time.Hour*6),
 	)
 
+	b.AddStep(statusStart, nil, statusEnd)
 	w := b.Build(nil, nil, nil)
 
 	for _, config := range w.connectorConfigs {
@@ -374,7 +387,7 @@ func TestConfigureTimeoutWithoutTimeoutStore(t *testing.T) {
 
 	// Should panic as setting a second config of statusStart
 	require.PanicsWithValue(t,
-		"cannot configure timeouts without providing TimeoutStore for workflow",
+		"Cannot configure timeouts without providing TimeoutStore for workflow",
 		func() {
 			b.Build(
 				nil,
