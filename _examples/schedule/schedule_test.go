@@ -36,7 +36,7 @@ func TestExampleWorkflow(t *testing.T) {
 	foreignID := "hourly-run"
 
 	go func() {
-		err := wf.Schedule(foreignID, schedule.StatusStarted, "@hourly")
+		err := wf.Schedule(foreignID, "@hourly")
 		require.Nil(t, err)
 	}()
 
