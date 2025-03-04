@@ -5,9 +5,8 @@ go 1.23.2
 replace github.com/luno/workflow => ../..
 
 require (
-	github.com/IBM/sarama v1.45.0
+	github.com/IBM/sarama v1.45.1
 	github.com/luno/workflow v0.2.5
-	github.com/segmentio/kafka-go v0.4.47
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.35.0
 	github.com/testcontainers/testcontainers-go/modules/kafka v0.35.0
@@ -79,10 +78,10 @@ require (
 	go.opentelemetry.io/otel v1.24.0 // indirect
 	go.opentelemetry.io/otel/metric v1.24.0 // indirect
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
-	golang.org/x/crypto v0.32.0 // indirect
+	golang.org/x/crypto v0.33.0 // indirect
 	golang.org/x/mod v0.16.0 // indirect
-	golang.org/x/net v0.34.0 // indirect
-	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/net v0.35.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
 	google.golang.org/protobuf v1.35.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/utils v0.0.0-20240921022957-49e7df575cb6 // indirect
