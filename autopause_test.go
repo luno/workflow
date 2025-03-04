@@ -46,7 +46,7 @@ func TestRetryOfPausedRecords(t *testing.T) {
 	t.Cleanup(w.Stop)
 
 	fid := "12345"
-	_, err := w.Trigger(ctx, fid, StatusStart)
+	_, err := w.Trigger(ctx, fid)
 	require.NoError(t, err)
 
 	workflow.Require(t, w, fid, StatusEnd, "")

@@ -46,7 +46,7 @@ func TestSchedule(t *testing.T) {
 	t.Cleanup(wf.Stop)
 
 	go func() {
-		err := wf.Schedule("andrew", StatusStart, "@monthly")
+		err := wf.Schedule("andrew", "@monthly")
 		require.Nil(t, err)
 	}()
 
@@ -105,7 +105,7 @@ func TestWorkflow_ScheduleShutdown(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		wg.Done()
-		err := wf.Schedule("andrew", StatusStart, "@monthly")
+		err := wf.Schedule("andrew", "@monthly")
 		require.Nil(t, err)
 	}()
 
@@ -114,21 +114,21 @@ func TestWorkflow_ScheduleShutdown(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	require.Equal(t, map[string]workflow.State{
-		"start-andrew-scheduler-@monthly": workflow.StateRunning,
-		"start-consumer-1-of-1":           workflow.StateRunning,
-		"outbox-consumer":                 workflow.StateRunning,
-		"delete-consumer":                 workflow.StateRunning,
-		"paused-records-retry-consumer":   workflow.StateRunning,
+		"andrew-scheduler-@monthly":     workflow.StateRunning,
+		"start-consumer-1-of-1":         workflow.StateRunning,
+		"outbox-consumer":               workflow.StateRunning,
+		"delete-consumer":               workflow.StateRunning,
+		"paused-records-retry-consumer": workflow.StateRunning,
 	}, wf.States())
 
 	wf.Stop()
 
 	require.Equal(t, map[string]workflow.State{
-		"start-andrew-scheduler-@monthly": workflow.StateShutdown,
-		"start-consumer-1-of-1":           workflow.StateShutdown,
-		"outbox-consumer":                 workflow.StateShutdown,
-		"delete-consumer":                 workflow.StateShutdown,
-		"paused-records-retry-consumer":   workflow.StateShutdown,
+		"andrew-scheduler-@monthly":     workflow.StateShutdown,
+		"start-consumer-1-of-1":         workflow.StateShutdown,
+		"outbox-consumer":               workflow.StateShutdown,
+		"delete-consumer":               workflow.StateShutdown,
+		"paused-records-retry-consumer": workflow.StateShutdown,
 	}, wf.States())
 }
 
@@ -169,7 +169,7 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	opt := workflow.WithScheduleFilter[MyType, status](filter)
 
 	go func() {
-		err := wf.Schedule("andrew", StatusStart, "@monthly", opt)
+		err := wf.Schedule("andrew", "@monthly", opt)
 		require.Nil(t, err)
 	}()
 

@@ -158,7 +158,7 @@ func RunEventStreamerTest(t *testing.T, factory func() workflow.EventStreamer) {
 		u := User{
 			CountryCode: "GB",
 		}
-		runId, err := wf.Trigger(ctx, foreignID, SyncStatusStarted, workflow.WithInitialValue[User, SyncStatus](&u))
+		runId, err := wf.Trigger(ctx, foreignID, workflow.WithInitialValue[User, SyncStatus](&u))
 		require.Nil(t, err)
 
 		workflow.AwaitTimeoutInsert(t, wf, foreignID, runId, SyncStatusEmailSet)

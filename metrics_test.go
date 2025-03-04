@@ -358,7 +358,7 @@ func TestRunStateChanges(t *testing.T) {
 	w.Run(ctx)
 	t.Cleanup(w.Stop)
 
-	_, err := w.Trigger(ctx, "983467934", StatusStart)
+	_, err := w.Trigger(ctx, "983467934")
 	require.Nil(t, err)
 
 	time.Sleep(time.Millisecond * 500)
@@ -391,13 +391,13 @@ func TestMetricProcessSkippedEvents(t *testing.T) {
 	w.Run(ctx)
 	t.Cleanup(w.Stop)
 
-	_, err := w.Trigger(ctx, "9834679343", StatusStart)
+	_, err := w.Trigger(ctx, "9834679343")
 	require.Nil(t, err)
 
-	_, err = w.Trigger(ctx, "2349839483", StatusStart)
+	_, err = w.Trigger(ctx, "2349839483")
 	require.Nil(t, err)
 
-	_, err = w.Trigger(ctx, "7548702398", StatusStart)
+	_, err = w.Trigger(ctx, "7548702398")
 	require.Nil(t, err)
 
 	time.Sleep(time.Millisecond * 500)

@@ -54,7 +54,6 @@ func Workflow(d Deps) *workflow.Workflow[GettingStarted, Status] {
 			_, err := api.Trigger(
 				ctx,
 				e.ForeignID,
-				StatusStarted,
 				workflow.WithInitialValue[GettingStarted, Status](&GettingStarted{
 					ReadTheDocs: "✅",
 				}),

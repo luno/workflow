@@ -68,7 +68,7 @@ func TestRunState(t *testing.T) {
 			t.Cleanup(w.Stop)
 
 			// Trigger workflow before it's running to assert that the initial state is workflow.RunStateInitiated
-			runID, err := w.Trigger(ctx, "fid", StatusStart)
+			runID, err := w.Trigger(ctx, "fid")
 			require.Nil(t, err)
 
 			time.Sleep(time.Second)

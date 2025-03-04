@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/robfig/cron/v3"
@@ -13,22 +12,11 @@ import (
 
 func (w *Workflow[Type, Status]) Schedule(
 	foreignID string,
-	startingStatus Status,
 	spec string,
 	opts ...ScheduleOption[Type, Status],
 ) error {
 	if !w.calledRun {
 		return fmt.Errorf("schedule failed: workflow is not running")
-	}
-
-	if !w.statusGraph.IsValid(int(startingStatus)) {
-		w.logger.Debug(
-			w.ctx,
-			fmt.Sprintf("ensure %v is configured for workflow: %v", startingStatus, w.Name()),
-			map[string]string{},
-		)
-
-		return fmt.Errorf("schedule failed: status provided is not configured for workflow: %s", startingStatus)
 	}
 
 	var options scheduleOpts[Type, Status]
@@ -41,8 +29,8 @@ func (w *Workflow[Type, Status]) Schedule(
 		return err
 	}
 
-	role := makeRole(w.Name(), strconv.FormatInt(int64(startingStatus), 10), foreignID, "scheduler", spec)
-	processName := makeRole(startingStatus.String(), foreignID, "scheduler", spec)
+	role := makeRole(w.Name(), foreignID, "scheduler", spec)
+	processName := makeRole(foreignID, "scheduler", spec)
 
 	w.launching.Add(1)
 	w.run(role, processName, func(ctx context.Context) error {
@@ -92,7 +80,7 @@ func (w *Workflow[Type, Status]) Schedule(
 			return nil
 		}
 
-		_, err = w.Trigger(ctx, foreignID, startingStatus, tOpts...)
+		_, err = w.Trigger(ctx, foreignID, tOpts...)
 		if errors.Is(err, ErrWorkflowInProgress) {
 			// NoReturnErr: Fallthrough to schedule next workflow as there is already one in progress. If this
 			// happens it is likely that we scheduled a workflow and were unable to schedule the next.

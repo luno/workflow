@@ -246,8 +246,17 @@ func (b *Builder[Type, Status]) Build(
 	}
 
 	if len(b.workflow.timeouts) > 0 && b.workflow.timeoutStore == nil {
-		panic("cannot configure timeouts without providing TimeoutStore for workflow")
+		panic("Cannot configure timeouts without providing TimeoutStore for workflow")
 	}
+
+	graph := b.workflow.statusGraph.Info()
+	if len(graph.StartingNodes) < 1 {
+		panic(
+			"Workflow requires at least one starting point. Please provide at least one Step, Callback, or Timeout to add a starting point.",
+		)
+	}
+
+	b.workflow.defaultStartingPoint = Status(graph.StartingNodes[0])
 
 	return b.workflow
 }

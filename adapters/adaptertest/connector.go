@@ -38,7 +38,6 @@ func RunConnectorTest(t *testing.T, maker func(seedEvents []workflow.ConnectorEv
 			_, err := api.Trigger(
 				ctx,
 				e.ForeignID,
-				SyncStatusStarted,
 				workflow.WithInitialValue[User, SyncStatus](&User{
 					UID: e.ForeignID,
 				}),

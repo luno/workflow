@@ -32,7 +32,7 @@ func TestTimeoutWorkflow(t *testing.T) {
 	wf.Run(ctx)
 
 	foreignID := "andrew"
-	runID, err := wf.Trigger(ctx, foreignID, timeout.StatusStarted)
+	runID, err := wf.Trigger(ctx, foreignID)
 	require.Nil(t, err)
 
 	workflow.AwaitTimeoutInsert(t, wf, foreignID, runID, timeout.StatusStarted)
