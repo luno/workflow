@@ -9,17 +9,18 @@ replace github.com/luno/workflow => ../..
 require (
 	github.com/corverroos/truss v0.0.0-20210514115035-9e5e1b0851a9
 	github.com/luno/jettison v0.0.0-20250226173148-39bbdb7ea038
-	github.com/luno/reflex v0.0.0-20241129142022-57682f2c87b2
+	github.com/luno/reflex v0.0.0-20250306163217-c9f47c5e6287
 	github.com/luno/workflow v0.2.5
 	github.com/stretchr/testify v1.10.0
 )
 
 require (
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.18.0 // indirect
-	github.com/go-sql-driver/mysql v1.7.1 // indirect
+	github.com/go-sql-driver/mysql v1.9.0 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
