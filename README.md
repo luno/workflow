@@ -215,7 +215,7 @@ wf.Stop()
 ### Step 3: Trigger the workflow
 ```go
 foreignID := "82347982374982374"
-runID, err := wf.Trigger(ctx, foreignID, StepOne)
+runID, err := wf.Trigger(ctx, foreignID)
 if err != nil {
 	...
 }
@@ -223,7 +223,7 @@ if err != nil {
 **Awaiting results:** If appropriate and desired you can wait for the workflow to complete. Using context timeout (cancellation) is advised.
 ```go
 foreignID := "82347982374982374"
-runID, err := wf.Trigger(ctx, foreignID, StepOne)
+runID, err := wf.Trigger(ctx, foreignID)
 if err != nil {
 	...
 }
