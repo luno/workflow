@@ -169,4 +169,26 @@ func Test_retryPausedRecords(t *testing.T) {
 		require.NoError(t, err)
 		require.False(t, calledUpdate)
 	})
+
+	t.Run("Not in paused state", func(t *testing.T) {
+		ctx := context.Background()
+		clock := clock_testing.NewFakeClock(time.Now())
+		var calledUpdate bool
+		err := autoRetryConsumer(
+			func(ctx context.Context, runID string) (*Record, error) {
+				return &Record{
+					RunState:  RunStateCompleted,
+					UpdatedAt: clock.Now().Add(-time.Hour),
+				}, nil
+			},
+			func(ctx context.Context, record *Record) error {
+				calledUpdate = true
+				return nil
+			},
+			clock,
+			time.Hour,
+		)(ctx, &Event{})
+		require.NoError(t, err)
+		require.False(t, calledUpdate)
+	})
 }
