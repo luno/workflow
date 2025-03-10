@@ -94,6 +94,7 @@ func pausedRecordsRetryConsumer[Type any, Status StatusType](w *Workflow[Type, S
 			w.clock,
 			w.pausedRecordsRetry.resumeAfter,
 			lagAlert,
+			filterByRunState(RunStatePaused),
 		)
 	}, w.defaultOpts.errBackOff)
 }
@@ -108,6 +109,10 @@ func autoRetryConsumer(
 		record, err := lookupFn(ctx, e.ForeignID)
 		if err != nil {
 			return err
+		}
+
+		if record.RunState != RunStatePaused {
+			return nil
 		}
 
 		threshold := clock.Now().Add(-retryInterval)
