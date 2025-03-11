@@ -117,7 +117,7 @@ func (s *SQLStore) ListOutboxEvents(
 	workflowName string,
 	limit int64,
 ) ([]workflow.OutboxEvent, error) {
-	return s.listOutboxWhere(ctx, s.reader, "workflow_name=? limit ?", workflowName, limit)
+	return s.listOutboxWhere(ctx, s.writer, "workflow_name=? limit ?", workflowName, limit)
 }
 
 func (s *SQLStore) DeleteOutboxEvent(ctx context.Context, id string) error {
