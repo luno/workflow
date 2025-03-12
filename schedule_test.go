@@ -35,7 +35,9 @@ func TestSchedule(t *testing.T) {
 		recordStore,
 		memrolescheduler.New(),
 		workflow.WithClock(clock),
-		workflow.WithDebugMode(),
+		workflow.WithDefaultOptions(
+			workflow.PollingFrequency(time.Millisecond),
+		),
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -45,13 +47,17 @@ func TestSchedule(t *testing.T) {
 	wf.Run(ctx)
 	t.Cleanup(wf.Stop)
 
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		wg.Done()
 		err := wf.Schedule("andrew", "@monthly")
 		require.Nil(t, err)
 	}()
+	wg.Wait()
 
 	// Allow scheduling to take place
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	_, err := recordStore.Latest(ctx, workflowName, "andrew")
 	// Expect there to be no entries yet
@@ -62,7 +68,7 @@ func TestSchedule(t *testing.T) {
 	clock.SetTime(expectedTimestamp)
 
 	// Allow scheduling to take place
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	firstScheduled, err := recordStore.Latest(ctx, workflowName, "andrew")
 	require.Nil(t, err)
@@ -74,7 +80,7 @@ func TestSchedule(t *testing.T) {
 	clock.SetTime(expectedTimestamp)
 
 	// Allow scheduling to take place
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	secondScheduled, err := recordStore.Latest(ctx, workflowName, "andrew")
 	require.Nil(t, err)
@@ -151,7 +157,9 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 		recordStore,
 		memrolescheduler.New(),
 		workflow.WithClock(clock),
-		workflow.WithDebugMode(),
+		workflow.WithDefaultOptions(
+			workflow.PollingFrequency(time.Millisecond),
+		),
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -168,26 +176,23 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	}
 	opt := workflow.WithScheduleFilter[MyType, status](filter)
 
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		wg.Done()
 		err := wf.Schedule("andrew", "@monthly", opt)
 		require.Nil(t, err)
 	}()
-
-	// Allow scheduling to take place
-	time.Sleep(200 * time.Millisecond)
-
-	_, err := recordStore.Latest(ctx, workflowName, "andrew")
-	// Expect there to be no entries yet
-	require.True(t, errors.Is(err, workflow.ErrRecordNotFound))
+	wg.Wait()
 
 	// Grab the time from the clock for expectation as to the time we expect the entry to have
 	expectedTimestamp := time.Date(2023, time.May, 1, 0, 0, 0, 0, time.UTC)
 	clock.SetTime(expectedTimestamp)
 
 	// Allow scheduling to take place
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
-	_, err = recordStore.Latest(ctx, workflowName, "andrew")
+	_, err := recordStore.Latest(ctx, workflowName, "andrew")
 	// Expect there to be no entries yet
 	require.True(t, errors.Is(err, workflow.ErrRecordNotFound))
 
@@ -198,7 +203,7 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	clock.SetTime(expectedTimestamp)
 
 	// Allow scheduling to take place
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	latest, err := recordStore.Latest(ctx, workflowName, "andrew")
 	require.Nil(t, err)

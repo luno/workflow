@@ -210,13 +210,36 @@ func TestAddTimeoutPollingFrequency(t *testing.T) {
 }
 
 func TestDefaultStartingPoint(t *testing.T) {
-	require.PanicsWithValue(t,
-		"Workflow requires at least one starting point. Please provide at least one Step, Callback, or Timeout to add a starting point.",
-		func() {
-			b := NewBuilder[string, testStatus]("")
-			_ = b.Build(nil, nil, nil)
-		},
-	)
+	t.Run("Default starting point defaults to first node", func(t *testing.T) {
+		b := NewBuilder[string, testStatus]("consumer lag")
+		b.AddStep(
+			statusStart,
+			func(ctx context.Context, r *Run[string, testStatus]) (testStatus, error) {
+				return statusEnd, nil
+			},
+			statusMiddle,
+		)
+		b.AddStep(
+			statusMiddle,
+			func(ctx context.Context, r *Run[string, testStatus]) (testStatus, error) {
+				return statusEnd, nil
+			},
+			statusEnd,
+		)
+		wf := b.Build(nil, nil, nil)
+
+		require.Equal(t, statusStart, wf.defaultStartingPoint)
+	})
+
+	t.Run("Require starting point", func(t *testing.T) {
+		require.PanicsWithValue(t,
+			"Workflow requires at least one starting point. Please provide at least one Step, Callback, or Timeout to add a starting point.",
+			func() {
+				b := NewBuilder[string, testStatus]("")
+				_ = b.Build(nil, nil, nil)
+			},
+		)
+	})
 }
 
 func TestAddTimeoutDontAllowParallelCount(t *testing.T) {
