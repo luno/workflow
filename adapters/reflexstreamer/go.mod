@@ -8,7 +8,7 @@ replace github.com/luno/workflow => ../..
 
 require (
 	github.com/corverroos/truss v0.0.0-20210514115035-9e5e1b0851a9
-	github.com/luno/jettison v0.0.0-20250226173148-39bbdb7ea038
+	github.com/luno/jettison v0.0.0-20250307143025-a20772f9e9d9
 	github.com/luno/reflex v0.0.0-20250306163217-c9f47c5e6287
 	github.com/luno/workflow v0.2.5
 	github.com/stretchr/testify v1.10.0
@@ -34,9 +34,9 @@ require (
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	go.opentelemetry.io/otel v1.31.0 // indirect
 	go.opentelemetry.io/otel/trace v1.31.0 // indirect
-	golang.org/x/net v0.35.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
-	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/net v0.37.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241015192408-796eee8c2d53 // indirect
 	google.golang.org/grpc v1.69.4 // indirect

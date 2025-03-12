@@ -8,7 +8,7 @@ replace github.com/luno/workflow => ../..
 
 require (
 	github.com/corverroos/truss v0.0.0-20210514115035-9e5e1b0851a9
-	github.com/luno/jettison v0.0.0-20250226173148-39bbdb7ea038
+	github.com/luno/jettison v0.0.0-20250307143025-a20772f9e9d9
 	github.com/luno/workflow v0.2.5
 )
 
@@ -30,7 +30,7 @@ require (
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/protobuf v1.36.5 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
