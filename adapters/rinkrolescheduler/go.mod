@@ -5,9 +5,9 @@ go 1.23.2
 replace github.com/luno/workflow => ../..
 
 require (
-	github.com/luno/rink/v2 v2.0.0-20241103103201-0d1bbd6e29dc
+	github.com/luno/rink/v2 v2.0.0-20250306163207-eaeda5a233db
 	github.com/luno/workflow v0.2.5
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	go.etcd.io/etcd/client/v3 v3.5.18
 	google.golang.org/grpc v1.69.4
 )
@@ -33,9 +33,8 @@ require (
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.18 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.18 // indirect
-	go.uber.org/atomic v1.7.0 // indirect
-	go.uber.org/multierr v1.6.0 // indirect
-	go.uber.org/zap v1.17.0 // indirect
+	go.uber.org/multierr v1.10.0 // indirect
+	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
