@@ -214,7 +214,6 @@ func benchmarkWorkflow(b *testing.B, numberOfSteps int) {
 		recordStore,
 		memrolescheduler.New(),
 		workflow.WithClock(clock),
-		workflow.WithOutboxPollingFrequency(1*time.Nanosecond),
 		workflow.WithDefaultOptions(
 			workflow.PollingFrequency(1*time.Nanosecond),
 		),

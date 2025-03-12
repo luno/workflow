@@ -31,7 +31,7 @@ func outboxConsumer[Type any, Status StatusType](w *Workflow[Type, Status], conf
 	}
 
 	w.run(role, processName, func(ctx context.Context) error {
-		return purgeOutbox[Type, Status](
+		return purgeOutbox(
 			ctx,
 			w.Name(),
 			processName,
@@ -61,31 +61,44 @@ type outboxConfig struct {
 	limit            int64
 }
 
-func WithOutboxPollingFrequency(d time.Duration) BuildOption {
+func WithOutboxOptions(opts ...OutboxOption) BuildOption {
 	return func(bo *buildOptions) {
-		bo.outboxConfig.pollingFrequency = d
+		options := defaultOutboxConfig()
+		for _, set := range opts {
+			set(&options)
+		}
+
+		bo.outboxConfig = options
 	}
 }
 
-func WithOutboxErrBackoff(d time.Duration) BuildOption {
-	return func(bo *buildOptions) {
-		bo.outboxConfig.errBackOff = d
+type OutboxOption func(w *outboxConfig)
+
+func OutboxPollingFrequency(d time.Duration) OutboxOption {
+	return func(bo *outboxConfig) {
+		bo.pollingFrequency = d
 	}
 }
 
-func WithOutboxLookupLimit(limit int64) BuildOption {
-	return func(bo *buildOptions) {
-		bo.outboxConfig.limit = limit
+func OutboxErrBackOff(d time.Duration) OutboxOption {
+	return func(bo *outboxConfig) {
+		bo.errBackOff = d
 	}
 }
 
-func WithOutboxLagAlert(d time.Duration) BuildOption {
-	return func(bo *buildOptions) {
-		bo.outboxConfig.lagAlert = d
+func OutboxLookupLimit(limit int64) OutboxOption {
+	return func(bo *outboxConfig) {
+		bo.limit = limit
 	}
 }
 
-func purgeOutbox[Type any, Status StatusType](
+func OutboxLagAlert(d time.Duration) OutboxOption {
+	return func(bo *outboxConfig) {
+		bo.lagAlert = d
+	}
+}
+
+func purgeOutbox(
 	ctx context.Context,
 	workflowName string,
 	processName string,

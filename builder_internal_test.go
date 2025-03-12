@@ -445,6 +445,33 @@ func TestWithDefaultOptions(t *testing.T) {
 	require.Equal(t, 700, wf.defaultOpts.pauseAfterErrCount)
 }
 
+func TestWithOutboxOptions(t *testing.T) {
+	b := NewBuilder[string, testStatus]("consumer lag")
+	b.AddStep(
+		statusStart,
+		func(ctx context.Context, r *Run[string, testStatus]) (testStatus, error) {
+			return statusEnd, nil
+		},
+		statusEnd,
+	)
+	wf := b.Build(
+		nil,
+		nil,
+		nil,
+		WithOutboxOptions(
+			OutboxPollingFrequency(time.Hour),
+			OutboxErrBackOff(2*time.Hour),
+			OutboxLagAlert(3*time.Hour),
+			OutboxLookupLimit(4),
+		),
+	)
+
+	require.Equal(t, time.Hour, wf.outboxConfig.pollingFrequency)
+	require.Equal(t, 2*time.Hour, wf.outboxConfig.errBackOff)
+	require.Equal(t, 3*time.Hour, wf.outboxConfig.lagAlert)
+	require.Equal(t, int64(4), wf.outboxConfig.limit)
+}
+
 func TestWithPauseAutoRetry(t *testing.T) {
 	b := NewBuilder[string, testStatus]("consumer lag")
 	b.AddStep(

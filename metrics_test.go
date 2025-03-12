@@ -351,7 +351,9 @@ func TestRunStateChanges(t *testing.T) {
 		memstreamer.New(),
 		memrecordstore.New(),
 		memrolescheduler.New(),
-		workflow.WithOutboxPollingFrequency(time.Millisecond),
+		workflow.WithOutboxOptions(
+			workflow.OutboxPollingFrequency(time.Millisecond),
+		),
 	)
 
 	ctx := context.Background()
@@ -384,7 +386,6 @@ func TestMetricProcessSkippedEvents(t *testing.T) {
 		memstreamer.New(),
 		memrecordstore.New(),
 		memrolescheduler.New(),
-		workflow.WithOutboxPollingFrequency(time.Millisecond),
 	)
 
 	ctx := context.Background()

@@ -103,7 +103,6 @@ func buildWorkflow(fn workflow.ConsumerFunc[string, status]) func(recordStore wo
 			recordStore,
 			memrolescheduler.New(),
 			workflow.WithDebugMode(),
-			workflow.WithOutboxPollingFrequency(time.Millisecond*5),
 		)
 
 		return w
