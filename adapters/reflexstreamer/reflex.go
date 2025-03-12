@@ -49,23 +49,12 @@ type Producer struct {
 }
 
 func (p *Producer) Send(ctx context.Context, runID string, statusType int, headers map[workflow.Header]string) error {
-	tx, err := p.writer.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
 	b, err := json.Marshal(headers)
 	if err != nil {
 		return err
 	}
 
-	notify, err := p.eventsTable.InsertWithMetadata(ctx, tx, runID, EventType(statusType), b)
-	if err != nil {
-		return err
-	}
-
-	err = tx.Commit()
+	notify, err := p.eventsTable.InsertWithMetadata(ctx, p.writer, runID, EventType(statusType), b)
 	if err != nil {
 		return err
 	}
