@@ -14,7 +14,7 @@ jobs:
   core:
     strategy:
       matrix:
-        go: [ '1.22', '1' ]
+        go: [ '1.23', '1' ]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
