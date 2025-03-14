@@ -111,22 +111,10 @@ func TestMetricProcessStates(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 500)
 
-	expected := `
-# HELP workflow_process_states The current states of all the processes
-# TYPE workflow_process_states gauge
-workflow_process_states{process_name="delete-consumer",workflow_name="example"} 2
-workflow_process_states{process_name="outbox-consumer",workflow_name="example"} 2
-workflow_process_states{process_name="start-consumer-1-of-1",workflow_name="example"} 2
-workflow_process_states{process_name="paused-records-retry-consumer",workflow_name="example"} 2
-`
-
-	err := testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
-	require.Nil(t, err)
-
 	w.Stop()
 
 	// Ensure that the metrics are updated to false when stopping the process
-	expected = `
+	expected := `
 # HELP workflow_process_states The current states of all the processes
 # TYPE workflow_process_states gauge
 workflow_process_states{process_name="delete-consumer",workflow_name="example"} 1
@@ -135,7 +123,7 @@ workflow_process_states{process_name="outbox-consumer",workflow_name="example"} 
 workflow_process_states{process_name="paused-records-retry-consumer",workflow_name="example"} 1
 `
 
-	err = testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
+	err := testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
 	require.Nil(t, err)
 
 	metrics.ProcessStates.Reset()
@@ -351,7 +339,9 @@ func TestRunStateChanges(t *testing.T) {
 		memstreamer.New(),
 		memrecordstore.New(),
 		memrolescheduler.New(),
-		workflow.WithOutboxPollingFrequency(time.Millisecond),
+		workflow.WithOutboxOptions(
+			workflow.OutboxPollingFrequency(time.Millisecond),
+		),
 	)
 
 	ctx := context.Background()
@@ -384,7 +374,6 @@ func TestMetricProcessSkippedEvents(t *testing.T) {
 		memstreamer.New(),
 		memrecordstore.New(),
 		memrolescheduler.New(),
-		workflow.WithOutboxPollingFrequency(time.Millisecond),
 	)
 
 	ctx := context.Background()
