@@ -10,7 +10,7 @@ import (
 
 func TestTrace(t *testing.T) {
 	t.Run("Basic 0 depth", func(t *testing.T) {
-		trace := stack.Trace(0)
+		trace := stack.Trace()
 		require.Contains(t, trace, "stack_test.go")
 		require.Contains(t, trace, "/internal/stack/stack_test.go")
 	})
@@ -18,7 +18,7 @@ func TestTrace(t *testing.T) {
 	t.Run("Exclude internal 3 deep stack", func(t *testing.T) {
 		var trace string
 		grandchild := func() {
-			trace = stack.Trace(3)
+			trace = stack.Trace()
 		}
 		child := func() {
 			grandchild()
@@ -31,6 +31,16 @@ func TestTrace(t *testing.T) {
 		}
 
 		external()
-		t.Log(trace)
+
+		shouldContain := []string{
+			"stack_test.go:21",
+			"stack_test.go:24",
+			"stack_test.go:27",
+			"stack_test.go:30",
+			"stack_test.go:33",
+		}
+		for _, line := range shouldContain {
+			require.Contains(t, trace, line)
+		}
 	})
 }

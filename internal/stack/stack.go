@@ -16,10 +16,7 @@ func Trace() string {
 	trace := string(stack[:n])
 	lines := strings.Split(trace, "\n")
 
-	var (
-		stackTrace     string
-		remainingDepth = 1 // Add one to remove the stack entry of "/internal/stack/stack.go"
-	)
+	var stackTrace string
 	for _, line := range lines {
 		if strings.Contains(line, "github.com/luno/workflow") {
 			continue
@@ -30,11 +27,6 @@ func Trace() string {
 		}
 
 		if !strings.Contains(line, "/") {
-			continue
-		}
-
-		if remainingDepth != 0 {
-			remainingDepth--
 			continue
 		}
 
