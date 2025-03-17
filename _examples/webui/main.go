@@ -33,14 +33,6 @@ func main() {
 		}
 	}
 
-	rec, err := recordStore.Latest(ctx, ExampleWorkflowName, "Customer 2")
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println("Trace: ")
-	fmt.Println(rec.Meta.TraceOrigin)
-
 	paths := webui.Paths{
 		List:       "/api/v1/list",
 		Update:     "/api/v1/record/update",
@@ -62,7 +54,7 @@ func main() {
 
 	fmt.Println("Head on over to 'http://localhost:9492' to view!")
 
-	err = http.ListenAndServe("localhost:9492", nil)
+	err := http.ListenAndServe("localhost:9492", nil)
 	if err != nil {
 		panic(err)
 	}
