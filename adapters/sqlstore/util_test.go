@@ -24,8 +24,8 @@ var migrations = []string{
 		primary key(run_id),
 	
 		index by_workflow_name_foreign_id_status (workflow_name, foreign_id, status),
-    	index by_run_state (run_state),
-    	index by_created_at (created_at)
+		index by_run_state (run_state),
+		index by_created_at (created_at)
 	)`,
 	`
 	create table workflow_outbox (
