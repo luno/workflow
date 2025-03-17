@@ -6,8 +6,7 @@ import (
 )
 
 // Trace returns a stack trace of the external caller. Depth refers to the depth inside workflow that Trace is being
-// called from. So if the exported function in Workflow that is being called is 2 calls up then depth should be 2
-// to trum
+// called from. So if the exported function in Workflow that is being called is 2 calls up then depth should be 2.
 func Trace(depth int) string {
 	// Capture at most 4KB of the stack trace
 	stack := make([]byte, 4096)
