@@ -97,7 +97,7 @@ func updateRecord(ctx context.Context, store storeFunc, record *Record, previous
 		Inc()
 
 	// Increment the version by 1.
-	record.Meta.Version += 1
+	record.Meta.Version++
 
 	return store(ctx, record)
 }
