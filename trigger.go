@@ -76,7 +76,7 @@ func trigger[Type any, Status StatusType](
 
 	meta := Meta{
 		StatusDescription: util.CamelCaseToSpacing(startingStatus.String()),
-		TraceOrigin:       stack.Trace(1),
+		TraceOrigin:       stack.Trace(),
 	}
 
 	uid, err := uuid.NewUUID()

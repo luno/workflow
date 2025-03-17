@@ -36,7 +36,9 @@ func TestListHandler(t *testing.T) {
 					WorkflowName: "test",
 					ForeignID:    "9",
 					RunState:     workflow.RunStateCompleted,
-					Status:       9,
+					Meta: workflow.Meta{
+						StatusDescription: "Start",
+					},
 				},
 			},
 			expectedResponse: api.ListResponse{
@@ -45,7 +47,7 @@ func TestListHandler(t *testing.T) {
 						WorkflowName: "test",
 						ForeignID:    "9",
 						RunState:     workflow.RunStateCompleted.String(),
-						Status:       "9",
+						Status:       "Start",
 					},
 				},
 			},
@@ -64,13 +66,17 @@ func TestListHandler(t *testing.T) {
 					WorkflowName: "test",
 					ForeignID:    "9",
 					RunState:     workflow.RunStateCompleted,
-					Status:       9,
+					Meta: workflow.Meta{
+						StatusDescription: "Start",
+					},
 				},
 				{
 					WorkflowName: "test",
 					ForeignID:    "9",
 					RunState:     workflow.RunStateCompleted,
-					Status:       9,
+					Meta: workflow.Meta{
+						StatusDescription: "Start",
+					},
 				},
 			},
 			expectedResponse: api.ListResponse{
@@ -79,13 +85,13 @@ func TestListHandler(t *testing.T) {
 						WorkflowName: "test",
 						ForeignID:    "9",
 						RunState:     workflow.RunStateCompleted.String(),
-						Status:       "9",
+						Status:       "Start",
 					},
 					{
 						WorkflowName: "test",
 						ForeignID:    "9",
 						RunState:     workflow.RunStateCompleted.String(),
-						Status:       "9",
+						Status:       "Start",
 					},
 				},
 			},
@@ -105,7 +111,9 @@ func TestListHandler(t *testing.T) {
 					WorkflowName: "test",
 					ForeignID:    "9",
 					RunState:     workflow.RunStateCompleted,
-					Status:       9,
+					Meta: workflow.Meta{
+						StatusDescription: "Start",
+					},
 				},
 			},
 			expectedResponse: api.ListResponse{
@@ -114,7 +122,7 @@ func TestListHandler(t *testing.T) {
 						WorkflowName: "test",
 						ForeignID:    "9",
 						RunState:     workflow.RunStateCompleted.String(),
-						Status:       "9",
+						Status:       "Start",
 					},
 				},
 			},
@@ -134,7 +142,9 @@ func TestListHandler(t *testing.T) {
 					WorkflowName: "test",
 					ForeignID:    "9",
 					RunState:     workflow.RunStateCompleted,
-					Status:       9,
+					Meta: workflow.Meta{
+						StatusDescription: "Start",
+					},
 				},
 			},
 			expectedResponse: api.ListResponse{
@@ -143,7 +153,7 @@ func TestListHandler(t *testing.T) {
 						WorkflowName: "test",
 						ForeignID:    "9",
 						RunState:     workflow.RunStateCompleted.String(),
-						Status:       "9",
+						Status:       "Start",
 					},
 				},
 			},
@@ -163,7 +173,9 @@ func TestListHandler(t *testing.T) {
 					WorkflowName: "test",
 					ForeignID:    "9",
 					RunState:     workflow.RunStateCompleted,
-					Status:       9,
+					Meta: workflow.Meta{
+						StatusDescription: "Start",
+					},
 				},
 			},
 			expectedResponse: api.ListResponse{
@@ -172,7 +184,7 @@ func TestListHandler(t *testing.T) {
 						WorkflowName: "test",
 						ForeignID:    "9",
 						RunState:     workflow.RunStateCompleted.String(),
-						Status:       "9",
+						Status:       "Start",
 					},
 				},
 			},
@@ -208,9 +220,7 @@ func TestListHandler(t *testing.T) {
 
 					return tc.listResponse, nil
 				}
-				api.List(listFn, func(workflowName string, enumValue int) string {
-					return "9"
-				})(w, r)
+				api.List(listFn)(w, r)
 			}))
 			t.Cleanup(srv.Close)
 
