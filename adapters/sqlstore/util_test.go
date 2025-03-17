@@ -16,10 +16,10 @@ var migrations = []string{
 		run_id                 varchar(255) not null,
 		run_state              int not null,
 		status                 int not null,
-		object                 JSON not null,
+		object                 longblob not null,
 		created_at             datetime(3) not null,
 		updated_at             datetime(3) not null,
-		meta                   JSON not null,
+		meta                   blob not null,
 	
 		primary key(run_id),
 	
