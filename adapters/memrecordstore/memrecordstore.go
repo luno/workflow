@@ -84,6 +84,7 @@ func (s *Store) Lookup(ctx context.Context, id string) (*workflow.Record, error)
 		Object:       record.Object,
 		CreatedAt:    record.CreatedAt,
 		UpdatedAt:    record.UpdatedAt,
+		Meta:         record.Meta,
 	}, nil
 }
 
@@ -138,6 +139,7 @@ func (s *Store) Latest(ctx context.Context, workflowName, foreignID string) (*wo
 		Object:       record.Object,
 		CreatedAt:    record.CreatedAt,
 		UpdatedAt:    record.UpdatedAt,
+		Meta:         record.Meta,
 	}, nil
 }
 

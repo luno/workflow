@@ -34,7 +34,7 @@ func TestRunState(t *testing.T) {
 		{
 			name: "Paused",
 			workflow: buildWorkflow(func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
-				return r.Pause(ctx)
+				return r.Pause(ctx, "testing pause")
 			}),
 			expected: []workflow.RunState{
 				workflow.RunStateInitiated,
@@ -45,7 +45,7 @@ func TestRunState(t *testing.T) {
 		{
 			name: "Cancelled",
 			workflow: buildWorkflow(func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
-				return r.Cancel(ctx)
+				return r.Cancel(ctx, "testing cancel")
 			}),
 			expected: []workflow.RunState{
 				workflow.RunStateInitiated,
@@ -151,13 +151,14 @@ func TestWorkflowRunStateController(t *testing.T) {
 
 	rsc := workflow.NewRunStateController(recordStore.Store, wr)
 
-	err = rsc.Pause(ctx)
+	err = rsc.Pause(ctx, "test pause")
 	require.Nil(t, err)
 
 	record, err = recordStore.Latest(ctx, workflowName, foreignID)
 	require.Nil(t, err)
 
 	require.Equal(t, workflow.RunStatePaused, record.RunState)
+	require.Equal(t, "test pause", record.Meta.RunStateReason)
 
 	err = rsc.Resume(ctx)
 	require.Nil(t, err)
@@ -167,21 +168,23 @@ func TestWorkflowRunStateController(t *testing.T) {
 
 	require.Equal(t, workflow.RunStateRunning, record.RunState)
 
-	err = rsc.Cancel(ctx)
+	err = rsc.Cancel(ctx, "test cancel")
 	require.Nil(t, err)
 
 	record, err = recordStore.Latest(ctx, workflowName, foreignID)
 	require.Nil(t, err)
 
 	require.Equal(t, workflow.RunStateCancelled, record.RunState)
+	require.Equal(t, "test cancel", record.Meta.RunStateReason)
 
-	err = rsc.DeleteData(ctx)
+	err = rsc.DeleteData(ctx, "test delete")
 	require.Nil(t, err)
 
 	record, err = recordStore.Latest(ctx, workflowName, foreignID)
 	require.Nil(t, err)
 
 	require.Equal(t, workflow.RunStateRequestedDataDeleted, record.RunState)
+	require.Equal(t, "test delete", record.Meta.RunStateReason)
 }
 
 func TestIsFinished(t *testing.T) {

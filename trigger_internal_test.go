@@ -18,7 +18,7 @@ func Test_trigger(t *testing.T) {
 
 	t.Run("Expected non-nil error when Trigger called before Run()", func(t *testing.T) {
 		ctx := context.Background()
-		_, err := trigger(ctx, w, nil, "1")
+		_, err := trigger(ctx, w, nil, nil, "1")
 
 		require.Equal(t, "trigger failed: workflow is not running", err.Error())
 	})
@@ -27,7 +27,7 @@ func Test_trigger(t *testing.T) {
 		ctx := context.Background()
 		w.calledRun = true
 
-		_, err := trigger(ctx, w, nil, "1", WithStartingPoint[string, testStatus](statusEnd))
+		_, err := trigger(ctx, w, nil, nil, "1", WithStartingPoint[string, testStatus](statusEnd))
 		require.Equal(t, fmt.Sprintf("trigger failed: status provided is not configured for workflow: %s", statusEnd), err.Error())
 	})
 
@@ -42,7 +42,22 @@ func Test_trigger(t *testing.T) {
 				RunState:     RunStateRunning,
 				Status:       int(statusMiddle),
 			}, nil
-		}, "1")
+		}, nil, "1")
 		require.True(t, errors.Is(err, ErrWorkflowInProgress))
+	})
+
+	t.Run("Expects Meta to be correctly set", func(t *testing.T) {
+		ctx := context.Background()
+		w.calledRun = true
+
+		_, err := trigger(ctx, w, func(ctx context.Context, workflowName, foreignID string) (*Record, error) {
+			return nil, ErrRecordNotFound
+		}, func(ctx context.Context, record *Record) error {
+			require.Equal(t, uint(1), record.Meta.Version)
+			require.Equal(t, statusStart.String(), record.Meta.StatusDescription)
+			require.Contains(t, record.Meta.TraceOrigin, "trigger_internal_test.go")
+			return nil
+		}, "1")
+		require.NoError(t, err)
 	})
 }

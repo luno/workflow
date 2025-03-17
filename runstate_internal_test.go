@@ -11,16 +11,16 @@ func TestNoopRunStateController(t *testing.T) {
 	ctrl := testingRunStateController{}
 
 	ctx := context.Background()
-	err := ctrl.Pause(ctx)
+	err := ctrl.Pause(ctx, "")
 	require.Nil(t, err)
 
 	err = ctrl.Resume(ctx)
 	require.Nil(t, err)
 
-	err = ctrl.Cancel(ctx)
+	err = ctrl.Cancel(ctx, "")
 	require.Nil(t, err)
 
-	err = ctrl.DeleteData(ctx)
+	err = ctrl.DeleteData(ctx, "")
 	require.Nil(t, err)
 }
 
@@ -333,7 +333,7 @@ func TestRunStateControllerTransitions(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			err := ctrl.update(ctx, tc.to)
+			err := ctrl.update(ctx, tc.to, "")
 			require.Equal(t, tc.valid, err == nil)
 		})
 	}

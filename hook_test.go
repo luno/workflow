@@ -19,7 +19,7 @@ func TestWorkflow_OnPauseHook(t *testing.T) {
 
 	wf := setupHookTest(t, func(b *workflow.Builder[MyType, status]) {
 		b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Run[MyType, status]) (status, error) {
-			return r.Pause(ctx)
+			return r.Pause(ctx, "Test pausing")
 		}, StatusMiddle)
 
 		b.OnPause(func(ctx context.Context, record *workflow.TypedRecord[MyType, status]) error {
@@ -41,7 +41,7 @@ func TestWorkflow_OnCancelHook(t *testing.T) {
 
 	wf := setupHookTest(t, func(b *workflow.Builder[MyType, status]) {
 		b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Run[MyType, status]) (status, error) {
-			return r.Cancel(ctx)
+			return r.Cancel(ctx, "Test cancel")
 		}, StatusMiddle)
 
 		b.OnCancel(func(ctx context.Context, record *workflow.TypedRecord[MyType, status]) error {

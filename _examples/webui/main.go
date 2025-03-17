@@ -33,6 +33,14 @@ func main() {
 		}
 	}
 
+	rec, err := recordStore.Latest(ctx, ExampleWorkflowName, "Customer 2")
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Trace: ")
+	fmt.Println(rec.Meta.TraceOrigin)
+
 	paths := webui.Paths{
 		List:       "/api/v1/list",
 		Update:     "/api/v1/record/update",
@@ -54,7 +62,7 @@ func main() {
 
 	fmt.Println("Head on over to 'http://localhost:9492' to view!")
 
-	err := http.ListenAndServe("localhost:9492", nil)
+	err = http.ListenAndServe("localhost:9492", nil)
 	if err != nil {
 		panic(err)
 	}
@@ -118,11 +126,11 @@ func Example(rs workflow.RecordStore) *workflow.Workflow[ExampleData, Status] {
 		StatusMiddle,
 		func(ctx context.Context, r *workflow.Run[ExampleData, Status]) (Status, error) {
 			if r.ForeignID == "Customer 2" {
-				return r.Pause(ctx)
+				return r.Pause(ctx, "Always pause customer 2")
 			}
 
 			if r.ForeignID == "Customer 1" {
-				return r.Cancel(ctx)
+				return r.Cancel(ctx, "Always cancel Customer 1")
 			}
 
 			*r.Object = ExampleData{

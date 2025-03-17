@@ -31,7 +31,7 @@ func maybePause[Type any, Status StatusType](
 		return false, nil
 	}
 
-	_, err = run.Pause(ctx)
+	_, err = run.Pause(ctx, "max error retry threshold hit - automatically paused")
 	if err != nil {
 		return false, err
 	}

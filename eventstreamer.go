@@ -39,6 +39,7 @@ const (
 	HeaderTopic         Header = "topic"
 	HeaderRunID         Header = "run_id"
 	HeaderRunState      Header = "run_state"
+	HeaderRecordVersion Header = "record_version"
 	HeaderConnectorData Header = "connector_data"
 )
 

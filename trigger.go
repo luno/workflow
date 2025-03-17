@@ -6,6 +6,9 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+
+	"github.com/luno/workflow/internal/stack"
+	"github.com/luno/workflow/internal/util"
 )
 
 func (w *Workflow[Type, Status]) Trigger(
@@ -13,13 +16,14 @@ func (w *Workflow[Type, Status]) Trigger(
 	foreignID string,
 	opts ...TriggerOption[Type, Status],
 ) (runID string, err error) {
-	return trigger(ctx, w, w.recordStore.Latest, foreignID, opts...)
+	return trigger(ctx, w, w.recordStore.Latest, w.recordStore.Store, foreignID, opts...)
 }
 
 func trigger[Type any, Status StatusType](
 	ctx context.Context,
 	w *Workflow[Type, Status],
 	lookup latestLookup,
+	store storeFunc,
 	foreignID string,
 	opts ...TriggerOption[Type, Status],
 ) (runID string, err error) {
@@ -70,6 +74,11 @@ func trigger[Type any, Status StatusType](
 		return "", ErrWorkflowInProgress
 	}
 
+	meta := Meta{
+		StatusDescription: util.CamelCaseToSpacing(startingStatus.String()),
+		TraceOrigin:       stack.Trace(1),
+	}
+
 	uid, err := uuid.NewUUID()
 	if err != nil {
 		return "", err
@@ -85,9 +94,10 @@ func trigger[Type any, Status StatusType](
 		Object:       object,
 		CreatedAt:    w.clock.Now(),
 		UpdatedAt:    w.clock.Now(),
+		Meta:         meta,
 	}
 
-	err = updateRecord(ctx, w.recordStore.Store, wr, RunStateUnknown)
+	err = updateRecord(ctx, store, wr, RunStateUnknown)
 	if err != nil {
 		return "", err
 	}

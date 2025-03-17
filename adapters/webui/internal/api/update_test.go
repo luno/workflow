@@ -176,6 +176,7 @@ func TestUpdateHandler(t *testing.T) {
 
 				// No need to compare objects
 				expected.Object = actual.Object
+				expected.Meta.Version = 1
 				require.Equal(t, expected, *actual)
 			}
 		})

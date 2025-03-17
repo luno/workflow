@@ -256,7 +256,7 @@ type testingRunStateController struct {
 	deleteData func(ctx context.Context) error
 }
 
-func (c *testingRunStateController) Pause(ctx context.Context) error {
+func (c *testingRunStateController) Pause(ctx context.Context, reason string) error {
 	if c.pause == nil {
 		return nil
 	}
@@ -264,7 +264,7 @@ func (c *testingRunStateController) Pause(ctx context.Context) error {
 	return c.pause(ctx)
 }
 
-func (c *testingRunStateController) Cancel(ctx context.Context) error {
+func (c *testingRunStateController) Cancel(ctx context.Context, reason string) error {
 	if c.cancel == nil {
 		return nil
 	}
@@ -280,7 +280,7 @@ func (c *testingRunStateController) Resume(ctx context.Context) error {
 	return c.resume(ctx)
 }
 
-func (c *testingRunStateController) DeleteData(ctx context.Context) error {
+func (c *testingRunStateController) DeleteData(ctx context.Context, reason string) error {
 	if c.deleteData == nil {
 		return nil
 	}

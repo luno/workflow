@@ -5,9 +5,10 @@ create table workflow_records (
     run_id                 varchar(255) not null,
     run_state              int not null,
     status                 int not null,
-    object                 longblob not null,
+    object                 JSON not null,
     created_at             datetime(3) not null,
     updated_at             datetime(3) not null,
+    meta                   JSON not null,
 
     primary key(run_id),
 
@@ -22,5 +23,7 @@ create table workflow_outbox (
     data               blob,
     created_at         datetime(3) not null,
 
-    primary key (id)
+    primary key (id),
+
+    index by_workflow_name (workflow_name)
 );

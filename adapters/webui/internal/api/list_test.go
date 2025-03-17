@@ -195,15 +195,15 @@ func TestListHandler(t *testing.T) {
 					filter := workflow.MakeFilter(filters...)
 					if tc.request.FilterByRunState != 0 {
 						require.True(t, filter.ByRunState().Enabled)
-						require.Equal(t, fmt.Sprintf("%v", tc.request.FilterByRunState), filter.ByRunState().Value)
+						require.Equal(t, fmt.Sprintf("%v", tc.request.FilterByRunState), filter.ByRunState().Value())
 					}
 					if tc.request.FilterByForeignID != "" {
 						require.True(t, filter.ByForeignID().Enabled)
-						require.Equal(t, tc.request.FilterByForeignID, filter.ByForeignID().Value)
+						require.Equal(t, tc.request.FilterByForeignID, filter.ByForeignID().Value())
 					}
 					if tc.request.FilterByStatus != 0 {
 						require.True(t, filter.ByStatus().Enabled)
-						require.Equal(t, fmt.Sprintf("%v", tc.request.FilterByStatus), filter.ByStatus().Value)
+						require.Equal(t, fmt.Sprintf("%v", tc.request.FilterByStatus), filter.ByStatus().Value())
 					}
 
 					return tc.listResponse, nil

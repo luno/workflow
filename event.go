@@ -99,6 +99,7 @@ func MakeOutboxEventData(record Record) (OutboxEventData, error) {
 	headers[string(HeaderTopic)] = topic
 	headers[string(HeaderRunID)] = record.RunID
 	headers[string(HeaderRunState)] = strconv.FormatInt(int64(record.RunState), 10)
+	headers[string(HeaderRecordVersion)] = strconv.FormatInt(int64(record.Meta.Version), 10)
 
 	r := outboxpb.OutboxRecord{
 		RunId:   record.RunID,

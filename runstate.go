@@ -73,18 +73,18 @@ type RunStateController interface {
 	// Pause will take the workflow run specified and move it into a temporary state where it will no longer be processed.
 	// A paused workflow run can be resumed by calling Resume. ErrUnableToPause is returned when a workflow is not in a
 	// state to be paused.
-	Pause(ctx context.Context) error
+	Pause(ctx context.Context, reason string) error
 	// Cancel can be called after Pause has been called. A paused run of the workflow can be indefinitely cancelled.
 	// Once cancelled, DeleteData can be called and will move the run into an indefinite state of DataDeleted.
 	// ErrUnableToCancel is returned when the workflow record is not in a state to be cancelled.
-	Cancel(ctx context.Context) error
+	Cancel(ctx context.Context, reason string) error
 	// Resume can be called on a workflow run that has been paused. ErrUnableToResume is returned when the workflow
 	// run is not in a state to be resumed.
 	Resume(ctx context.Context) error
 	// DeleteData can be called after a workflow run has been completed or cancelled. DeleteData should be used to
 	// comply with the right to be forgotten such as complying with GDPR. ErrUnableToDelete is returned when the
 	// workflow run is not in a state to be deleted.
-	DeleteData(ctx context.Context) error
+	DeleteData(ctx context.Context, reason string) error
 }
 
 func NewRunStateController(store storeFunc, wr *Record) RunStateController {
@@ -101,23 +101,23 @@ type runStateControllerImpl struct {
 	store  storeFunc
 }
 
-func (rsc *runStateControllerImpl) Pause(ctx context.Context) error {
-	return rsc.update(ctx, RunStatePaused)
+func (rsc *runStateControllerImpl) Pause(ctx context.Context, reason string) error {
+	return rsc.update(ctx, RunStatePaused, reason)
 }
 
 func (rsc *runStateControllerImpl) Resume(ctx context.Context) error {
-	return rsc.update(ctx, RunStateRunning)
+	return rsc.update(ctx, RunStateRunning, "")
 }
 
-func (rsc *runStateControllerImpl) Cancel(ctx context.Context) error {
-	return rsc.update(ctx, RunStateCancelled)
+func (rsc *runStateControllerImpl) Cancel(ctx context.Context, reason string) error {
+	return rsc.update(ctx, RunStateCancelled, reason)
 }
 
-func (rsc *runStateControllerImpl) DeleteData(ctx context.Context) error {
-	return rsc.update(ctx, RunStateRequestedDataDeleted)
+func (rsc *runStateControllerImpl) DeleteData(ctx context.Context, reason string) error {
+	return rsc.update(ctx, RunStateRequestedDataDeleted, reason)
 }
 
-func (rsc *runStateControllerImpl) update(ctx context.Context, rs RunState) error {
+func (rsc *runStateControllerImpl) update(ctx context.Context, rs RunState, reason string) error {
 	valid, ok := runStateTransitions[rsc.record.RunState]
 	if !ok || !valid[rs] {
 		return fmt.Errorf("invalid RunState: from %s | to %s", rsc.record.RunState, rs)
@@ -125,6 +125,7 @@ func (rsc *runStateControllerImpl) update(ctx context.Context, rs RunState) erro
 
 	previousRunState := rsc.record.RunState
 	rsc.record.RunState = rs
+	rsc.record.Meta.RunStateReason = reason
 	return updateRecord(ctx, rsc.store, rsc.record, previousRunState)
 }
 
