@@ -6,7 +6,7 @@ replace github.com/luno/workflow => ../..
 
 require (
 	github.com/IBM/sarama v1.45.1
-	github.com/luno/workflow v0.2.5
+	github.com/luno/workflow v0.3.0
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.35.0
 	github.com/testcontainers/testcontainers-go/modules/kafka v0.35.0
