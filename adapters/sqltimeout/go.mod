@@ -9,7 +9,7 @@ replace github.com/luno/workflow => ../..
 require (
 	github.com/corverroos/truss v0.0.0-20210514115035-9e5e1b0851a9
 	github.com/luno/jettison v0.0.0-20250307143025-a20772f9e9d9
-	github.com/luno/workflow v0.2.5
+	github.com/luno/workflow v0.3.0
 )
 
 require (
