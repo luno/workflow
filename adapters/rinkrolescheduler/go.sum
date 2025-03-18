@@ -37,8 +37,8 @@ github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/luno/jettison v0.0.0-20230912135954-09d6084f5df9 h1:ykQ0/3gmOFypz1tNTyisrEM51rW7bx/UCGqEqrm/VyM=
 github.com/luno/jettison v0.0.0-20230912135954-09d6084f5df9/go.mod h1:Fc8KRfQEydIud0rjBHUNxUyyEKSidxP0kOlg4Dwn3JA=
-github.com/luno/rink/v2 v2.0.0-20250306163207-eaeda5a233db h1:uK4r+wtFp+TDcDKYttj2ib6ew96UXRLn6s/0NbLcWTc=
-github.com/luno/rink/v2 v2.0.0-20250306163207-eaeda5a233db/go.mod h1:SNp21A15eTDrEjHKhE5BVNUw67V+wqShTnLnzl9L3xo=
+github.com/luno/rink/v2 v2.0.0-20250313150022-1b7f292292ff h1:umtUZHnUXNyTOi53rT6hOPUOGG5QpoZ55OkiYKT6SSk=
+github.com/luno/rink/v2 v2.0.0-20250313150022-1b7f292292ff/go.mod h1:SNp21A15eTDrEjHKhE5BVNUw67V+wqShTnLnzl9L3xo=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
