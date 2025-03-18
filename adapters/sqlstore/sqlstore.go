@@ -33,7 +33,7 @@ func New(writer *sql.DB, reader *sql.DB, recordTableName string, outboxTableName
 		outboxTableName: outboxTableName,
 	}
 
-	e.recordCols = " `workflow_name`, `foreign_id`, `run_id`, `run_state`, `status`, `object`, `created_at`, `updated_at` "
+	e.recordCols = " `workflow_name`, `foreign_id`, `run_id`, `run_state`, `status`, `object`, `created_at`, `updated_at`, `meta` "
 	e.recordSelectPrefix = " select " + e.recordCols + " from " + e.recordTableName + " where "
 
 	e.outboxCols = " `id`, `workflow_name`, `data`, `created_at` "
@@ -65,12 +65,12 @@ func (s *SQLStore) Store(ctx context.Context, r *workflow.Record) error {
 	}
 
 	if mustCreate {
-		err := s.create(ctx, tx, r.WorkflowName, r.ForeignID, r.RunID, r.Status, r.Object, int(r.RunState))
+		err := s.create(ctx, tx, r.WorkflowName, r.ForeignID, r.RunID, r.Status, r.Object, int(r.RunState), r.Meta)
 		if err != nil {
 			return err
 		}
 	} else {
-		err := s.update(ctx, tx, r.RunID, r.Status, r.Object, int(r.RunState))
+		err := s.update(ctx, tx, r.RunID, r.Status, r.Object, int(r.RunState), r.Meta)
 		if err != nil {
 			return err
 		}

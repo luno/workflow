@@ -43,7 +43,7 @@ func Update(store workflow.RecordStore) http.HandlerFunc {
 
 		switch req.Action {
 		case "pause":
-			err = ctr.Pause(r.Context())
+			err = ctr.Pause(r.Context(), "")
 			if err != nil {
 				http.Error(w, "failed to pause record", http.StatusInternalServerError)
 				return
@@ -55,13 +55,13 @@ func Update(store workflow.RecordStore) http.HandlerFunc {
 				return
 			}
 		case "cancel":
-			err = ctr.Cancel(r.Context())
+			err = ctr.Cancel(r.Context(), "")
 			if err != nil {
 				http.Error(w, "failed to cancel record", http.StatusInternalServerError)
 				return
 			}
 		case "delete":
-			err = ctr.DeleteData(r.Context())
+			err = ctr.DeleteData(r.Context(), "")
 			if err != nil {
 				http.Error(w, "failed to delete data of record", http.StatusInternalServerError)
 				return

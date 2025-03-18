@@ -20,8 +20,8 @@ type (
 	Paths               = frontend.Paths
 )
 
-func ListHandlerFunc(store workflow.RecordStore, stringer Stringer) http.HandlerFunc {
-	return api.List(store.List, stringer)
+func ListHandlerFunc(store workflow.RecordStore) http.HandlerFunc {
+	return api.List(store.List)
 }
 
 func ObjectDataHandlerFunc(store workflow.RecordStore) http.HandlerFunc {

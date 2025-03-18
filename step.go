@@ -124,10 +124,27 @@ func stepConsumer[Type any, Status StatusType](
 
 		// Check to see if record is in expected state. If the status isn't in the expected state then skip for
 		// idempotency.
-		if record.Status != int(currentStatus) {
+		version, ok := e.Headers[HeaderRecordVersion]
+		var eventRecordVersion uint
+		if ok {
+			v, err := strconv.ParseInt(version, 10, 64)
+			if err != nil {
+				return err
+			}
+
+			eventRecordVersion = uint(v)
+		} else if record.Status != int(currentStatus) { // Support for no record version for backwards compatibility
 			metrics.ProcessSkippedEvents.WithLabelValues(workflowName, processName, "record status not in expected state").
 				Inc()
+		}
+
+		// Validate the event and record data using the record versions on both.
+		if record.Meta.Version > eventRecordVersion { // Event has already been processed.
+			metrics.ProcessSkippedEvents.WithLabelValues(workflowName, processName, "event record version lower than latest record version").
+				Inc()
 			return nil
+		} else if record.Meta.Version < eventRecordVersion { // Stale record data returned by the record store.
+			return fmt.Errorf("stale record lookup: record version is lower than event record version")
 		}
 
 		if record.RunState.Stopped() {

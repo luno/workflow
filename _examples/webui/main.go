@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 
 	"github.com/luno/workflow"
 	"github.com/luno/workflow/adapters/memrecordstore"
@@ -41,13 +40,6 @@ func main() {
 	http.HandleFunc("/", webui.HomeHandlerFunc(paths))
 	http.HandleFunc(paths.List, webui.ListHandlerFunc(
 		recordStore,
-		func(workflowName string, enumValue int) string {
-			if workflowName == ExampleWorkflowName {
-				return Status(enumValue).String()
-			}
-
-			return strconv.Itoa(enumValue)
-		},
 	))
 	http.HandleFunc(paths.ObjectData, webui.ObjectDataHandlerFunc(recordStore))
 	http.HandleFunc(paths.Update, webui.UpdateHandlerFunc(recordStore))
@@ -118,11 +110,11 @@ func Example(rs workflow.RecordStore) *workflow.Workflow[ExampleData, Status] {
 		StatusMiddle,
 		func(ctx context.Context, r *workflow.Run[ExampleData, Status]) (Status, error) {
 			if r.ForeignID == "Customer 2" {
-				return r.Pause(ctx)
+				return r.Pause(ctx, "Always pause customer 2")
 			}
 
 			if r.ForeignID == "Customer 1" {
-				return r.Cancel(ctx)
+				return r.Cancel(ctx, "Always cancel Customer 1")
 			}
 
 			*r.Object = ExampleData{

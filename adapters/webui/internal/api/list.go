@@ -26,18 +26,21 @@ type ListResponse struct {
 
 // ListItem is a lightweight version of workflow.Record
 type ListItem struct {
-	WorkflowName string    `json:"workflow_name"`
-	ForeignID    string    `json:"foreign_id"`
-	RunID        string    `json:"run_id"`
-	RunState     string    `json:"run_state"`
-	Status       string    `json:"status"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	WorkflowName   string    `json:"workflow_name"`
+	ForeignID      string    `json:"foreign_id"`
+	RunID          string    `json:"run_id"`
+	RunState       string    `json:"run_state"`
+	RunStateReason string    `json:"run_state_reason"`
+	Status         string    `json:"status"`
+	Version        uint      `json:"version"`
+	TraceOrigin    string    `json:"trace_origin"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 type ListWorkflowRecords func(ctx context.Context, workflowName string, offset int64, limit int, order workflow.OrderType, filters ...workflow.RecordFilter) ([]workflow.Record, error)
 
-func List(listRecords ListWorkflowRecords, stringer Stringer) http.HandlerFunc {
+func List(listRecords ListWorkflowRecords) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -78,15 +81,17 @@ func List(listRecords ListWorkflowRecords, stringer Stringer) http.HandlerFunc {
 
 		var listItems []ListItem
 		for _, record := range list {
-			statusName := stringer(record.WorkflowName, record.Status)
 			listItems = append(listItems, ListItem{
-				WorkflowName: record.WorkflowName,
-				ForeignID:    record.ForeignID,
-				RunID:        record.RunID,
-				RunState:     record.RunState.String(),
-				Status:       statusName,
-				CreatedAt:    record.CreatedAt,
-				UpdatedAt:    record.UpdatedAt,
+				WorkflowName:   record.WorkflowName,
+				ForeignID:      record.ForeignID,
+				RunID:          record.RunID,
+				RunState:       record.RunState.String(),
+				RunStateReason: record.Meta.RunStateReason,
+				Status:         record.Meta.StatusDescription,
+				Version:        record.Meta.Version,
+				TraceOrigin:    record.Meta.TraceOrigin,
+				CreatedAt:      record.CreatedAt,
+				UpdatedAt:      record.UpdatedAt,
 			})
 		}
 

@@ -74,32 +74,38 @@ async function collectAndUpdateTable() {
                     Delete
                 </button>`
 
+        const traceButton = `<button
+                    onclick="showTrace(\`${record.trace_origin}\`)"
+                    class="bg-yellow-50 dark:bg-yellow-800 text-yellow-600 dark:text-yellow-300 text-sm py-2 px-4 m-1 rounded-full hover:bg-yellow-50 dark:hover:bg-yellow-700">
+                    View Stack Trace
+                </button>`
+
         let selectedClass = ''
         let buttons = ''
         switch (record.run_state) {
             case 'Initiated':
                 selectedClass = gray
-                buttons = pauseButton
+                buttons = pauseButton + traceButton
                 break
             case 'Running':
                 selectedClass = green
-                buttons = pauseButton + cancelButton
+                buttons = pauseButton + cancelButton + traceButton
                 break
             case 'Paused':
                 selectedClass = yellow
-                buttons = resumeButton + cancelButton
+                buttons = resumeButton + cancelButton + traceButton
                 break
             case 'Cancelled':
                 selectedClass = red
-                buttons = deleteButton
+                buttons = deleteButton + traceButton
                 break
             case 'Completed':
                 selectedClass = green
-                buttons = deleteButton
+                buttons = deleteButton + traceButton
                 break
             case 'Data Deleted':
                 selectedClass = gray
-                buttons = deleteButton
+                buttons = deleteButton + traceButton
                 break
             case 'Requested Data Deleted':
                 selectedClass = yellow
@@ -109,14 +115,23 @@ async function collectAndUpdateTable() {
 
         const row = document.createElement('tr');
         row.classList.add('hover:bg-gray-50', 'dark:hover:bg-gray-800', 'transition', 'duration-150', 'ease-in-out');
+
+        let runStateColumn = `<td>
+            <div class="${selectedClass}">${record.run_state}</div>
+        </td>`
+        if (record.run_state_reason !== '') {
+            runStateColumn = `<td>
+                <div class="${selectedClass}">${record.run_state} <span class="text-xs">(${record.run_state_reason})</span></div>
+            </td>`
+        }
+
         row.innerHTML = `
             <td class="py-4 px-4 text-center text-sm text-gray-600 dark:text-gray-400">${formatTriggerTimestamp(createdAt)}</td>
             <td class="py-4 px-4 text-center text-sm text-gray-800 dark:text-gray-300">${record.workflow_name}</td>
             <td class="py-4 px-4 text-center text-sm text-gray-800 dark:text-gray-300">${record.foreign_id}</td>
             <td class="py-4 px-4 text-center text-sm text-gray-800 dark:text-gray-300">${record.run_id}</td>
-            <td>
-                <div class="${selectedClass}">${record.run_state}</div>
-            </td>
+            `+runStateColumn+`
+            <td class="py-4 px-4 text-center text-sm text-gray-800 dark:text-gray-300">${record.version}</td>
             <td class="py-4 px-4 text-center text-sm text-gray-800 dark:text-gray-300">${record.status}</td>
             <td class="py-4 px-4 text-center text-sm text-gray-600 dark:text-gray-400">${duration}</td>
             <td class="py-4 px-4 text-center text-sm text-gray-800 dark:text-gray-300">
@@ -125,7 +140,7 @@ async function collectAndUpdateTable() {
                     onclick="getObjectData(\`${record.run_id}\`)"
                 >View</button>
             </td>
-            <td class="py-4 px-4 text-center">
+            <td class="py-4 px-4 text-right">
                 ${buttons}
             </td>
         `;
@@ -190,6 +205,10 @@ function formatTriggerTimestamp(date) {
     });
 }
 
+async function showTrace(trace) {
+    openModal(trace, false)
+}
+
 async function getObjectData(id) {
     const requestData = {
         run_id: id,
@@ -205,7 +224,7 @@ async function getObjectData(id) {
     });
 
     const data = await response.json();
-    openModal(data)
+    openModal(data, true)
 }
 
 function createCollapsibleJSON(obj, container) {
@@ -252,12 +271,16 @@ function createCollapsibleJSON(obj, container) {
 
 }
 
-function openModal(data) {
+function openModal(data, isJson) {
     document.getElementById('jsonModal').classList.remove('hidden');
 
     const jsonContainer = document.getElementById('jsonContainer');
     jsonContainer.innerHTML = "";  // Clear previous content
-    createCollapsibleJSON(data, jsonContainer);
+    if (isJson) {
+        createCollapsibleJSON(data, jsonContainer);
+    } else {
+        jsonContainer.innerHTML = data.replace(/\n/g, "<br>");
+    }
 }
 
 function closeModal() {
@@ -277,6 +300,26 @@ async function recordAction(action, id) {
         default:
             window.alert('Unknown action')
             return
+    }
+
+    if (action === 'cancel') {
+        const confirmed = await new Promise((resolve) => {
+            resolve(confirm("Are you sure you want to cancel the workflow run?"));
+        });
+
+        if (!confirmed) {
+            return
+        }
+    }
+
+    if (action === 'delete') {
+        const confirmed = await new Promise((resolve) => {
+            resolve(confirm("Are you sure you want to delete the data? This cannot be undone."));
+        });
+
+        if (!confirmed) {
+            return
+        }
     }
 
     const data = {

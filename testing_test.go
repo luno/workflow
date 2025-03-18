@@ -40,7 +40,7 @@ func TestTriggerCallbackOn_validation(t *testing.T) {
 			func() {
 				b := workflow.NewBuilder[string, status]("test")
 				b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
-					return r.Cancel(ctx)
+					return 0, nil
 				}, StatusEnd)
 
 				w := b.Build(
@@ -69,7 +69,7 @@ func TestAwaitTimeoutInsert_validation(t *testing.T) {
 			func() {
 				b := workflow.NewBuilder[string, status]("test")
 				b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
-					return r.Cancel(ctx)
+					return 0, nil
 				}, StatusEnd)
 
 				wf := b.Build(
@@ -131,7 +131,7 @@ func TestRequire_validation(t *testing.T) {
 			func() {
 				b := workflow.NewBuilder[string, status]("test")
 				b.AddStep(StatusStart, func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
-					return r.Cancel(ctx)
+					return 0, nil
 				}, StatusEnd)
 
 				wf := b.Build(

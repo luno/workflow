@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 
 	"github.com/luno/jettison/errors"
 	"github.com/luno/jettison/j"
@@ -16,15 +17,22 @@ func (s *SQLStore) create(
 	status int,
 	object []byte,
 	runState int,
+	meta workflow.Meta,
 ) error {
-	_, err := tx.ExecContext(ctx, "insert into "+s.recordTableName+" set "+
-		" workflow_name=?, foreign_id=?, run_id=?, run_state=?, status=?, object=?, created_at=now(), updated_at=now() ",
+	metaBytes, err := json.Marshal(meta)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal meta for record update")
+	}
+
+	_, err = tx.ExecContext(ctx, "insert into "+s.recordTableName+" set "+
+		" workflow_name=?, foreign_id=?, run_id=?, run_state=?, status=?, object=?, created_at=now(), updated_at=now(), meta=? ",
 		workflowName,
 		foreignID,
 		runID,
 		runState,
 		status,
 		object,
+		metaBytes,
 	)
 	if err != nil {
 		return errors.Wrap(err, "failed to create entry", j.MKV{
@@ -46,12 +54,19 @@ func (s *SQLStore) update(
 	status int,
 	object []byte,
 	runState int,
+	meta workflow.Meta,
 ) error {
-	_, err := tx.ExecContext(ctx, "update "+s.recordTableName+" set "+
-		" run_state=?, status=?, object=?, updated_at=now() where run_id=?",
+	metaBytes, err := json.Marshal(meta)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal meta for record update")
+	}
+
+	_, err = tx.ExecContext(ctx, "update "+s.recordTableName+" set "+
+		" run_state=?, status=?, object=?, updated_at=now(), meta=? where run_id=?",
 		runState,
 		status,
 		object,
+		metaBytes,
 		runID,
 	)
 	if err != nil {
@@ -147,6 +162,7 @@ func (s *SQLStore) listOutboxWhere(
 
 func recordScan(row row) (*workflow.Record, error) {
 	var r workflow.Record
+	var meta []byte
 	err := row.Scan(
 		&r.WorkflowName,
 		&r.ForeignID,
@@ -156,11 +172,17 @@ func recordScan(row row) (*workflow.Record, error) {
 		&r.Object,
 		&r.CreatedAt,
 		&r.UpdatedAt,
+		&meta,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, errors.Wrap(workflow.ErrRecordNotFound, "")
 	} else if err != nil {
 		return nil, errors.Wrap(err, "recordScan")
+	}
+
+	err = json.Unmarshal(meta, &r.Meta)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to unmarshal meta for record")
 	}
 
 	return &r, nil

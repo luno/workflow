@@ -17,7 +17,12 @@ type (
 	updater[Type any, Status StatusType] func(ctx context.Context, current Status, next Status, run *Run[Type, Status]) error
 )
 
-func newUpdater[Type any, Status StatusType](lookup lookupFunc, store storeFunc, graph *graph.Graph, clock clock.Clock) updater[Type, Status] {
+func newUpdater[Type any, Status StatusType](
+	lookup lookupFunc,
+	store storeFunc,
+	graph *graph.Graph,
+	clock clock.Clock,
+) updater[Type, Status] {
 	return func(ctx context.Context, current Status, next Status, record *Run[Type, Status]) error {
 		object, err := Marshal(&record.Object)
 		if err != nil {
@@ -39,6 +44,7 @@ func newUpdater[Type any, Status StatusType](lookup lookupFunc, store storeFunc,
 			Object:       object,
 			CreatedAt:    record.CreatedAt,
 			UpdatedAt:    clock.Now(),
+			Meta:         record.Meta,
 		}
 
 		latest, err := lookup(ctx, updatedRecord.RunID)
@@ -57,10 +63,7 @@ func newUpdater[Type any, Status StatusType](lookup lookupFunc, store storeFunc,
 			return err
 		}
 
-		// Push run state changes for observability
-		metrics.RunStateChanges.WithLabelValues(record.WorkflowName, record.RunState.String(), updatedRecord.RunState.String()).Inc()
-
-		return store(ctx, updatedRecord)
+		return updateRecord(ctx, store, updatedRecord, record.RunState)
 	}
 }
 
@@ -90,7 +93,11 @@ func validateTransition[Status StatusType](current, next Status, graph *graph.Gr
 
 func updateRecord(ctx context.Context, store storeFunc, record *Record, previousRunState RunState) error {
 	// Push run state changes for observability
-	metrics.RunStateChanges.WithLabelValues(record.WorkflowName, previousRunState.String(), record.RunState.String()).Inc()
+	metrics.RunStateChanges.WithLabelValues(record.WorkflowName, previousRunState.String(), record.RunState.String()).
+		Inc()
+
+	// Increment the version by 1.
+	record.Meta.Version++
 
 	return store(ctx, record)
 }
