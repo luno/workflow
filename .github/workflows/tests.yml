@@ -37,9 +37,14 @@ jobs:
         with:
           go-version: '1.23'
 
-      - name: Vet Adapters and Examples
-        run: |
-          for dir in $(find ./adapters ./_examples -type f -name "go.mod" -exec dirname {} \; | sort -u); do
-            echo "Running go vet in $dir"
-            (cd "$dir" && go vet ./...)
-          done
+      - name: Vet Adapters
+        run: find ./adapters -type f -name "go.mod" -exec dirname {} \; | while read -r dir; do
+          echo "Running go vet in $dir"
+          (cd "$dir" && go vet ./...)
+        done
+
+      - name: Vet Examples
+        run: find ./_examples -type f -name "go.mod" -exec dirname {} \; | while read -r dir; do
+          echo "Running go vet in $dir"
+          (cd "$dir" && go vet ./...)
+        done
