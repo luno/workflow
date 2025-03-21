@@ -1,6 +1,3 @@
-# This workflow will build a golang project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
-
 name: Run
 
 on:
@@ -17,20 +14,20 @@ jobs:
         go: [ '1.23', '1' ]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: ${{ matrix.go }}
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
 
-    - name: Vet
-      run: go vet -v ./...
+      - name: Vet
+        run: go vet -v ./...
 
-    - name: Test
-      run: go test -v ./...
+      - name: Test
+        run: go test -v ./...
 
-  adapters:
+  adapters_and_examples:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,18 +37,16 @@ jobs:
         with:
           go-version: '1.23'
 
-      - name: Vet
-        run: find ./adapters -type f -name "go.mod" -exec dirname {} \; | while read -r dir; do (cd "$dir" && go vet ./...) done
+      - name: Vet Adapters
+        run: |
+          find ./adapters -type f -name "go.mod" -exec dirname {} \; | while read -r dir; do
+            echo "Running go vet in $dir"
+            (cd "$dir" && go vet ./...)
+          done
 
-  _examples:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.23'
-
-      - name: Vet
-        run: find ./_examples -type f -name "go.mod" -exec dirname {} \; | while read -r dir; do (cd "$dir" && go vet ./...) done
+      - name: Vet Examples
+        run: |
+          find ./_examples -type f -name "go.mod" -exec dirname {} \; | while read -r dir; do
+            echo "Running go vet in $dir"
+            (cd "$dir" && go vet ./...)
+          done
