@@ -180,9 +180,11 @@ func recordScan(row row) (*workflow.Record, error) {
 		return nil, errors.Wrap(err, "recordScan")
 	}
 
-	err = json.Unmarshal(meta, &r.Meta)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to unmarshal meta for record")
+	if len(meta) > 0 {
+		err = json.Unmarshal(meta, &r.Meta)
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to unmarshal meta for record")
+		}
 	}
 
 	return &r, nil
