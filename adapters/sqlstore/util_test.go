@@ -19,7 +19,7 @@ var migrations = []string{
 		object                 longblob not null,
 		created_at             datetime(3) not null,
 		updated_at             datetime(3) not null,
-		meta                   blob not null,
+		meta                   blob,
 	
 		primary key(run_id),
 	
