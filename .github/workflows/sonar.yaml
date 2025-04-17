@@ -28,4 +28,4 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         if: github.event.pull_request.head.repo.full_name == github.repository || env.SONAR_TOKEN != ''
-        uses: SonarSource/sonarqube-scan-action@master
+        uses: SonarSource/sonarqube-scan-action@v5.1.0
