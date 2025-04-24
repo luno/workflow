@@ -9,7 +9,7 @@ import (
 )
 
 func Test_runHooks(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("Return non-nil error from lookup", func(t *testing.T) {
 		testErr := errors.New("test error")

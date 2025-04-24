@@ -1,7 +1,6 @@
 package kafkastreamer_test
 
 import (
-	"context"
 	"strconv"
 	"testing"
 
@@ -19,7 +18,7 @@ const brokerAddress = "localhost:9092"
 
 func TestStreamer(t *testing.T) {
 	adaptertest.RunEventStreamerTest(t, func() workflow.EventStreamer {
-		ctx := context.Background()
+		ctx := t.Context()
 
 		kafkaInstance, err := kafkacontainer.Run(ctx, "confluentinc/confluent-local:7.5.0", kafkacontainer.WithClusterID("kraftCluster"))
 		testcontainers.CleanupContainer(t, kafkaInstance)
@@ -33,7 +32,7 @@ func TestStreamer(t *testing.T) {
 }
 
 func TestConnector(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	topic := "connector-topic"
 	kafkaInstance, err := kafkacontainer.Run(ctx, "confluentinc/confluent-local:7.5.0", kafkacontainer.WithClusterID("kraftCluster"))
 	testcontainers.CleanupContainer(t, kafkaInstance)

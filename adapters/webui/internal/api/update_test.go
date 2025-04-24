@@ -2,7 +2,6 @@ package api_test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -151,7 +150,7 @@ func TestUpdateHandler(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			recordStore := memrecordstore.New()
 
-			ctx := context.Background()
+			ctx := t.Context()
 			for _, record := range tc.before {
 				err := recordStore.Store(ctx, &record)
 				require.NoError(t, err)

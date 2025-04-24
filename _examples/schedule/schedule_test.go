@@ -1,7 +1,6 @@
 package schedule_test
 
 import (
-	"context"
 	"errors"
 	"testing"
 	"time"
@@ -30,7 +29,7 @@ func TestExampleWorkflow(t *testing.T) {
 	})
 	t.Cleanup(wf.Stop)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	wf.Run(ctx)
 
 	foreignID := "hourly-run"

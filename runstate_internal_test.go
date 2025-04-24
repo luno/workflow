@@ -10,7 +10,7 @@ import (
 func TestNoopRunStateController(t *testing.T) {
 	ctrl := testingRunStateController{}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	err := ctrl.Pause(ctx, "")
 	require.Nil(t, err)
 
@@ -332,7 +332,7 @@ func TestRunStateControllerTransitions(t *testing.T) {
 				},
 			}
 
-			ctx := context.Background()
+			ctx := t.Context()
 			err := ctrl.update(ctx, tc.to, "")
 			require.Equal(t, tc.valid, err == nil)
 		})

@@ -33,7 +33,7 @@ func TestInternalState(t *testing.T) {
 		return StatusCompleted, nil
 	}, StatusCompleted)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	b.AddConnector(
 		"consume-other-stream",

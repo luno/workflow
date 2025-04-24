@@ -57,7 +57,7 @@ func TestConnectorErrHandling(t *testing.T) {
 			},
 		}
 
-		ctx := context.Background()
+		ctx := t.Context()
 		consumer, err := connector.Make(ctx, "")
 		jtest.RequireNil(t, err)
 
@@ -81,7 +81,7 @@ func TestConnectorErrHandling(t *testing.T) {
 			},
 		}
 
-		ctx := context.Background()
+		ctx := t.Context()
 		consumer, err := connector.Make(ctx, "")
 		jtest.RequireNil(t, err)
 
@@ -108,7 +108,7 @@ func TestConnectorErrHandling(t *testing.T) {
 			},
 		}
 
-		ctx := context.Background()
+		ctx := t.Context()
 		consumer, err := connector.Make(ctx, "")
 		jtest.RequireNil(t, err)
 
@@ -138,7 +138,7 @@ func TestConnectorErrHandling(t *testing.T) {
 			},
 		}
 
-		ctx := context.Background()
+		ctx := t.Context()
 		consumer, err := connector.Make(ctx, "")
 		jtest.RequireNil(t, err)
 
@@ -161,7 +161,7 @@ func TestConnectorErrHandling(t *testing.T) {
 			},
 		}
 
-		ctx := context.Background()
+		ctx := t.Context()
 		consumer, err := connector.Make(ctx, "")
 		jtest.RequireNil(t, err)
 
@@ -186,7 +186,7 @@ func TestConnectorErrHandling(t *testing.T) {
 			},
 		}
 
-		ctx := context.Background()
+		ctx := t.Context()
 		consumer, err := connector.Make(ctx, "")
 		jtest.RequireNil(t, err)
 
@@ -213,7 +213,7 @@ func TestConnectorErrHandling(t *testing.T) {
 			},
 		}
 
-		ctx := context.Background()
+		ctx := t.Context()
 		consumer, err := connector.Make(ctx, "")
 		jtest.RequireNil(t, err)
 

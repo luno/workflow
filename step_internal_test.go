@@ -15,7 +15,7 @@ import (
 )
 
 func Test_stepConsumer(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	counter := errorcounter.New()
 	processName := "processName"
 	testErr := errors.New("test error")

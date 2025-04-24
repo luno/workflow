@@ -41,7 +41,7 @@ func TestRetryOfPausedRecords(t *testing.T) {
 		workflow.WithPauseRetry(time.Millisecond*10),
 	)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	w.Run(ctx)
 	t.Cleanup(w.Stop)
 
@@ -74,7 +74,7 @@ func TestRetryOfPausedRecordsConfig(t *testing.T) {
 			workflow.DisablePauseRetry(),
 		)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		w.Run(ctx)
 		t.Cleanup(w.Stop)
 
@@ -90,7 +90,7 @@ func TestRetryOfPausedRecordsConfig(t *testing.T) {
 			memrolescheduler.New(),
 		)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		w.Run(ctx)
 		t.Cleanup(w.Stop)
 

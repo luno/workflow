@@ -143,7 +143,7 @@ func TestUpdater(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			g := graph.New()
 			for _, transition := range tc.transitions {
 				g.AddTransition(transition.From, transition.To)

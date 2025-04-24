@@ -546,7 +546,7 @@ func TestConnector(t *testing.T) {
 		memrolescheduler.New(),
 	)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	w.Run(ctx)
 	t.Cleanup(w.Stop)
 
@@ -593,7 +593,7 @@ func TestStepConsumerLag(t *testing.T) {
 		workflow.WithDebugMode(),
 	)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	wf.Run(ctx)
 	t.Cleanup(wf.Stop)
 

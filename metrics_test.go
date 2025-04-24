@@ -41,7 +41,7 @@ func runWorkflow(t *testing.T) *workflow.Workflow[string, status] {
 		workflow.WithClock(clock),
 	)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	uid, err := uuid.NewUUID()
 	require.Nil(t, err)
@@ -190,7 +190,7 @@ func TestMetricProcessIdleState(t *testing.T) {
 		workflow.WithClock(clock),
 	)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	wf.Run(ctx)
 	t.Cleanup(wf.Stop)
@@ -284,7 +284,7 @@ func TestMetricProcessErrors(t *testing.T) {
 		workflow.WithClock(clock),
 	)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	uid, err := uuid.NewUUID()
 	require.Nil(t, err)
@@ -344,7 +344,7 @@ func TestRunStateChanges(t *testing.T) {
 		),
 	)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	w.Run(ctx)
 	t.Cleanup(w.Stop)
 
@@ -376,7 +376,7 @@ func TestMetricProcessSkippedEvents(t *testing.T) {
 		memrolescheduler.New(),
 	)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	w.Run(ctx)
 	t.Cleanup(w.Stop)
 

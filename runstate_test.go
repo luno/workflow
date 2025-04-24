@@ -63,7 +63,7 @@ func TestRunState(t *testing.T) {
 			recordStore := memrecordstore.New()
 			w := fn(recordStore)
 
-			ctx := context.Background()
+			ctx := t.Context()
 			w.Run(ctx)
 			t.Cleanup(w.Stop)
 
@@ -123,7 +123,7 @@ func TestWorkflowRunStateController(t *testing.T) {
 	})
 	require.Nil(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	workflowName := "test-workflow"
 	foreignID := "foreignID"
 	runID := "uuid"

@@ -1,7 +1,6 @@
 package connector_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -34,7 +33,7 @@ func TestConnectStreamParallelConsumer(t *testing.T) {
 		Connector:     memstreamer.NewConnector(events),
 	})
 
-	ctx := context.Background()
+	ctx := t.Context()
 	w.Run(ctx)
 	t.Cleanup(w.Stop)
 

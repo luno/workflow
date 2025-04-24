@@ -14,7 +14,7 @@ import (
 )
 
 func TestProcessCallback(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	w := &Workflow[string, testStatus]{
 		name:        "example",
 		ctx:         ctx,

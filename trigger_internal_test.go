@@ -17,14 +17,14 @@ func Test_trigger(t *testing.T) {
 	w := b.Build(nil, nil, nil, WithDebugMode())
 
 	t.Run("Expected non-nil error when Trigger called before Run()", func(t *testing.T) {
-		ctx := context.Background()
+		ctx := t.Context()
 		_, err := trigger(ctx, w, nil, nil, "1")
 
 		require.Equal(t, "trigger failed: workflow is not running", err.Error())
 	})
 
 	t.Run("Expects ErrStatusProvidedNotConfigured when starting status is not configured", func(t *testing.T) {
-		ctx := context.Background()
+		ctx := t.Context()
 		w.calledRun = true
 
 		_, err := trigger(ctx, w, nil, nil, "1", WithStartingPoint[string, testStatus](statusEnd))
@@ -32,7 +32,7 @@ func Test_trigger(t *testing.T) {
 	})
 
 	t.Run("Expects ErrWorkflowInProgress if a workflow run is already in progress", func(t *testing.T) {
-		ctx := context.Background()
+		ctx := t.Context()
 		w.calledRun = true
 
 		_, err := trigger(ctx, w, func(ctx context.Context, workflowName, foreignID string) (*Record, error) {
@@ -47,7 +47,7 @@ func Test_trigger(t *testing.T) {
 	})
 
 	t.Run("Expects Meta to be correctly set", func(t *testing.T) {
-		ctx := context.Background()
+		ctx := t.Context()
 		w.calledRun = true
 
 		_, err := trigger(ctx, w, func(ctx context.Context, workflowName, foreignID string) (*Record, error) {

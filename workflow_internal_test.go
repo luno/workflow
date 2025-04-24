@@ -15,7 +15,7 @@ import (
 )
 
 func Test_runOnce(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("Returns non-nil error (context.Canceled) when parent ctx is cancelled", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)

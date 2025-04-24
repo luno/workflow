@@ -1,7 +1,6 @@
 package timeout_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -28,7 +27,7 @@ func TestTimeoutWorkflow(t *testing.T) {
 	})
 	t.Cleanup(wf.Stop)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	wf.Run(ctx)
 
 	foreignID := "andrew"
