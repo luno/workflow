@@ -4,14 +4,5 @@
   ],
   "additionalReviewers": [
     "andrewwormald"
-  ],
-  "postUpgradeTasks": {
-    "commands": [
-      "find . -name \"go.mod\" -type f -exec dirname {} \\; | while read dir; do echo \"Running go mod tidy in $dir\"; cd \"$dir\" && go mod tidy && cd - > /dev/null; done"
-    ],
-    "fileFilters": ["**/go.mod", "**/go.sum"]
-  },
-  "allowedCommands": [
-    "^find\\s\\.\\s-name.+go\\.mod.+go\\smod\\stidy"
   ]
 }
