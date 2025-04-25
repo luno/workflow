@@ -100,7 +100,7 @@ func TestRunDelete(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			err := runDelete(
 				tc.storeFn,
 				tc.lookupFn,

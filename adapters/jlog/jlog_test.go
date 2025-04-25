@@ -2,7 +2,6 @@ package jlog_test
 
 import (
 	"bytes"
-	"context"
 	"strings"
 	"testing"
 
@@ -19,7 +18,7 @@ func TestDebug(t *testing.T) {
 	log.SetLoggerForTesting(t, jLogger)
 
 	logger := jlog.New()
-	ctx := context.Background()
+	ctx := t.Context()
 	logger.Debug(ctx, "test message", map[string]string{"testKey": "testValue"})
 
 	require.Equal(t, "D 00:00:00.000 g/l/w/a/jlog/jlog.go:19: test message[testkey=testValue]\n", buf.String())
@@ -31,7 +30,7 @@ func TestError(t *testing.T) {
 	log.SetLoggerForTesting(t, jLogger)
 
 	logger := jlog.New()
-	ctx := context.Background()
+	ctx := t.Context()
 	testErr := errors.New("test error")
 	logger.Error(ctx, testErr)
 

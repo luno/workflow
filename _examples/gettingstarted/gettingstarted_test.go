@@ -1,7 +1,6 @@
 package gettingstarted_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/luno/workflow"
@@ -23,7 +22,7 @@ func TestWorkflow(t *testing.T) {
 	})
 	t.Cleanup(wf.Stop)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	wf.Run(ctx)
 
 	foreignID := "82347982374982374"

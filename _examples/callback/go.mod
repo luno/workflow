@@ -1,6 +1,6 @@
 module github.com/luno/workflow/_examples/callback
 
-go 1.23.2
+go 1.24.2
 
 replace github.com/luno/workflow => ../..
 

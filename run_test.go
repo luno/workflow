@@ -1,7 +1,6 @@
 package workflow_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -11,7 +10,7 @@ import (
 
 func TestNewTestingRun(t *testing.T) {
 	r := workflow.NewTestingRun[string, status](t, workflow.Record{}, "test")
-	ctx := context.Background()
+	ctx := t.Context()
 
 	pauseStatus, err := r.Pause(ctx, "")
 	require.Nil(t, err)

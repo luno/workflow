@@ -13,7 +13,7 @@ import (
 )
 
 func Test_maybeAutoPause(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	counter := errorcounter.New()
 	testErr := errors.New("test error")
 	pauseErr := errors.New("pause error")
@@ -91,7 +91,7 @@ func Test_maybeAutoPause(t *testing.T) {
 
 func Test_retryPausedRecords(t *testing.T) {
 	t.Run("Golden path", func(t *testing.T) {
-		ctx := context.Background()
+		ctx := t.Context()
 		clock := clock_testing.NewFakeClock(time.Now())
 		var calledUpdate bool
 		err := autoRetryConsumer(
@@ -114,7 +114,7 @@ func Test_retryPausedRecords(t *testing.T) {
 	})
 
 	t.Run("Return non-nil error on lookup", func(t *testing.T) {
-		ctx := context.Background()
+		ctx := t.Context()
 		clock := clock_testing.NewFakeClock(time.Now())
 		testErr := errors.New("test error")
 		err := autoRetryConsumer(
@@ -129,7 +129,7 @@ func Test_retryPausedRecords(t *testing.T) {
 	})
 
 	t.Run("Return non-nil error from store func", func(t *testing.T) {
-		ctx := context.Background()
+		ctx := t.Context()
 		clock := clock_testing.NewFakeClock(time.Now())
 		testErr := errors.New("test error")
 		err := autoRetryConsumer(
@@ -149,7 +149,7 @@ func Test_retryPausedRecords(t *testing.T) {
 	})
 
 	t.Run("Golden path - return nil with no update if before resume time", func(t *testing.T) {
-		ctx := context.Background()
+		ctx := t.Context()
 		clock := clock_testing.NewFakeClock(time.Now())
 		var calledUpdate bool
 		err := autoRetryConsumer(
@@ -171,7 +171,7 @@ func Test_retryPausedRecords(t *testing.T) {
 	})
 
 	t.Run("Not in paused state", func(t *testing.T) {
-		ctx := context.Background()
+		ctx := t.Context()
 		clock := clock_testing.NewFakeClock(time.Now())
 		var calledUpdate bool
 		err := autoRetryConsumer(

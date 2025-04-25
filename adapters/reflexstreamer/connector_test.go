@@ -1,7 +1,6 @@
 package reflexstreamer_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/luno/reflex/rsql"
@@ -17,7 +16,7 @@ func TestConnector(t *testing.T) {
 		dbc := ConnectForTesting(t)
 		cTable := rsql.NewCursorsTable("cursors")
 
-		ctx := context.Background()
+		ctx := t.Context()
 
 		for _, event := range seedEvents {
 			notify, err := eventsTable.Insert(ctx, dbc, event.ForeignID, reflexstreamer.EventType(1))

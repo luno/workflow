@@ -1,7 +1,6 @@
 package callback_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/luno/workflow"
@@ -21,7 +20,7 @@ func TestCallbackWorkflow(t *testing.T) {
 	})
 	t.Cleanup(wf.Stop)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	wf.Run(ctx)
 
 	foreignID := "andrew"

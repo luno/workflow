@@ -105,7 +105,7 @@ func TestRequire(t *testing.T) {
 		memrolescheduler.New(),
 	)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	wf.Run(ctx)
 	t.Cleanup(wf.Stop)
 
@@ -175,7 +175,7 @@ func TestWaitFor(t *testing.T) {
 		memrolescheduler.New(),
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	t.Cleanup(cancel)
 	wf.Run(ctx)
 	t.Cleanup(wf.Stop)

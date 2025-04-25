@@ -1,8 +1,6 @@
 module github.com/luno/workflow/adapters/jlog
 
-go 1.23.4
-
-toolchain go1.23.5
+go 1.24.2
 
 replace github.com/luno/workflow => ../..
 
