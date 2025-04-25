@@ -71,6 +71,7 @@ func runDelete(
 			store,
 			record,
 			RunStateRequestedDataDeleted,
+			record.Meta.StatusDescription,
 		)
 	}
 }

@@ -63,7 +63,7 @@ func newUpdater[Type any, Status StatusType](
 			return err
 		}
 
-		return updateRecord(ctx, store, updatedRecord, record.RunState)
+		return updateRecord(ctx, store, updatedRecord, record.RunState, next.String())
 	}
 }
 
@@ -91,11 +91,18 @@ func validateTransition[Status StatusType](current, next Status, graph *graph.Gr
 	return nil
 }
 
-func updateRecord(ctx context.Context, store storeFunc, record *Record, previousRunState RunState) error {
+func updateRecord(
+	ctx context.Context,
+	store storeFunc,
+	record *Record,
+	previousRunState RunState,
+	statusDescription string,
+) error {
 	// Push run state changes for observability
 	metrics.RunStateChanges.WithLabelValues(record.WorkflowName, previousRunState.String(), record.RunState.String()).
 		Inc()
 
+	record.Meta.StatusDescription = statusDescription
 	// Increment the version by 1.
 	record.Meta.Version++
 

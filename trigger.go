@@ -97,7 +97,7 @@ func trigger[Type any, Status StatusType](
 		Meta:         meta,
 	}
 
-	err = updateRecord(ctx, store, wr, RunStateUnknown)
+	err = updateRecord(ctx, store, wr, RunStateUnknown, startingStatus.String())
 	if err != nil {
 		return "", err
 	}

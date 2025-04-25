@@ -126,7 +126,7 @@ func (rsc *runStateControllerImpl) update(ctx context.Context, rs RunState, reas
 	previousRunState := rsc.record.RunState
 	rsc.record.RunState = rs
 	rsc.record.Meta.RunStateReason = reason
-	return updateRecord(ctx, rsc.store, rsc.record, previousRunState)
+	return updateRecord(ctx, rsc.store, rsc.record, previousRunState, rsc.record.Meta.StatusDescription)
 }
 
 var runStateTransitions = map[RunState]map[RunState]bool{

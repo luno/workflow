@@ -151,6 +151,7 @@ func TestWorkflowAcceptanceTest(t *testing.T) {
 	r, err := recordStore.Latest(ctx, wf.Name(), fid)
 	require.Nil(t, err)
 	require.Equal(t, int(expectedFinalStatus), r.Status)
+	require.Equal(t, "Completed", r.Meta.StatusDescription)
 
 	var actual MyType
 	err = workflow.Unmarshal(r.Object, &actual)
