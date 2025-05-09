@@ -7,7 +7,7 @@ replace github.com/luno/workflow => ../..
 require (
 	github.com/corverroos/truss v0.0.0-20210514115035-9e5e1b0851a9
 	github.com/go-sql-driver/mysql v1.9.0
-	github.com/luno/jettison v0.0.0-20250307143025-a20772f9e9d9
+	github.com/luno/jettison v0.0.0-20250424095956-76a91fb3568f
 	github.com/luno/workflow v0.3.0
 )
 
@@ -32,7 +32,6 @@ require (
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/utils v0.0.0-20240921022957-49e7df575cb6 // indirect
 )
