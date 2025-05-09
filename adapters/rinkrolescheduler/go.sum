@@ -8,8 +8,8 @@ github.com/coreos/go-systemd/v22 v22.3.2 h1:D9/bQk5vlXQFZ6Kwuu6zaiXJ9oTPe68++AzA
 github.com/coreos/go-systemd/v22 v22.3.2/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/dgryski/go-jump v0.0.0-20170409065014-e1f439676b57 h1:qZNIK8jjHgLFHAW2wzCWPEv0ZIgcBhU7X3oDt/p3Sv0=
-github.com/dgryski/go-jump v0.0.0-20170409065014-e1f439676b57/go.mod h1:4hKCXuwrJoYvHZxJ86+bRVTOMyJ0Ej+RqfSm8mHi6KA=
+github.com/dgryski/go-jump v0.0.0-20211018200510-ba001c3ffce0 h1:0wH6nO9QEa02Qx8sIQGw6ieKdz+BXjpccSOo9vXNl4U=
+github.com/dgryski/go-jump v0.0.0-20211018200510-ba001c3ffce0/go.mod h1:4hKCXuwrJoYvHZxJ86+bRVTOMyJ0Ej+RqfSm8mHi6KA=
 github.com/go-logr/logr v1.4.2 h1:6pFjapn8bFcIbiKo3XT4j/BhANplGihG6tvd+8rYgrY=
 github.com/go-logr/logr v1.4.2/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=
 github.com/go-logr/stdr v1.2.2 h1:hSWxHoqTgW2S2qGc0LTAI563KZ5YKYRhT3MFKZMbjag=
@@ -35,8 +35,8 @@ github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/luno/jettison v0.0.0-20230912135954-09d6084f5df9 h1:ykQ0/3gmOFypz1tNTyisrEM51rW7bx/UCGqEqrm/VyM=
 github.com/luno/jettison v0.0.0-20230912135954-09d6084f5df9/go.mod h1:Fc8KRfQEydIud0rjBHUNxUyyEKSidxP0kOlg4Dwn3JA=
-github.com/luno/rink/v2 v2.0.0-20250313150022-1b7f292292ff h1:umtUZHnUXNyTOi53rT6hOPUOGG5QpoZ55OkiYKT6SSk=
-github.com/luno/rink/v2 v2.0.0-20250313150022-1b7f292292ff/go.mod h1:SNp21A15eTDrEjHKhE5BVNUw67V+wqShTnLnzl9L3xo=
+github.com/luno/rink/v2 v2.0.0-20250424095542-5a72923fe1a0 h1:GQAa5xmDEqSGy7QpQhrNq68P2cskhZy6v3OoNTg7ws4=
+github.com/luno/rink/v2 v2.0.0-20250424095542-5a72923fe1a0/go.mod h1:gIhdw5e4Z8OpNW/VNzUtCvPCMdzg4oG3iek7h7eClbE=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
