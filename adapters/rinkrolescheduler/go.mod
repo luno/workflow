@@ -5,7 +5,7 @@ go 1.24.2
 replace github.com/luno/workflow => ../..
 
 require (
-	github.com/luno/rink/v2 v2.0.0-20250313150022-1b7f292292ff
+	github.com/luno/rink/v2 v2.0.0-20250424095542-5a72923fe1a0
 	github.com/luno/workflow v0.3.0
 	github.com/stretchr/testify v1.10.0
 	go.etcd.io/etcd/client/v3 v3.5.18
@@ -18,7 +18,7 @@ require (
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/dgryski/go-jump v0.0.0-20170409065014-e1f439676b57 // indirect
+	github.com/dgryski/go-jump v0.0.0-20211018200510-ba001c3ffce0 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
