@@ -6,7 +6,7 @@ replace github.com/luno/workflow => ../..
 
 require (
 	github.com/corverroos/truss v0.0.0-20210514115035-9e5e1b0851a9
-	github.com/luno/jettison v0.0.0-20250424095956-76a91fb3568f
+	github.com/luno/jettison v0.0.0-20250603184958-abc68693e98f
 	github.com/luno/reflex v0.0.0-20250306163217-c9f47c5e6287
 	github.com/luno/workflow v0.3.0
 	github.com/stretchr/testify v1.10.0
