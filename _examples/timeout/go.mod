@@ -7,7 +7,7 @@ replace github.com/luno/workflow => ../..
 require (
 	github.com/luno/workflow v0.3.0
 	github.com/stretchr/testify v1.10.0
-	k8s.io/utils v0.0.0-20240921022957-49e7df575cb6
+	k8s.io/utils v0.0.0-20250604170112-4c0f3b243397
 )
 
 require (
