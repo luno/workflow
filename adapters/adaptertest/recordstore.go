@@ -386,6 +386,56 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 			}
 		}
 	})
+
+	t.Run("List - Filter by Created At", func(t *testing.T) {
+		store := factory()
+		ctx := context.Background()
+
+		now := time.Now()
+		n := 100
+		for range n {
+			newRecord := dummyWireRecord(t, workflowName)
+			newRecord.CreatedAt = now
+			err := store.Store(ctx, newRecord)
+			require.Nil(t, err)
+		}
+
+		t0 := now.Add(-time.Minute)
+		t1 := now.Add(time.Minute)
+		ls, err := store.List(
+			ctx,
+			workflowName,
+			0,
+			n,
+			workflow.OrderTypeAscending,
+			workflow.FilterByCreatedAtAfter(t0),
+			workflow.FilterByCreatedAtBefore(t1),
+		)
+		require.Nil(t, err)
+		require.Equal(t, n, len(ls))
+
+		ls2, err := store.List(
+			ctx,
+			workflowName,
+			0,
+			n,
+			workflow.OrderTypeAscending,
+			workflow.FilterByCreatedAtAfter(t1),
+		)
+		require.Nil(t, err)
+		require.Equal(t, 0, len(ls2))
+		ls3, err := store.List(
+			ctx,
+			workflowName,
+			0,
+			n,
+			workflow.OrderTypeAscending,
+			workflow.FilterByCreatedAtBefore(t0),
+		)
+		require.Nil(t, err)
+		require.Equal(t, 0, len(ls3))
+	})
+
 }
 
 func dummyWireRecord(t *testing.T, workflowName string) *workflow.Record {

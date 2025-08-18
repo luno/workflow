@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -169,6 +170,14 @@ func (s *SQLStore) List(
 		}
 	}
 
+	if filter.ByCreatedAtAfter().Enabled {
+		wb.AddCondition("created_at", ">", filter.ByCreatedAtAfter().Value())
+	}
+
+	if filter.ByCreatedAtBefore().Enabled {
+		wb.AddCondition("created_at", "<", filter.ByCreatedAtBefore().Value())
+	}
+
 	if limit == 0 {
 		limit = defaultListLimit
 	}
@@ -193,6 +202,12 @@ type whereBuilder struct {
 
 func (fq *whereBuilder) WhereNotNull(field string) {
 	fq.conditions = append(fq.conditions, field+" is not null")
+}
+
+func (fq *whereBuilder) AddCondition(field string, comparison string, value any) {
+	condition := fmt.Sprintf("(%s %s?)", field, comparison)
+	fq.conditions = append(fq.conditions, condition)
+	fq.params = append(fq.params, value)
 }
 
 func (fq *whereBuilder) Where(field string, values ...string) {
