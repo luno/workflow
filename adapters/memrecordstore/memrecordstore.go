@@ -225,6 +225,13 @@ func (s *Store) List(
 			continue
 		}
 
+		if filter.ByCreatedAtAfter().Enabled && !filter.ByCreatedAtAfter().Matches(record.CreatedAt) {
+			continue
+		}
+		if filter.ByCreatedAtBefore().Enabled && !filter.ByCreatedAtBefore().Matches(record.CreatedAt) {
+			continue
+		}
+
 		filteredStore[increment] = record
 		increment++
 	}

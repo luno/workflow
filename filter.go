@@ -3,6 +3,7 @@ package workflow
 import (
 	"strconv"
 	"strings"
+	"time"
 )
 
 const multiValueDelimiter = ","
@@ -17,9 +18,11 @@ func MakeFilter(filters ...RecordFilter) *recordFilters {
 }
 
 type recordFilters struct {
-	byForeignID Filter
-	byStatus    Filter
-	byRunState  Filter
+	byForeignID       Filter
+	byStatus          Filter
+	byRunState        Filter
+	byCreatedAtAfter  FilterTime
+	byCreatedAtBefore FilterTime
 }
 
 func (r recordFilters) ByForeignID() Filter {
@@ -32,6 +35,13 @@ func (r recordFilters) ByStatus() Filter {
 
 func (r recordFilters) ByRunState() Filter {
 	return r.byRunState
+}
+
+func (r recordFilters) ByCreatedAtAfter() FilterTime {
+	return r.byCreatedAtAfter
+}
+func (r recordFilters) ByCreatedAtBefore() FilterTime {
+	return r.byCreatedAtBefore
 }
 
 func makeFilterValue(value string, isMultiMatch bool) Filter {
@@ -67,6 +77,30 @@ func (f Filter) MultiValues() []string {
 }
 
 func (f Filter) Value() string {
+	return f.value
+}
+
+func makeFilterTime(compare int, value time.Time) FilterTime {
+	return FilterTime{
+		Enabled: true,
+		compare: compare,
+		value:   value,
+	}
+}
+
+type FilterTime struct {
+	Enabled bool
+	compare int
+	value   time.Time
+}
+
+func (f FilterTime) Matches(findValue time.Time) bool {
+	if f.value.Compare(findValue) == f.compare {
+		return true
+	}
+	return false
+}
+func (f FilterTime) Value() time.Time {
 	return f.value
 }
 
@@ -128,5 +162,17 @@ func FilterByRunState(runStates ...RunState) RecordFilter {
 			val += strconv.FormatInt(int64(rs), 10)
 		}
 		filters.byRunState = makeFilterValue(val, true)
+	}
+}
+
+func FilterByCreatedAtAfter(after time.Time) RecordFilter {
+	return func(filters *recordFilters) {
+		filters.byCreatedAtAfter = makeFilterTime(-1, after)
+	}
+}
+
+func FilterByCreatedAtBefore(before time.Time) RecordFilter {
+	return func(filters *recordFilters) {
+		filters.byCreatedAtBefore = makeFilterTime(1, before)
 	}
 }
