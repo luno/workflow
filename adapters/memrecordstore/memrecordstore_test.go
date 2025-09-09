@@ -75,3 +75,42 @@ func TestOutboxDisabled(t *testing.T) {
 	_, err = wf.Await(ctx, "some-related-id", runID, StatusEnd)
 	require.Nil(t, err)
 }
+
+func TestNewPanicsWithIncompleteOutboxRequirements(t *testing.T) {
+	tests := []struct {
+		name          string
+		ctx           context.Context
+		eventStreamer workflow.EventStreamer
+		logger        workflow.Logger
+	}{
+		{
+			name:          "nil context",
+			ctx:           nil,
+			eventStreamer: memstreamer.New(),
+			logger:        logger.New(os.Stdout),
+		},
+		{
+			name:          "nil event streamer",
+			ctx:           context.Background(),
+			eventStreamer: nil,
+			logger:        logger.New(os.Stdout),
+		},
+		{
+			name:          "nil logger",
+			ctx:           context.Background(),
+			eventStreamer: memstreamer.New(),
+			logger:        nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.PanicsWithValue(t,
+				"outbox requirements not fully satisfied (ctx, event streamer, or logger is nil)",
+				func() {
+					memrecordstore.New(memrecordstore.WithOutbox(tt.ctx, tt.eventStreamer, tt.logger))
+				},
+			)
+		})
+	}
+}

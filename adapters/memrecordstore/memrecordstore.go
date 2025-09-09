@@ -34,6 +34,10 @@ func New(opts ...Option) *Store {
 	}
 
 	if opt.writeToOutbox {
+		if opt.ctx == nil || opt.eventStreamer == nil || opt.logger == nil {
+			panic("outbox requirements not fully satisfied (ctx, event streamer, or logger is nil)")
+		}
+
 		go func() {
 			err := PurgeOutboxForever(
 				opt.ctx,
