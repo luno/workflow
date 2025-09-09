@@ -691,3 +691,32 @@ func TestExpectedProcesses(t *testing.T) {
 		require.Truef(t, expected[process], "process '%s' is missing expected value", process)
 	}
 }
+
+func TestExpectedProcesses_outboxDisabled(t *testing.T) {
+	expected := map[string]bool{
+		"cellphone_number_submitted-consumer-1-of-2":  true,
+		"cellphone_number_submitted-consumer-2-of-2":  true,
+		"initiated-consumer-1-of-1":                   true,
+		"name_created-consumer-1-of-1":                true,
+		"otp_verified-timeout-auto-inserter-consumer": true,
+		"otp_verified-timeout-consumer":               true,
+		"completed-run-state-change-hook-consumer":    true,
+		"delete-consumer":                             true,
+		"paused-records-retry-consumer":               true,
+	}
+
+	w := acceptanceTestWorkflow().Build(
+		memstreamer.New(),
+		memrecordstore.New(),
+		memrolescheduler.New(),
+		workflow.WithTimeoutStore(memtimeoutstore.New()),
+		workflow.WithoutOutbox(),
+	)
+
+	w.Run(context.Background())
+	t.Cleanup(w.Stop)
+
+	for process := range w.States() {
+		require.Truef(t, expected[process], "process '%s' is missing expected value", process)
+	}
+}
