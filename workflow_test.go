@@ -104,7 +104,7 @@ func TestWorkflowAcceptanceTest(t *testing.T) {
 	})
 
 	eventStreamer := memstreamer.New()
-	recordStore := memrecordstore.New(memrecordstore.WithOutbox(ctx, eventStreamer, logger.New(os.Stdout)))
+	recordStore := memrecordstore.New(memrecordstore.WithOutbox(ctx, eventStreamer, logger.New(io.Discard)))
 	clock := clock_testing.NewFakeClock(time.Now())
 	wf := acceptanceTestWorkflow().Build(
 		eventStreamer,
