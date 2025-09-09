@@ -18,8 +18,8 @@ type (
 
 func PurgeOutboxForever(
 	ctx context.Context,
-	list OutboxLister,
-	delete OutboxDeleter,
+	lister OutboxLister,
+	deleter OutboxDeleter,
 	stream workflow.EventStreamer,
 	logger workflow.Logger,
 	pollingFrequency time.Duration,
@@ -28,8 +28,8 @@ func PurgeOutboxForever(
 	for ctx.Err() == nil {
 		err := purgeOutbox(
 			ctx,
-			list,
-			delete,
+			lister,
+			deleter,
 			stream,
 			pollingFrequency,
 			lookupLimit,
@@ -48,13 +48,13 @@ func PurgeOutboxForever(
 
 func purgeOutbox(
 	ctx context.Context,
-	list OutboxLister,
-	delete OutboxDeleter,
+	lister OutboxLister,
+	deleter OutboxDeleter,
 	stream workflow.EventStreamer,
 	pollingFrequency time.Duration,
 	lookupLimit int64,
 ) error {
-	events, err := list(lookupLimit)
+	events, err := lister(lookupLimit)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func purgeOutbox(
 			return err
 		}
 
-		err = delete(ctx, e.ID)
+		err = deleter(ctx, e.ID)
 		if err != nil {
 			return err
 		}
