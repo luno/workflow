@@ -41,7 +41,7 @@ func New(opts ...Option) *Store {
 				s.DeleteOutboxEvent,
 				opt.eventStreamer,
 				opt.logger,
-				100*time.Microsecond,
+				10*time.Millisecond,
 				1000,
 			)
 			if errors.Is(err, context.Canceled) {
