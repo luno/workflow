@@ -294,6 +294,8 @@ func WithTimeoutStore(s TimeoutStore) BuildOption {
 
 // WithoutOutbox disables the polling of the RecordStore outbox for pushing events to the provided EventStreamer
 // and allows for external submission of outbox messages to the EventStreamer.
+// This is useful when the workflow uses a record store that performs its own outbox purging,
+// typically when the record store is centralised and shared across multiple workflows and services.
 func WithoutOutbox() BuildOption {
 	return func(w *buildOptions) {
 		w.outboxConfig.disabled = true
