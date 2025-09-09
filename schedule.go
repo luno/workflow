@@ -99,6 +99,8 @@ func waitUntil(ctx context.Context, clock clock.Clock, until time.Time) error {
 	timeDiffAsDuration := until.Sub(clock.Now())
 
 	t := clock.NewTimer(timeDiffAsDuration)
+	defer t.Stop()
+
 	select {
 	case <-ctx.Done():
 		return ctx.Err()

@@ -3,6 +3,7 @@ package memrecordstore
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"google.golang.org/protobuf/proto"
@@ -38,12 +39,15 @@ func PurgeOutboxForever(
 			return nil
 		} else if err != nil {
 			logger.Error(ctx, err)
-			time.Sleep(time.Second)
+			if err := wait(ctx, time.Second); errors.Is(err, context.Canceled) {
+				return nil
+			}
+
 			continue
 		}
 	}
 
-	return ctx.Err()
+	return nil
 }
 
 func purgeOutbox(
@@ -80,6 +84,10 @@ func purgeOutbox(
 		eventType := int(outboxRecord.Type)
 
 		topic := headers[workflow.HeaderTopic]
+		if topic == "" {
+			return fmt.Errorf("outbox event %s missing %q header", e.ID, workflow.HeaderTopic)
+		}
+
 		producer, err := stream.NewSender(ctx, topic)
 		if err != nil {
 			return err
@@ -105,6 +113,8 @@ func wait(ctx context.Context, d time.Duration) error {
 	}
 
 	t := time.NewTimer(d)
+	defer t.Stop()
+
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
