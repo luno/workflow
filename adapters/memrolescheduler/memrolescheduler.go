@@ -29,13 +29,10 @@ func (r *RoleScheduler) Await(ctx context.Context, role string) (context.Context
 	mu.Lock()
 
 	go func(role string) {
-		for {
-			<-ctx.Done()
-			r.mu.Lock()
-			r.roles[role].Unlock()
-			r.mu.Unlock()
-			return
-		}
+		<-ctx.Done()
+		r.mu.Lock()
+		r.roles[role].Unlock()
+		r.mu.Unlock()
 	}(role)
 
 	return ctx, cancel, nil
