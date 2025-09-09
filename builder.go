@@ -292,7 +292,7 @@ func WithTimeoutStore(s TimeoutStore) BuildOption {
 	}
 }
 
-// WithoutOutbox disables the polling of the RecordStore outbox for pushing events to the provided EvetnStreamner
+// WithoutOutbox disables the polling of the RecordStore outbox for pushing events to the provided EventStreamer
 // and allows for external submission of outbox messages to the EventStreamer.
 func WithoutOutbox() BuildOption {
 	return func(w *buildOptions) {
