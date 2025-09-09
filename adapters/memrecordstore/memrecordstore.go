@@ -2,6 +2,7 @@ package memrecordstore
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"sync"
 	"time"
@@ -34,7 +35,7 @@ func New(opts ...Option) *Store {
 
 	if opt.writeToOutbox {
 		go func() {
-			_ = PurgeOutboxForever(
+			err := PurgeOutboxForever(
 				opt.ctx,
 				s.listOutbox,
 				s.DeleteOutboxEvent,
@@ -43,6 +44,15 @@ func New(opts ...Option) *Store {
 				100*time.Microsecond,
 				1000,
 			)
+			if errors.Is(err, context.Canceled) {
+				opt.logger.Debug(opt.ctx, "outbox processor stopped", map[string]string{})
+			} else if err != nil {
+				err = errors.Join(
+					errors.New("outbox processor stopped with unexpectedly"),
+					err,
+				)
+				opt.logger.Error(opt.ctx, err)
+			}
 		}()
 	}
 
