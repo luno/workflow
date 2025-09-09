@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/luno/workflow/adapters/memrolescheduler"
 	"github.com/luno/workflow/adapters/memstreamer"
 	"github.com/luno/workflow/adapters/memtimeoutstore"
+	"github.com/luno/workflow/internal/logger"
 )
 
 // Ensures that workflow.Workflow always implements workflow.API
@@ -96,22 +98,22 @@ type ExternalOTP struct {
 }
 
 func TestWorkflowAcceptanceTest(t *testing.T) {
-	t.Parallel()
-
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(func() {
 		cancel()
 	})
 
-	recordStore := memrecordstore.New()
+	eventStreamer := memstreamer.New()
+	recordStore := memrecordstore.New(memrecordstore.WithOutbox(ctx, eventStreamer, logger.New(os.Stdout)))
 	clock := clock_testing.NewFakeClock(time.Now())
 	wf := acceptanceTestWorkflow().Build(
-		memstreamer.New(),
+		eventStreamer,
 		recordStore,
 		memrolescheduler.New(),
 		workflow.WithTimeoutStore(memtimeoutstore.New()),
 		workflow.WithClock(clock),
 		workflow.WithDebugMode(),
+		workflow.WithoutOutbox(),
 	)
 
 	wf.Run(ctx)
@@ -164,6 +166,40 @@ func TestWorkflowAcceptanceTest(t *testing.T) {
 	require.Equal(t, expectedCellphone, actual.Cellphone)
 	require.Equal(t, expectedOTP, actual.OTP)
 	require.Equal(t, expectedOTPVerified, actual.OTPVerified)
+}
+
+func TestOutboxDisabled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(func() {
+		cancel()
+	})
+
+	eventStreamer := memstreamer.New()
+	recordStore := memrecordstore.New(memrecordstore.WithOutbox(ctx, eventStreamer, logger.New(os.Stdout)))
+
+	b := workflow.NewBuilder[string, status]("super fast workflow")
+	b.AddStep(StatusInitiated, func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
+		return StatusProfileCreated, nil
+	}, StatusProfileCreated)
+	b.AddStep(StatusProfileCreated, func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
+		return StatusCompleted, nil
+	}, StatusCompleted)
+	wf := b.Build(
+		eventStreamer,
+		recordStore,
+		memrolescheduler.New(),
+		workflow.WithoutOutbox(),
+	)
+
+	wf.Run(ctx)
+	t.Cleanup(wf.Stop)
+
+	fid := strconv.FormatInt(expectedUserID, 10)
+	runID, err := wf.Trigger(ctx, fid)
+	require.Nil(t, err)
+
+	_, err = wf.Await(ctx, fid, runID, StatusCompleted)
+	require.Nil(t, err)
 }
 
 func acceptanceTestWorkflow() *workflow.Builder[MyType, status] {

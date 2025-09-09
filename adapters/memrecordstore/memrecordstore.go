@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 	"sync"
+	"time"
 
 	"k8s.io/utils/clock"
 
@@ -31,14 +32,42 @@ func New(opts ...Option) *Store {
 		clock:            opt.clock,
 	}
 
+	if opt.writeToOutbox {
+		go func() {
+			_ = PurgeOutboxForever(
+				opt.ctx,
+				s.listOutbox,
+				s.DeleteOutboxEvent,
+				opt.eventStreamer,
+				opt.logger,
+				100*time.Microsecond,
+				1000,
+			)
+		}()
+	}
+
 	return s
 }
 
 type options struct {
 	clock clock.Clock
+
+	writeToOutbox bool
+	ctx           context.Context
+	eventStreamer workflow.EventStreamer
+	logger        workflow.Logger
 }
 
 type Option func(o *options)
+
+func WithOutbox(ctx context.Context, es workflow.EventStreamer, logger workflow.Logger) Option {
+	return func(o *options) {
+		o.writeToOutbox = true
+		o.ctx = ctx
+		o.eventStreamer = es
+		o.logger = logger
+	}
+}
 
 func WithClock(clock clock.Clock) Option {
 	return func(o *options) {
@@ -156,6 +185,24 @@ func (s *Store) ListOutboxEvents(
 		if outboxEvent.WorkflowName != workflowName {
 			continue
 		}
+
+		filtered = append(filtered, outboxEvent)
+		if len(filtered) >= int(limit) {
+			break
+		}
+	}
+
+	return filtered, nil
+}
+
+func (s *Store) listOutbox(
+	limit int64,
+) ([]workflow.OutboxEvent, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var filtered []workflow.OutboxEvent
+	for _, outboxEvent := range s.outbox {
 
 		filtered = append(filtered, outboxEvent)
 		if len(filtered) >= int(limit) {

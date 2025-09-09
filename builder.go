@@ -292,6 +292,14 @@ func WithTimeoutStore(s TimeoutStore) BuildOption {
 	}
 }
 
+// WithoutOutbox disables the polling of the RecordStore outbox for pushing events to the provided EvetnStreamner
+// and allows for external submission of outbox messages to the EventStreamer.
+func WithoutOutbox() BuildOption {
+	return func(w *buildOptions) {
+		w.outboxConfig.disabled = true
+	}
+}
+
 // WithClock allows the configuring of workflow's use and access of time. Instead of using time.Now() and other
 // associated functionality from the time package a clock is used instead in order to make it testable.
 func WithClock(c clock.Clock) BuildOption {
