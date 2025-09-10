@@ -68,14 +68,21 @@ func purgeOutbox(
 	}
 
 	// Send the events to the EventStreamer.
+	// Reuse a sender per topic within this batch to avoid connection churn.
+	senders := make(map[string]workflow.EventSender)
+	defer func() {
+		for _, s := range senders {
+			_ = s.Close()
+		}
+	}()
+
 	for _, e := range events {
 		var outboxRecord outboxpb.OutboxRecord
-		err := proto.Unmarshal(e.Data, &outboxRecord)
-		if err != nil {
-			return err
+		if err := proto.Unmarshal(e.Data, &outboxRecord); err != nil {
+			return fmt.Errorf("unmarshal outbox event %s: %w", e.ID, err)
 		}
 
-		headers := make(map[workflow.Header]string)
+		headers := make(map[workflow.Header]string, len(outboxRecord.Headers))
 		for k, v := range outboxRecord.Headers {
 			headers[workflow.Header(k)] = v
 		}
@@ -88,19 +95,23 @@ func purgeOutbox(
 			return fmt.Errorf("outbox event %s missing %q header", e.ID, workflow.HeaderTopic)
 		}
 
-		producer, err := stream.NewSender(ctx, topic)
-		if err != nil {
-			return err
+		sender, ok := senders[topic]
+		if !ok {
+			var err error
+			sender, err = stream.NewSender(ctx, topic)
+			if err != nil {
+				return fmt.Errorf("create sender for topic %q: %w", topic, err)
+			}
+
+			senders[topic] = sender
 		}
 
-		err = producer.Send(ctx, foreignID, eventType, headers)
-		if err != nil {
-			return err
+		if err := sender.Send(ctx, foreignID, eventType, headers); err != nil {
+			return fmt.Errorf("send outbox event %s to topic %q: %w", e.ID, topic, err)
 		}
 
-		err = deleter(ctx, e.ID)
-		if err != nil {
-			return err
+		if err := deleter(ctx, e.ID); err != nil {
+			return fmt.Errorf("delete outbox event %s: %w", e.ID, err)
 		}
 	}
 
