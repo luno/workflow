@@ -689,6 +689,16 @@ func TestExpectedProcesses(t *testing.T) {
 	for process := range w.States() {
 		require.Truef(t, expected[process], "process '%s' is missing expected value", process)
 	}
+
+	states := w.States()
+	require.Equal(t, len(expected), len(states), "unexpected process count")
+	for process := range states {
+		require.Truef(t, expected[process], "unexpected process '%s'", process)
+	}
+
+	for process := range expected {
+		require.Contains(t, states, process, "missing expected process '%s'", process)
+	}
 }
 
 func TestExpectedProcesses_outboxDisabled(t *testing.T) {
