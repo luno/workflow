@@ -38,20 +38,20 @@ func testLatest(t *testing.T, factory func() workflow.RecordStore) {
 		expected := dummyWireRecord(t, "my_workflow")
 
 		err := store.Store(ctx, expected)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		latest, err := store.Latest(ctx, expected.WorkflowName, expected.ForeignID)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		recordIsEqual(t, *expected, *latest)
 
 		expected.Status = int(statusEnd)
 		expected.RunState = workflow.RunStateCompleted
 		err = store.Store(ctx, expected)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		latest, err = store.Latest(ctx, expected.WorkflowName, expected.ForeignID)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		recordIsEqual(t, *expected, *latest)
 	})
 }
@@ -63,10 +63,10 @@ func testLookup(t *testing.T, factory func() workflow.RecordStore) {
 		expected := dummyWireRecord(t, "my_workflow")
 
 		err := store.Store(ctx, expected)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		latest, err := store.Lookup(ctx, expected.RunID)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		recordIsEqual(t, *expected, *latest)
 	})
@@ -79,27 +79,27 @@ func testStore(t *testing.T, factory func() workflow.RecordStore) {
 		expected := dummyWireRecord(t, "my_workflow")
 
 		err := store.Store(ctx, expected)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		latest, err := store.Lookup(ctx, expected.RunID)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		latest.Status = int(statusMiddle)
 		expected.Status = int(statusMiddle)
 
 		err = store.Store(ctx, latest)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		recordIsEqual(t, *expected, *latest)
 
 		latest, err = store.Lookup(ctx, expected.RunID)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		latest.Status = int(statusEnd)
 		expected.Status = int(statusEnd)
 
 		err = store.Store(ctx, latest)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		recordIsEqual(t, *expected, *latest)
 	})
@@ -112,10 +112,10 @@ func testListOutboxEvents(t *testing.T, factory func() workflow.RecordStore) {
 		expected := dummyWireRecord(t, "my_workflow")
 
 		err := store.Store(ctx, expected)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		ls, err := store.ListOutboxEvents(ctx, expected.WorkflowName, 1000)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		require.Equal(t, 1, len(ls))
 
@@ -124,7 +124,7 @@ func testListOutboxEvents(t *testing.T, factory func() workflow.RecordStore) {
 
 		var r outboxpb.OutboxRecord
 		err = proto.Unmarshal(ls[0].Data, &r)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		require.Equal(t, int32(statusStarted), r.Type)
 		require.Equal(t, "my_workflow-1", r.Headers[string(workflow.HeaderTopic)])
@@ -140,21 +140,21 @@ func testDeleteOutboxEvent(t *testing.T, factory func() workflow.RecordStore) {
 		expected := dummyWireRecord(t, "my_workflow")
 
 		err := store.Store(ctx, expected)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		latest, err := store.Lookup(ctx, expected.RunID)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		latest.Status = int(statusMiddle)
 
 		ls, err := store.ListOutboxEvents(ctx, expected.WorkflowName, 1000)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		err = store.DeleteOutboxEvent(ctx, ls[0].ID)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		ls, err = store.ListOutboxEvents(ctx, expected.WorkflowName, 1000)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		require.Equal(t, 0, len(ls))
 	})
@@ -175,22 +175,22 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 				name = secondWorkflowName
 			}
 			err := store.Store(ctx, dummyWireRecord(t, name))
-			require.Nil(t, err)
+			require.NoError(t, err)
 		}
 
 		ls, err := store.List(ctx, "", 0, 53, workflow.OrderTypeAscending)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.Equal(t, 53, len(ls))
 
 		ls2, err := store.List(ctx, "", 53, 100, workflow.OrderTypeAscending)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.Equal(t, 100, len(ls2))
 
 		// Make sure the last of the first page is not the same as the first of the next page
 		require.NotEqual(t, ls[52].RunID, ls2[0].RunID)
 
 		ls3, err := store.List(ctx, "", 153, seedCount-153, workflow.OrderTypeAscending)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.Equal(t, seedCount-153, len(ls3))
 
 		// Make sure the last of the first page is not the same as the first of the next page.
@@ -198,11 +198,11 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 
 		// Make sure that if 950 is the offset, and we only have 1000 then only 50 items will be returned.
 		lastPageAsc, err := store.List(ctx, "", 950, 1000, workflow.OrderTypeAscending)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.Equal(t, 50, len(lastPageAsc))
 
 		lastPageDesc, err := store.List(ctx, "", 950, 1000, workflow.OrderTypeDescending)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.Equal(t, 50, len(lastPageDesc))
 	})
 
@@ -212,11 +212,11 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 		for range 100 {
 			newRecord := dummyWireRecord(t, workflowName)
 			err := store.Store(ctx, newRecord)
-			require.Nil(t, err)
+			require.NoError(t, err)
 
 			secondRecord := dummyWireRecord(t, secondWorkflowName)
 			err = store.Store(ctx, secondRecord)
-			require.Nil(t, err)
+			require.NoError(t, err)
 		}
 
 		ls, err := store.List(
@@ -226,7 +226,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 			2000,
 			workflow.OrderTypeAscending,
 		)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.Equal(t, 100, len(ls))
 
 		for _, l := range ls {
@@ -244,7 +244,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 				wr.ForeignID = foreignID
 
 				err := store.Store(ctx, wr)
-				require.Nil(t, err)
+				require.NoError(t, err)
 			}
 		}
 
@@ -256,7 +256,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 			workflow.OrderTypeAscending,
 			workflow.FilterByForeignID(foreignIDs[0]),
 		)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.Equal(t, 20, len(ls))
 
 		ls2, err := store.List(
@@ -267,7 +267,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 			workflow.OrderTypeAscending,
 			workflow.FilterByForeignID(foreignIDs[1]),
 		)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.Equal(t, 20, len(ls2))
 
 		ls3, err := store.List(
@@ -278,7 +278,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 			workflow.OrderTypeAscending,
 			workflow.FilterByForeignID("random"),
 		)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.Equal(t, 0, len(ls3))
 	})
 
@@ -299,7 +299,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 				wr.RunState = runState
 
 				err := store.Store(ctx, wr)
-				require.Nil(t, err)
+				require.NoError(t, err)
 			}
 		}
 
@@ -313,7 +313,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 				workflow.OrderTypeAscending,
 				workflow.FilterByRunState(runState),
 			)
-			require.Nil(t, err)
+			require.NoError(t, err)
 			require.Equal(t, count, len(ls), fmt.Sprintf("Expected to have %v entries of %v", count, runState.String()))
 
 			for _, l := range ls {
@@ -330,7 +330,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 			workflow.OrderTypeAscending,
 			workflow.FilterByRunState(workflow.RunStateRunning, workflow.RunStatePaused),
 		)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.Equal(
 			t,
 			103,
@@ -365,7 +365,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 				newRecord.Status = int(status)
 
 				err := store.Store(ctx, newRecord)
-				require.Nil(t, err)
+				require.NoError(t, err)
 			}
 		}
 
@@ -378,7 +378,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 				workflow.OrderTypeAscending,
 				workflow.FilterByStatus(status),
 			)
-			require.Nil(t, err)
+			require.NoError(t, err)
 			require.Equal(t, count, len(ls))
 
 			for _, l := range ls {
@@ -397,7 +397,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 			newRecord := dummyWireRecord(t, workflowName)
 			newRecord.CreatedAt = now
 			err := store.Store(ctx, newRecord)
-			require.Nil(t, err)
+			require.NoError(t, err)
 		}
 
 		t0 := now.Add(-time.Minute)
@@ -411,7 +411,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 			workflow.FilterByCreatedAtAfter(t0),
 			workflow.FilterByCreatedAtBefore(t1),
 		)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.Equal(t, n, len(ls))
 
 		ls2, err := store.List(
@@ -422,7 +422,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 			workflow.OrderTypeAscending,
 			workflow.FilterByCreatedAtAfter(t1),
 		)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.Equal(t, 0, len(ls2))
 		ls3, err := store.List(
 			ctx,
@@ -432,7 +432,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 			workflow.OrderTypeAscending,
 			workflow.FilterByCreatedAtBefore(t0),
 		)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.Equal(t, 0, len(ls3))
 	})
 
@@ -441,7 +441,7 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 func dummyWireRecord(t *testing.T, workflowName string) *workflow.Record {
 	foreignID := "Andrew Wormald"
 	runID, err := uuid.NewUUID()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	type example struct {
 		name string
@@ -449,7 +449,7 @@ func dummyWireRecord(t *testing.T, workflowName string) *workflow.Record {
 
 	e := example{name: foreignID}
 	b, err := json.Marshal(e)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	createdAt := time.Now()
 

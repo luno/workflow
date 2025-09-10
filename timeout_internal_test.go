@@ -27,7 +27,7 @@ func TestProcessTimeout(t *testing.T) {
 
 	value := "data"
 	b, err := Marshal(&value)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	type calls struct {
 		updater      func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error
@@ -197,7 +197,7 @@ func TestProcessTimeout(t *testing.T) {
 			}
 
 			err := processTimeout(ctx, w, timeout, tc.record, tr, tc.caller(calls).completeFunc, tc.caller(calls).store, tc.caller(calls).updater, processName, 1)
-			require.Nil(t, err)
+			require.NoError(t, err)
 
 			require.Equal(t, tc.expectedCalls, calls)
 		})

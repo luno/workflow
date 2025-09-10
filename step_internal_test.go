@@ -30,7 +30,7 @@ func Test_stepConsumer(t *testing.T) {
 	}
 	value := "data"
 	b, err := Marshal(&value)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	current := &Record{
 		WorkflowName: "example",
@@ -91,7 +91,7 @@ func Test_stepConsumer(t *testing.T) {
 			0,
 			w.errorCounter,
 		)(ctx, &Event{})
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		expectedCalls := map[string]int{
 			"consumerFunc": 1,
@@ -142,7 +142,7 @@ func Test_stepConsumer(t *testing.T) {
 			0,
 			w.errorCounter,
 		)(ctx, &Event{})
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		expectedCalls := map[string]int{
 			"consumerFunc": 1,
@@ -191,7 +191,7 @@ func Test_stepConsumer(t *testing.T) {
 			0,
 			w.errorCounter,
 		)(ctx, &Event{})
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		expectedCalls := map[string]int{
 			"consumerFunc": 1,
@@ -242,7 +242,7 @@ func Test_stepConsumer(t *testing.T) {
 			3,
 			w.errorCounter,
 		)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		err := consume(ctx, &Event{})
 		require.NotNil(t, err)
@@ -251,7 +251,7 @@ func Test_stepConsumer(t *testing.T) {
 		require.NotNil(t, err)
 
 		err = consume(ctx, &Event{})
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		expectedCalls := map[string]int{
 			"consumerFunc": 3,

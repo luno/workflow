@@ -71,10 +71,10 @@ func TestOutboxDisabled(t *testing.T) {
 	t.Cleanup(wf.Stop)
 
 	runID, err := wf.Trigger(ctx, "some-related-id")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, err = wf.Await(ctx, "some-related-id", runID, StatusEnd)
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestNewPanicsWithIncompleteOutboxRequirements(t *testing.T) {

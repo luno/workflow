@@ -27,7 +27,7 @@ func TestProcessCallback(t *testing.T) {
 
 	value := "data"
 	b, err := Marshal(&value)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	current := &Record{
 		WorkflowName: "example",
@@ -77,7 +77,7 @@ func TestProcessCallback(t *testing.T) {
 		}
 
 		err := processCallback(ctx, w, testStatus(current.Status), callbackFn, current.ForeignID, nil, latestLookup, store, updater)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		expectedCalls := map[string]int{
 			"callbackFunc": 1,
@@ -117,7 +117,7 @@ func TestProcessCallback(t *testing.T) {
 		}
 
 		err := processCallback(ctx, w, testStatus(current.Status), callbackFn, current.ForeignID, nil, latestLookup, store, updater)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		expectedCalls := map[string]int{
 			"callbackFunc": 1,
@@ -155,7 +155,7 @@ func TestProcessCallback(t *testing.T) {
 		}
 
 		err := processCallback(ctx, w, testStatus(current.Status), callbackFn, current.ForeignID, nil, latestLookup, store, updater)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		expectedCalls := map[string]int{
 			"callbackFunc": 1,
@@ -198,6 +198,6 @@ func TestProcessCallback(t *testing.T) {
 		}
 
 		err := processCallback(ctx, w, statusStart, nil, current.ForeignID, nil, latestLookup, nil, nil)
-		require.Nil(t, err)
+		require.NoError(t, err)
 	})
 }

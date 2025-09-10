@@ -24,10 +24,10 @@ func TestProtoMarshalAndUnmarshal(t *testing.T) {
 	}
 
 	protoBytes, err := workflowpb.ProtoMarshal(&wireRecord)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	deserialised, err := workflowpb.UnmarshalRecord(protoBytes)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	require.Equal(t, wireRecord, *deserialised)
 }

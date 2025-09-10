@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -126,7 +125,7 @@ func TestWorkflowAcceptanceTest(t *testing.T) {
 	}
 
 	runID, err := wf.Trigger(ctx, fid, workflow.WithInitialValue[MyType, status](&mt))
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Once in the correct status, trigger third party callbacks
 	workflow.TriggerCallbackOn(t, wf, fid, runID, StatusEmailConfirmationSent, ExternalEmailVerified{
@@ -148,16 +147,16 @@ func TestWorkflowAcceptanceTest(t *testing.T) {
 	clock.Step(time.Hour)
 
 	_, err = wf.Await(ctx, fid, runID, StatusCompleted)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	r, err := recordStore.Latest(ctx, wf.Name(), fid)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, int(expectedFinalStatus), r.Status)
 	require.Equal(t, "Completed", r.Meta.StatusDescription)
 
 	var actual MyType
 	err = workflow.Unmarshal(r.Object, &actual)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	require.Equal(t, expectedUserID, actual.UserID)
 	require.Equal(t, strconv.FormatInt(expectedUserID, 10), actual.ForeignID())
@@ -196,10 +195,10 @@ func TestOutboxDisabled(t *testing.T) {
 
 	fid := strconv.FormatInt(expectedUserID, 10)
 	runID, err := wf.Trigger(ctx, fid)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, err = wf.Await(ctx, fid, runID, StatusCompleted)
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func acceptanceTestWorkflow() *workflow.Builder[MyType, status] {
@@ -313,7 +312,7 @@ func TestTimeout(t *testing.T) {
 	t.Cleanup(wf.Stop)
 
 	runID, err := wf.Trigger(ctx, "example")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	workflow.AwaitTimeoutInsert(t, wf, "example", runID, StatusProfileCreated)
 
@@ -321,7 +320,7 @@ func TestTimeout(t *testing.T) {
 	clock.Step(time.Hour)
 
 	got, err := wf.Await(ctx, "example", runID, StatusCompleted)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	require.Equal(t, expectedUserID, got.Object.UserID)
 }
@@ -471,7 +470,7 @@ func TestWorkflow_TestingRequire(t *testing.T) {
 
 	foreignID := "andrew"
 	_, err := wf.Trigger(ctx, foreignID)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	expected := MyType{
 		Email: "andrew@workflow.com",
@@ -524,7 +523,7 @@ func TestTimeTimerFunc(t *testing.T) {
 	t.Cleanup(wf.Stop)
 
 	runID, err := wf.Trigger(ctx, "Andrew Wormald")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	workflow.AwaitTimeoutInsert(t, wf, "Andrew Wormald", runID, StatusStart)
 
@@ -638,12 +637,12 @@ func TestStepConsumerLag(t *testing.T) {
 	_, err := wf.Trigger(ctx, foreignID, workflow.WithInitialValue[TimeWatcher, status](&TimeWatcher{
 		StartTime: clock.Now(),
 	}))
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	time.Sleep(time.Second)
 
 	latest, err := recordStore.Latest(ctx, wf.Name(), foreignID)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Ensure that the record has not been consumer or updated
 	require.Equal(t, int(StatusStart), latest.Status)

@@ -52,7 +52,7 @@ func TestSchedule(t *testing.T) {
 	go func() {
 		wg.Done()
 		err := wf.Schedule("andrew", "@monthly")
-		require.Nil(t, err)
+		require.NoError(t, err)
 	}()
 	wg.Wait()
 
@@ -71,10 +71,10 @@ func TestSchedule(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	firstScheduled, err := recordStore.Latest(ctx, workflowName, "andrew")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, err = wf.Await(ctx, firstScheduled.ForeignID, firstScheduled.RunID, StatusEnd)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	expectedTimestamp = time.Date(2023, time.June, 1, 0, 0, 0, 0, time.UTC)
 	clock.SetTime(expectedTimestamp)
@@ -83,7 +83,7 @@ func TestSchedule(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	secondScheduled, err := recordStore.Latest(ctx, workflowName, "andrew")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	require.NotEqual(t, firstScheduled.RunID, secondScheduled.RunID)
 }
@@ -112,7 +112,7 @@ func TestWorkflow_ScheduleShutdown(t *testing.T) {
 	go func() {
 		wg.Done()
 		err := wf.Schedule("andrew", "@monthly")
-		require.Nil(t, err)
+		require.NoError(t, err)
 	}()
 
 	wg.Wait()
@@ -181,7 +181,7 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	go func() {
 		wg.Done()
 		err := wf.Schedule("andrew", "@monthly", opt)
-		require.Nil(t, err)
+		require.NoError(t, err)
 	}()
 	wg.Wait()
 
@@ -206,10 +206,10 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	latest, err := recordStore.Latest(ctx, workflowName, "andrew")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	resp, err := wf.Await(ctx, latest.ForeignID, latest.RunID, StatusEnd)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	require.Equal(t, expectedTimestamp, resp.CreatedAt)
 }

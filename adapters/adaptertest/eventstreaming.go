@@ -71,15 +71,15 @@ func RunEventStreamerTest(t *testing.T, factory func() workflow.EventStreamer) {
 					err = sender.Send(ctx, "789", 5, map[workflow.Header]string{
 						workflow.HeaderTopic: topic,
 					})
-					require.Nil(t, err)
+					require.NoError(t, err)
 				}()
 
 				e, ack, err := receiver.Recv(ctx)
-				require.Nil(t, err)
+				require.NoError(t, err)
 				require.Equal(t, "789", e.ForeignID)
 
 				err = ack()
-				require.Nil(t, err)
+				require.NoError(t, err)
 
 				wg.Done()
 			}()
@@ -88,24 +88,24 @@ func RunEventStreamerTest(t *testing.T, factory func() workflow.EventStreamer) {
 		})
 
 		err = receiver.Close()
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		t.Run("StreamFromLatest should have no affect when offset is committed", func(t *testing.T) {
 			err = sender.Send(ctx, "101", 5, map[workflow.Header]string{
 				workflow.HeaderTopic: topic,
 			})
-			require.Nil(t, err)
+			require.NoError(t, err)
 
 			secondReceiver, err := streamer.NewReceiver(ctx, topic, "my-receiver", workflow.StreamFromLatest())
-			require.Nil(t, err)
+			require.NoError(t, err)
 
 			// Should receive event send when receiver wasn't receiving events based on the offset being set.
 			e, ack, err := secondReceiver.Recv(ctx)
-			require.Nil(t, err)
+			require.NoError(t, err)
 			require.Equal(t, "101", e.ForeignID)
 
 			err = ack()
-			require.Nil(t, err)
+			require.NoError(t, err)
 		})
 	})
 
@@ -159,14 +159,14 @@ func RunEventStreamerTest(t *testing.T, factory func() workflow.EventStreamer) {
 			CountryCode: "GB",
 		}
 		runId, err := wf.Trigger(ctx, foreignID, workflow.WithInitialValue[User, SyncStatus](&u))
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		workflow.AwaitTimeoutInsert(t, wf, foreignID, runId, SyncStatusEmailSet)
 
 		clock.Step(time.Hour)
 
 		record, err := wf.Await(ctx, foreignID, runId, SyncStatusCompleted)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		require.Equal(t, "andrew@workflow.com", record.Object.Email)
 		require.Equal(t, SyncStatusCompleted.String(), record.Status.String())

@@ -12,16 +12,16 @@ func TestNoopRunStateController(t *testing.T) {
 
 	ctx := t.Context()
 	err := ctrl.Pause(ctx, "")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	err = ctrl.Resume(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	err = ctrl.Cancel(ctx, "")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	err = ctrl.DeleteData(ctx, "")
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestRunStateControllerTransitions(t *testing.T) {
