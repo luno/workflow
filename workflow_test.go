@@ -175,7 +175,7 @@ func TestOutboxDisabled(t *testing.T) {
 	})
 
 	eventStreamer := memstreamer.New()
-	recordStore := memrecordstore.New(memrecordstore.WithOutbox(ctx, eventStreamer, logger.New(os.Stdout)))
+	recordStore := memrecordstore.New(memrecordstore.WithOutbox(ctx, eventStreamer, logger.New(io.Discard)))
 
 	b := workflow.NewBuilder[string, status]("super fast workflow")
 	b.AddStep(StatusInitiated, func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
