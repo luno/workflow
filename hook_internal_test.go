@@ -39,7 +39,7 @@ func Test_runHooks(t *testing.T) {
 				return nil
 			},
 		)(ctx, &Event{})
-		require.Nil(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("Return non-error if hook errors", func(t *testing.T) {
@@ -50,7 +50,7 @@ func Test_runHooks(t *testing.T) {
 			func(ctx context.Context, runID string) (*Record, error) {
 				value := "data"
 				b, err := Marshal(&value)
-				require.Nil(t, err)
+				require.NoError(t, err)
 
 				current := &Record{
 					WorkflowName: "example",

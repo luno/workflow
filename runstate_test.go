@@ -69,7 +69,7 @@ func TestRunState(t *testing.T) {
 
 			// Trigger workflow before it's running to assert that the initial state is workflow.RunStateInitiated
 			runID, err := w.Trigger(ctx, "fid")
-			require.Nil(t, err)
+			require.NoError(t, err)
 
 			time.Sleep(time.Second)
 
@@ -121,7 +121,7 @@ func TestWorkflowRunStateController(t *testing.T) {
 		Name: "Andrew Wormald",
 		Car:  "Audi",
 	})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	ctx := t.Context()
 	workflowName := "test-workflow"
@@ -136,51 +136,51 @@ func TestWorkflowRunStateController(t *testing.T) {
 	})
 
 	record, err := recordStore.Latest(ctx, workflowName, foreignID)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	time.Sleep(time.Millisecond * 500)
 
 	record, err = recordStore.Latest(ctx, workflowName, foreignID)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	require.Equal(t, workflow.RunStateInitiated, record.RunState)
 
 	wr, err := recordStore.Lookup(ctx, record.RunID)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	rsc := workflow.NewRunStateController(recordStore.Store, wr)
 
 	err = rsc.Pause(ctx, "test pause")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	record, err = recordStore.Latest(ctx, workflowName, foreignID)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	require.Equal(t, workflow.RunStatePaused, record.RunState)
 	require.Equal(t, "test pause", record.Meta.RunStateReason)
 
 	err = rsc.Resume(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	record, err = recordStore.Latest(ctx, workflowName, foreignID)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	require.Equal(t, workflow.RunStateRunning, record.RunState)
 
 	err = rsc.Cancel(ctx, "test cancel")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	record, err = recordStore.Latest(ctx, workflowName, foreignID)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	require.Equal(t, workflow.RunStateCancelled, record.RunState)
 	require.Equal(t, "test cancel", record.Meta.RunStateReason)
 
 	err = rsc.DeleteData(ctx, "test delete")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	record, err = recordStore.Latest(ctx, workflowName, foreignID)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	require.Equal(t, workflow.RunStateRequestedDataDeleted, record.RunState)
 	require.Equal(t, "test delete", record.Meta.RunStateReason)

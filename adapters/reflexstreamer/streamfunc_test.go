@@ -25,7 +25,7 @@ func TestStreamFunc(t *testing.T) {
 
 	fid := "23847923847"
 	_, err := wf.Trigger(ctx, fid)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	workflow.Require(t, wf, fid, statusEnd, "Started and Completed in a Workflow")
 
@@ -67,7 +67,7 @@ func TestOnComplete(t *testing.T) {
 
 	fid := "23847923847"
 	_, err := wf.Trigger(ctx, fid)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	workflow.Require(t, wf, fid, statusEnd, "Started and Completed in a Workflow")
 

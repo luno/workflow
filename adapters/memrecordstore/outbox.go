@@ -1,0 +1,135 @@
+package memrecordstore
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
+	"google.golang.org/protobuf/proto"
+
+	"github.com/luno/workflow"
+	"github.com/luno/workflow/internal/outboxpb"
+)
+
+type (
+	OutboxLister  func(limit int64) ([]workflow.OutboxEvent, error)
+	OutboxDeleter func(ctx context.Context, id string) error
+)
+
+func PurgeOutboxForever(
+	ctx context.Context,
+	lister OutboxLister,
+	deleter OutboxDeleter,
+	stream workflow.EventStreamer,
+	logger workflow.Logger,
+	pollingFrequency time.Duration,
+	lookupLimit int64,
+) error {
+	for ctx.Err() == nil {
+		err := purgeOutbox(
+			ctx,
+			lister,
+			deleter,
+			stream,
+			pollingFrequency,
+			lookupLimit,
+		)
+		if errors.Is(err, context.Canceled) {
+			return nil
+		} else if err != nil {
+			logger.Error(ctx, err)
+			if err := wait(ctx, time.Second); errors.Is(err, context.Canceled) {
+				return nil
+			}
+
+			continue
+		}
+	}
+
+	return nil
+}
+
+func purgeOutbox(
+	ctx context.Context,
+	lister OutboxLister,
+	deleter OutboxDeleter,
+	stream workflow.EventStreamer,
+	pollingFrequency time.Duration,
+	lookupLimit int64,
+) error {
+	events, err := lister(lookupLimit)
+	if err != nil {
+		return err
+	}
+
+	if len(events) == 0 {
+		return wait(ctx, pollingFrequency)
+	}
+
+	// Send the events to the EventStreamer.
+	// Reuse a sender per topic within this batch to avoid connection churn.
+	senders := make(map[string]workflow.EventSender)
+	defer func() {
+		for _, s := range senders {
+			_ = s.Close()
+		}
+	}()
+
+	for _, e := range events {
+		var outboxRecord outboxpb.OutboxRecord
+		if err := proto.Unmarshal(e.Data, &outboxRecord); err != nil {
+			return fmt.Errorf("unmarshal outbox event %s: %w", e.ID, err)
+		}
+
+		headers := make(map[workflow.Header]string, len(outboxRecord.Headers))
+		for k, v := range outboxRecord.Headers {
+			headers[workflow.Header(k)] = v
+		}
+
+		foreignID := outboxRecord.RunId
+		eventType := int(outboxRecord.Type)
+
+		topic := headers[workflow.HeaderTopic]
+		if topic == "" {
+			return fmt.Errorf("outbox event %s missing %q header", e.ID, workflow.HeaderTopic)
+		}
+
+		sender, ok := senders[topic]
+		if !ok {
+			var err error
+			sender, err = stream.NewSender(ctx, topic)
+			if err != nil {
+				return fmt.Errorf("create sender for topic %q: %w", topic, err)
+			}
+
+			senders[topic] = sender
+		}
+
+		if err := sender.Send(ctx, foreignID, eventType, headers); err != nil {
+			return fmt.Errorf("send outbox event %s to topic %q: %w", e.ID, topic, err)
+		}
+
+		if err := deleter(ctx, e.ID); err != nil {
+			return fmt.Errorf("delete outbox event %s: %w", e.ID, err)
+		}
+	}
+
+	return nil
+}
+
+func wait(ctx context.Context, d time.Duration) error {
+	if d == 0 {
+		return nil
+	}
+
+	t := time.NewTimer(d)
+	defer t.Stop()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-t.C:
+		return nil
+	}
+}

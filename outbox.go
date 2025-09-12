@@ -59,6 +59,7 @@ type outboxConfig struct {
 	pollingFrequency time.Duration
 	lagAlert         time.Duration
 	limit            int64
+	disabled         bool
 }
 
 func WithOutboxOptions(opts ...OutboxOption) BuildOption {

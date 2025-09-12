@@ -114,10 +114,12 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 		w.cancel = cancel
 		w.calledRun = true
 
-		// Start the outbox consumer
-		track(w, func() {
-			outboxConsumer(w, w.outboxConfig)
-		})
+		if !w.outboxConfig.disabled {
+			// Start the outbox consumer
+			track(w, func() {
+				outboxConsumer(w, w.outboxConfig)
+			})
+		}
 
 		// Start the state step consumers
 		for currentStatus, config := range w.consumers {

@@ -27,7 +27,7 @@ func TestWorkflow(t *testing.T) {
 
 	foreignID := "82347982374982374"
 	_, err := wf.Trigger(ctx, foreignID)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	workflow.Require(t, wf, foreignID, gettingstarted.StatusReadTheDocs, gettingstarted.GettingStarted{
 		ReadTheDocs: "✅",

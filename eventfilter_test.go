@@ -58,7 +58,7 @@ func TestShardNonNumerical(t *testing.T) {
 	)
 	for i := 0; i < total; i++ {
 		uid, err := uuid.NewUUID()
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		e := &ConnectorEvent{
 			ID: uid.String(),

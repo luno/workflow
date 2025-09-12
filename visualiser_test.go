@@ -23,7 +23,7 @@ func TestCreateDiagram(t *testing.T) {
 	wf := b.Build(nil, nil, nil)
 
 	err := workflow.CreateDiagram(wf, "./testdata/graph-visualisation.md", workflow.LeftToRightDirection)
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestCreateDiagramValidation(t *testing.T) {

@@ -29,7 +29,7 @@ func testReturnedContext(t *testing.T, factory func(t *testing.T, instances int)
 		ctxWithValue := context.WithValue(ctx, "parent", "context")
 
 		ctx2, cancel, err := rs[0].Await(ctxWithValue, "leader-cancelled-ctx")
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		cancel()
 
@@ -47,7 +47,7 @@ func testLocking(t *testing.T, factory func(t *testing.T, instances int) []workf
 		for _, rinkInstance := range rs {
 			go func(rolesObtained chan bool) {
 				_, _, err := rinkInstance.Await(ctxWithValue, "leader-lock")
-				require.Nil(t, err)
+				require.NoError(t, err)
 				rolesObtained <- true
 			}(rolesObtained)
 		}
@@ -79,7 +79,7 @@ func testReleasing(t *testing.T, factory func(t *testing.T, instances int) []wor
 		passed := make(chan bool)
 		go func() {
 			_, _, err := rs[0].Await(ctx, "leader-releasing")
-			require.Nil(t, err)
+			require.NoError(t, err)
 
 			ctx2, cancel2 := context.WithCancel(context.Background())
 			go func() {

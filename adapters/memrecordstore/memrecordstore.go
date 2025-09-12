@@ -2,8 +2,10 @@ package memrecordstore
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"sync"
+	"time"
 
 	"k8s.io/utils/clock"
 
@@ -31,14 +33,55 @@ func New(opts ...Option) *Store {
 		clock:            opt.clock,
 	}
 
+	if opt.writeToOutbox {
+		if opt.ctx == nil || opt.eventStreamer == nil || opt.logger == nil {
+			panic("outbox requirements not fully satisfied (ctx, event streamer, or logger is nil)")
+		}
+
+		go func() {
+			err := PurgeOutboxForever(
+				opt.ctx,
+				s.listOutbox,
+				s.DeleteOutboxEvent,
+				opt.eventStreamer,
+				opt.logger,
+				10*time.Millisecond,
+				1000,
+			)
+			if errors.Is(err, context.Canceled) {
+				opt.logger.Debug(opt.ctx, "outbox processor stopped", map[string]string{})
+			} else if err != nil {
+				err = errors.Join(
+					errors.New("outbox processor stopped with unexpectedly"),
+					err,
+				)
+				opt.logger.Error(opt.ctx, err)
+			}
+		}()
+	}
+
 	return s
 }
 
 type options struct {
 	clock clock.Clock
+
+	writeToOutbox bool
+	ctx           context.Context
+	eventStreamer workflow.EventStreamer
+	logger        workflow.Logger
 }
 
 type Option func(o *options)
+
+func WithOutbox(ctx context.Context, es workflow.EventStreamer, logger workflow.Logger) Option {
+	return func(o *options) {
+		o.writeToOutbox = true
+		o.ctx = ctx
+		o.eventStreamer = es
+		o.logger = logger
+	}
+}
 
 func WithClock(clock clock.Clock) Option {
 	return func(o *options) {
@@ -156,6 +199,24 @@ func (s *Store) ListOutboxEvents(
 		if outboxEvent.WorkflowName != workflowName {
 			continue
 		}
+
+		filtered = append(filtered, outboxEvent)
+		if len(filtered) >= int(limit) {
+			break
+		}
+	}
+
+	return filtered, nil
+}
+
+func (s *Store) listOutbox(
+	limit int64,
+) ([]workflow.OutboxEvent, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var filtered []workflow.OutboxEvent
+	for _, outboxEvent := range s.outbox {
 
 		filtered = append(filtered, outboxEvent)
 		if len(filtered) >= int(limit) {
