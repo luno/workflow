@@ -41,6 +41,23 @@ func (s SyncStatus) String() string {
 	}
 }
 
+// RunEventStreamerTest runs a standard test suite that validates an EventStreamer
+// implementation produced by factory.
+//
+// It executes two groups of checks:
+// 1. "ReceiverOption - Ensure StreamFromLatest is implemented": verifies that a
+//    receiver created with workflow.StreamFromLatest only receives events sent
+//    after it connects, and that StreamFromLatest does not override an already
+//    committed offset.
+// 2. "Acceptance test - full workflow run through": builds and runs a small
+//    workflow (types User and SyncStatus) using the provided EventStreamer,
+//    an in-memory record store and scheduler, and a fake clock. It triggers a
+//    run and asserts the workflow progresses through the expected states and
+//    produces the expected final object values.
+//
+// Parameters:
+// - t: the testing.T for the caller test.
+// - factory: a function that returns a workflow.EventStreamer to be exercised.
 func RunEventStreamerTest(t *testing.T, factory func() workflow.EventStreamer) {
 	t.Run("ReceiverOption - Ensure StreamFromLatest is implemented", func(t *testing.T) {
 		streamer := factory()

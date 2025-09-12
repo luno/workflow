@@ -14,6 +14,17 @@ import (
 
 const defaultListLimit = 25
 
+// New constructs and returns an in-memory Store configured by the provided options.
+// 
+// The returned Store holds workflows, snapshots and an optional outbox in memory.
+// Callers may pass Option functions to override defaults (the default clock is the real clock).
+//
+// If WithOutbox was used to enable outbox processing, New will panic if the required
+// outbox dependencies (context, event streamer or logger) are nil. When enabled it
+// starts a background goroutine that continuously purges and publishes outbox events;
+// that goroutine honours context cancellation and logs unexpected termination.
+//
+// The function returns a pointer to the initialised Store.
 func New(opts ...Option) *Store {
 	// Set option defaults
 	opt := options{
@@ -74,6 +85,10 @@ type options struct {
 
 type Option func(o *options)
 
+// WithOutbox returns an Option that enables background outbox processing for the store
+// using the provided context, EventStreamer and Logger. When this option is applied the
+// store will record outbox events and New will start a background goroutine to purge
+// and process them. New will panic if any of ctx, es or logger are nil.
 func WithOutbox(ctx context.Context, es workflow.EventStreamer, logger workflow.Logger) Option {
 	return func(o *options) {
 		o.writeToOutbox = true
@@ -83,6 +98,9 @@ func WithOutbox(ctx context.Context, es workflow.EventStreamer, logger workflow.
 	}
 }
 
+// WithClock returns an Option that sets the clock implementation used by the store.
+// Use this to override the default real-time clock (for example in tests or when
+// injecting a custom time source).
 func WithClock(clock clock.Clock) Option {
 	return func(o *options) {
 		o.clock = clock

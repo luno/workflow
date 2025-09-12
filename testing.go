@@ -12,6 +12,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TriggerCallbackOn waits for the record with the given foreignID to reach waitForStatus
+// and then invokes the workflow's Callback with p marshalled as JSON.
+//
+// It panics if t is nil or if api is not a *Workflow[Type, Status]. The function blocks
+// until a matching Record is observed; if JSON marshalling of p or the Callback call
+// returns an error the test is failed via require.NoError.
 func TriggerCallbackOn[Type any, Status StatusType, Payload any](
 	t testing.TB,
 	api API[Type, Status],
@@ -39,6 +45,12 @@ func TriggerCallbackOn[Type any, Status StatusType, Payload any](
 	require.NoError(t, err)
 }
 
+// AwaitTimeoutInsert waits until a timeout entry with the given foreignID, runID and
+// status appears in the workflow's timeout store or the workflow context is cancelled.
+// It panics if t is nil or if api is not a *Workflow[Type, Status].
+//
+// The function repeatedly lists the workflow's timeout entries and returns once a
+// matching entry (Status == waitFor, ForeignID == foreignID, RunID == runID) is found.
 func AwaitTimeoutInsert[Type any, Status StatusType](
 	t testing.TB,
 	api API[Type, Status],
@@ -86,6 +98,7 @@ func AwaitTimeoutInsert[Type any, Status StatusType](
 	}
 }
 
+// The call blocks until a matching record is observed or the test context ends.
 func Require[Type any, Status StatusType](
 	t testing.TB,
 	api API[Type, Status],
@@ -132,6 +145,15 @@ func Require[Type any, Status StatusType](
 	require.Equal(t, normalisedExpected, actual)
 }
 
+// WaitFor waits until a Run for the given foreignID satisfies the supplied predicate.
+// 
+// It requires a testing.TB and an API that is a *Workflow; it panics if t is nil or
+// api is not the expected workflow type. The predicate fn is invoked with successive
+// Run snapshots (converted from stored Records); when fn returns true the wait stops.
+// If fn returns a non-nil error the wait aborts and the error fails the test.
+//
+// The conversion from Record to Run uses buildRun; any conversion error is asserted
+// with require.NoError and will fail the test. This function does not return a value.
 func WaitFor[Type any, Status StatusType](
 	t testing.TB,
 	api API[Type, Status],
@@ -155,6 +177,24 @@ func WaitFor[Type any, Status StatusType](
 	})
 }
 
+// waitFor polls the workflow's records for the given foreignID until a predicate
+// applied to a snapshot returns true, then returns that matching Record.
+//
+// The function requires the workflow's recordStore to implement TestingRecordStore;
+// it panics if that is not the case. It first waits until a latest Record exists
+// for the foreignID (using Latest) to obtain the current run ID, then iterates
+// the snapshots for that run calling fn on each snapshot. When fn returns true
+// (and no error), the corresponding snapshot is returned. Any errors produced by
+// fn are propagated as test failures.
+//
+// This function blocks until a matching snapshot is found and therefore may hang
+// indefinitely if no snapshot satisfies the predicate. It returns a non-nil
+// *Record when a match is found. Parameters are:
+//  - t: the testing.TB used for assertions.
+//  - w: the Workflow instance under test.
+//  - foreignID: the ID of the external entity whose records are inspected.
+//  - fn: predicate applied to each snapshot; should return (true, nil) to select
+//    a snapshot.
 func waitFor[Type any, Status StatusType](
 	t testing.TB,
 	w *Workflow[Type, Status],

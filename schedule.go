@@ -95,6 +95,9 @@ func (w *Workflow[Type, Status]) Schedule(
 	return nil
 }
 
+// waitUntil waits until the given `until` time according to the provided clock or until the context is cancelled.
+// It returns nil if the clock's timer fires (i.e. the target time is reached) or `ctx.Err()` if the context is done
+// before that. The function ensures the timer returned by the clock is stopped to avoid timer leaks.
 func waitUntil(ctx context.Context, clock clock.Clock, until time.Time) error {
 	timeDiffAsDuration := until.Sub(clock.Now())
 

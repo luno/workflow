@@ -62,6 +62,12 @@ type outboxConfig struct {
 	disabled         bool
 }
 
+// WithOutboxOptions returns a BuildOption that applies the provided OutboxOption functions
+// to the outbox configuration used when building a workflow.
+//
+// The returned option initialises the outbox configuration from the package defaults and
+// then applies each supplied OutboxOption in order; the resulting configuration is stored
+// on the build options so it is used when registering the workflow's outbox consumer.
 func WithOutboxOptions(opts ...OutboxOption) BuildOption {
 	return func(bo *buildOptions) {
 		options := defaultOutboxConfig()

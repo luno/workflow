@@ -22,6 +22,11 @@ func RunRoleSchedulerTest(t *testing.T, factory func(t *testing.T, instances int
 	}
 }
 
+// testReturnedContext runs a subtest that verifies the context returned by Await is a child of
+// the context passed in (i.e. it inherits values from the parent).
+// It creates a single RoleScheduler via the factory, supplies a context containing a value,
+// calls Await, cancels the returned cancellation function, and asserts the returned context
+// still contains the parent's value.
 func testReturnedContext(t *testing.T, factory func(t *testing.T, instances int) []workflow.RoleScheduler) {
 	t.Run("Ensure that the passed in context is a parent of the returned context", func(t *testing.T) {
 		rs := factory(t, 1)
@@ -37,6 +42,11 @@ func testReturnedContext(t *testing.T, factory func(t *testing.T, instances int)
 	})
 }
 
+// testLocking verifies that only one RoleScheduler can obtain the role at a time.
+// It concurrently starts Await on multiple scheduler instances with the same key
+// and asserts that, within a short timeout, no more than one instance has obtained
+// the lock — indicating exclusive locking behaviour. The provided factory is used
+// to create the RoleScheduler instances for the test.
 func testLocking(t *testing.T, factory func(t *testing.T, instances int) []workflow.RoleScheduler) {
 	t.Run("Ensure role is locked and successive calls are blocked", func(t *testing.T) {
 		rs := factory(t, 5)
@@ -68,6 +78,13 @@ func testLocking(t *testing.T, factory func(t *testing.T, instances int) []workf
 	})
 }
 
+// testReleasing runs a subtest that verifies a RoleScheduler releases a held role when
+// the caller's context is cancelled.
+//
+// The subtest creates two RoleScheduler instances via the provided factory, acquires the
+// role on the first instance, then starts a second await on the same role and cancels
+// that second await's context. The test passes if the second Await returns
+// context.Canceled within a 5s timeout; otherwise it fails.
 func testReleasing(t *testing.T, factory func(t *testing.T, instances int) []workflow.RoleScheduler) {
 	t.Run("Ensure role is released on context cancellation", func(t *testing.T) {
 		instanceCount := 2
