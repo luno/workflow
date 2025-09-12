@@ -22,6 +22,14 @@ func RunTimeoutStoreTest(t *testing.T, factory func() workflow.TimeoutStore) {
 	}
 }
 
+// testCompleteAndCancelTimeout runs a subtest that verifies completing and cancelling
+// timeouts in a TimeoutStore.
+//
+// It obtains a store from the provided factory, seeds it with three timeouts,
+// marks the timeout with RunID "2" as completed and the one with RunID "3" as
+// cancelled, then calls ListValid for the "example" workflow with statusStarted
+// and the current time. The test asserts that exactly one valid timeout remains
+// and that its fields match the expected values.
 func testCompleteAndCancelTimeout(t *testing.T, factory func() workflow.TimeoutStore) {
 	t.Run("Complete and Cancel timeouts", func(t *testing.T) {
 		store := factory()
@@ -42,6 +50,10 @@ func testCompleteAndCancelTimeout(t *testing.T, factory func() workflow.TimeoutS
 	})
 }
 
+// seed seeds the provided TimeoutStore with `count` expired timeouts for use in tests.
+// Each created timeout uses workflow name "example", foreign ID "andrew", a RunID of
+// "1".."count", status `statusStarted` and an ExpireAt timestamp one hour in the past.
+// The helper uses a background context and fails the test if any Create call returns an error.
 func seed(t *testing.T, store workflow.TimeoutStore, count int) {
 	ctx := context.Background()
 	for i := range count {
@@ -72,6 +84,10 @@ func expect(t *testing.T, count int, actual []workflow.TimeoutRecord) {
 	}
 }
 
+// testListTimeout runs a subtest that verifies a TimeoutStore's List method returns all seeded timeouts.
+// 
+// It obtains a store from the provided factory, seeds it with three expired timeouts, calls List for the
+// "example" workflow and asserts the call succeeds and the returned slice matches the seeded entries.
 func testListTimeout(t *testing.T, factory func() workflow.TimeoutStore) {
 	t.Run("List timeouts", func(t *testing.T) {
 		store := factory()

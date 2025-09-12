@@ -250,6 +250,9 @@ func consume(
 	}
 }
 
+// wait blocks until the provided duration elapses or the context is cancelled.
+// If d is zero it returns nil immediately. If the context is cancelled before
+// the timer fires the function returns ctx.Err(); otherwise it returns nil.
 func wait(ctx context.Context, d time.Duration) error {
 	if d == 0 {
 		return nil

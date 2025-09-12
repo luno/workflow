@@ -208,6 +208,11 @@ func stepConsumer[Type any, Status StatusType](
 	}
 }
 
+// wait sleeps for the given duration or until ctx is cancelled, returning ctx.Err() if the context
+// is done before the timer fires.
+//
+// If d is zero the function returns immediately. The timer is stopped before returning to ensure
+// resources are released.
 func wait(ctx context.Context, d time.Duration) error {
 	if d == 0 {
 		return nil
