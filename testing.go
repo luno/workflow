@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -61,6 +62,10 @@ func AwaitTimeoutInsert[Type any, Status StatusType](
 
 		ls, err := w.timeoutStore.List(w.ctx, w.Name())
 		require.NoError(t, err)
+		if len(ls) == 0 {
+			time.Sleep(10 * time.Millisecond)
+			continue
+		}
 
 		for _, l := range ls {
 			if l.Status != int(waitFor) {

@@ -68,7 +68,7 @@ func RunEventStreamerTest(t *testing.T, factory func() workflow.EventStreamer) {
 			wg.Add(1)
 			go func() {
 				go func() {
-					err = sender.Send(ctx, "789", 5, map[workflow.Header]string{
+					err := sender.Send(ctx, "789", 5, map[workflow.Header]string{
 						workflow.HeaderTopic: topic,
 					})
 					require.NoError(t, err)
@@ -90,7 +90,7 @@ func RunEventStreamerTest(t *testing.T, factory func() workflow.EventStreamer) {
 		err = receiver.Close()
 		require.NoError(t, err)
 
-		t.Run("StreamFromLatest should have no affect when offset is committed", func(t *testing.T) {
+		t.Run("StreamFromLatest should have no effect when offset is committed", func(t *testing.T) {
 			err = sender.Send(ctx, "101", 5, map[workflow.Header]string{
 				workflow.HeaderTopic: topic,
 			})

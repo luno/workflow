@@ -106,7 +106,7 @@ func TestRunDelete(t *testing.T) {
 				tc.lookupFn,
 				tc.deleteFn,
 			)(ctx, &Event{})
-			require.True(t, errors.Is(err, tc.expectedErr))
+			require.ErrorIs(t, err, tc.expectedErr)
 		})
 	}
 }
