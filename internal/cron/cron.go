@@ -36,6 +36,10 @@ func parseEvery(spec string) (Schedule, error) {
 		return nil, fmt.Errorf("invalid duration in @every: %s", parts[1])
 	}
 
+	if duration <= 0 {
+		return nil, fmt.Errorf("duration must be > 0: %s", parts[1])
+	}
+
 	return &everySchedule{duration: duration}, nil
 }
 
