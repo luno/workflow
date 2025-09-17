@@ -36,7 +36,7 @@ func TestRunDelete(t *testing.T) {
 				}
 
 				b, err := Marshal(&o)
-				require.Nil(t, err)
+				require.NoError(t, err)
 
 				return &Record{
 					Object:   b,
@@ -47,7 +47,7 @@ func TestRunDelete(t *testing.T) {
 				var o object
 
 				err := Unmarshal(wr.Object, &o)
-				require.Nil(t, err)
+				require.NoError(t, err)
 
 				o.pii = ""
 
@@ -68,7 +68,7 @@ func TestRunDelete(t *testing.T) {
 				}
 
 				b, err := Marshal(&o)
-				require.Nil(t, err)
+				require.NoError(t, err)
 
 				return &Record{
 					Object:   b,
@@ -106,7 +106,7 @@ func TestRunDelete(t *testing.T) {
 				tc.lookupFn,
 				tc.deleteFn,
 			)(ctx, &Event{})
-			require.True(t, errors.Is(err, tc.expectedErr))
+			require.ErrorIs(t, err, tc.expectedErr)
 		})
 	}
 }

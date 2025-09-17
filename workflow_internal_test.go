@@ -77,7 +77,7 @@ func Test_runOnce(t *testing.T) {
 			clock.RealClock{},
 			time.Minute,
 		)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.Contains(t, buf.String(), `"msg":"run error [role=role-1], [process=process-1]: test error"`)
 	})
 
@@ -105,7 +105,7 @@ func Test_runOnce(t *testing.T) {
 			time.Minute,
 		)
 		// If the err is nil then it will be retried
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		// Context has been cancelled previously in the last runOnce so we expect
 		// this to immediately return context.Canceled and need any parameters.
@@ -148,7 +148,7 @@ func Test_runOnce(t *testing.T) {
 			time.Millisecond,
 		)
 
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.Contains(t, buf.String(), `"msg":"run error [role=role-1], [process=process-1]: test error`)
 	})
 
@@ -173,7 +173,7 @@ func Test_runOnce(t *testing.T) {
 			clock_testing.NewFakeClock(time.Now()),
 			time.Minute,
 		)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		expected := []string{StateIdle.String(), StateRunning.String()}
 		require.Equal(t, expected, stateChanges)

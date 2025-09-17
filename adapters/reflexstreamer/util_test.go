@@ -62,10 +62,10 @@ func TestDefaultTranslators(t *testing.T) {
 	}
 
 	connectorEvent, err := reflexstreamer.DefaultReflexTranslator(&reflexEvent)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	translated, err := reflexstreamer.DefaultConnectorTranslator(connectorEvent)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	require.Equal(t, reflexEvent.ID, translated.ID)
 	require.Equal(t, reflexEvent.Type.ReflexType(), translated.Type.ReflexType())

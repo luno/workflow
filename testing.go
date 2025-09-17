@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -32,10 +33,10 @@ func TriggerCallbackOn[Type any, Status StatusType, Payload any](
 	})
 
 	b, err := json.Marshal(p)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	err = w.Callback(w.ctx, foreignID, waitForStatus, bytes.NewReader(b))
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func AwaitTimeoutInsert[Type any, Status StatusType](
@@ -60,7 +61,11 @@ func AwaitTimeoutInsert[Type any, Status StatusType](
 		}
 
 		ls, err := w.timeoutStore.List(w.ctx, w.Name())
-		require.Nil(t, err)
+		require.NoError(t, err)
+		if len(ls) == 0 {
+			time.Sleep(10 * time.Millisecond)
+			continue
+		}
 
 		for _, l := range ls {
 			if l.Status != int(waitFor) {
@@ -110,7 +115,7 @@ func Require[Type any, Status StatusType](
 
 	var actual Type
 	err := Unmarshal(wr.Object, &actual)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Due to nuances in encoding libraries such as json with the ability to implement custom
 	// encodings the marshaling and unmarshalling of an object could result in a different output
@@ -118,11 +123,11 @@ func Require[Type any, Status StatusType](
 	// means that the same operations take place on the type and thus the unmarshaled versions
 	// should match.
 	encoded, err := Marshal(&expected)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	var normalisedExpected Type
 	err = Unmarshal(encoded, &normalisedExpected)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	require.Equal(t, normalisedExpected, actual)
 }
@@ -144,7 +149,7 @@ func WaitFor[Type any, Status StatusType](
 
 	waitFor(t, w, foreignID, func(r *Record) (bool, error) {
 		run, err := buildRun[Type, Status](w.recordStore.Store, r)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		return fn(run)
 	})
@@ -167,7 +172,7 @@ func waitFor[Type any, Status StatusType](
 		if errors.Is(err, ErrRecordNotFound) {
 			continue
 		} else {
-			require.Nil(t, err)
+			require.NoError(t, err)
 		}
 
 		runID = latest.RunID
@@ -181,7 +186,7 @@ func waitFor[Type any, Status StatusType](
 		snapshots := testingStore.Snapshots(w.Name(), foreignID, runID)
 		for _, r := range snapshots {
 			ok, err := fn(r)
-			require.Nil(t, err)
+			require.NoError(t, err)
 
 			if ok {
 				wr = *r

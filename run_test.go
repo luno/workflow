@@ -13,11 +13,11 @@ func TestNewTestingRun(t *testing.T) {
 	ctx := t.Context()
 
 	pauseStatus, err := r.Pause(ctx, "")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, status(workflow.SkipTypeRunStateUpdate), pauseStatus)
 
 	cancelStatus, err := r.Cancel(ctx, "")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, status(workflow.SkipTypeRunStateUpdate), cancelStatus)
 }
 

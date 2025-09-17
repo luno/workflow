@@ -111,7 +111,7 @@ func TestRequire(t *testing.T) {
 
 	fid := "10298309123"
 	_, err := wf.Trigger(ctx, fid)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	workflow.Require(t, wf, fid, StatusEnd, "Lower")
 }
@@ -182,7 +182,7 @@ func TestWaitFor(t *testing.T) {
 
 	fid := "10298309123"
 	_, err := wf.Trigger(ctx, fid)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	workflow.WaitFor(t, wf, fid, func(r *workflow.Run[string, status]) (bool, error) {
 		return r.RunState == workflow.RunStateCompleted, nil

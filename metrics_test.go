@@ -44,13 +44,13 @@ func runWorkflow(t *testing.T) *workflow.Workflow[string, status] {
 	ctx := t.Context()
 
 	uid, err := uuid.NewUUID()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	runID := uid.String()
 
 	var s string
 	payload, err := workflow.Marshal(&s)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	err = update(ctx, recordStore, &workflow.Record{
 		WorkflowName: "example",
@@ -61,7 +61,7 @@ func runWorkflow(t *testing.T) *workflow.Workflow[string, status] {
 		Object:       payload,
 		CreatedAt:    clock.Now(),
 	})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// 1 hour = 3600 seconds
 	clock.Step(time.Hour)
@@ -87,7 +87,7 @@ workflow_process_lag_seconds{process_name="start-consumer-1-of-1",workflow_name=
 `
 
 	err := testutil.CollectAndCompare(metrics.ConsumerLag, strings.NewReader(expected))
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	metrics.ConsumerLag.Reset()
 }
@@ -124,7 +124,7 @@ workflow_process_states{process_name="paused-records-retry-consumer",workflow_na
 `
 
 	err := testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	metrics.ProcessStates.Reset()
 }
@@ -209,7 +209,7 @@ workflow_process_states{process_name="paused-records-retry-consumer",workflow_na
 `
 
 	err := testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	scheduler.mu.Lock()
 	scheduler.allow = true
@@ -229,7 +229,7 @@ workflow_process_states{process_name="paused-records-retry-consumer",workflow_na
 `
 
 	err = testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	wf.Stop()
 
@@ -245,7 +245,7 @@ workflow_process_states{process_name="paused-records-retry-consumer",workflow_na
 `
 
 	err = testutil.CollectAndCompare(metrics.ProcessStates, strings.NewReader(expected))
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	metrics.ProcessStates.Reset()
 }
@@ -287,13 +287,13 @@ func TestMetricProcessErrors(t *testing.T) {
 	ctx := t.Context()
 
 	uid, err := uuid.NewUUID()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	runID := uid.String()
 
 	var s string
 	payload, err := workflow.Marshal(&s)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	err = update(ctx, recordStore, &workflow.Record{
 		WorkflowName: "example",
@@ -304,7 +304,7 @@ func TestMetricProcessErrors(t *testing.T) {
 		Object:       payload,
 		CreatedAt:    clock.Now(),
 	})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	wf.Run(ctx)
 	t.Cleanup(wf.Stop)
@@ -349,7 +349,7 @@ func TestRunStateChanges(t *testing.T) {
 	t.Cleanup(w.Stop)
 
 	_, err := w.Trigger(ctx, "983467934")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	time.Sleep(time.Millisecond * 500)
 
@@ -381,13 +381,13 @@ func TestMetricProcessSkippedEvents(t *testing.T) {
 	t.Cleanup(w.Stop)
 
 	_, err := w.Trigger(ctx, "9834679343")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, err = w.Trigger(ctx, "2349839483")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	_, err = w.Trigger(ctx, "7548702398")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	time.Sleep(time.Millisecond * 500)
 

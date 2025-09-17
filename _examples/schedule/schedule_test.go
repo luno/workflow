@@ -36,7 +36,7 @@ func TestExampleWorkflow(t *testing.T) {
 
 	go func() {
 		err := wf.Schedule(foreignID, "@hourly")
-		require.Nil(t, err)
+		require.NoError(t, err)
 	}()
 
 	// Give time for go routine to spin up
@@ -52,7 +52,7 @@ func TestExampleWorkflow(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	firstScheduled, err := recordStore.Latest(ctx, wf.Name(), foreignID)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	require.Equal(t, "schedule trigger example", firstScheduled.WorkflowName)
 	require.Equal(t, "hourly-run", firstScheduled.ForeignID)
@@ -63,7 +63,7 @@ func TestExampleWorkflow(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	secondScheduled, err := recordStore.Latest(ctx, wf.Name(), foreignID)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	require.Equal(t, "schedule trigger example", secondScheduled.WorkflowName)
 	require.Equal(t, "hourly-run", secondScheduled.ForeignID)

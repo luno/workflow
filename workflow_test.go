@@ -17,6 +17,7 @@ import (
 	"github.com/luno/workflow/adapters/memrolescheduler"
 	"github.com/luno/workflow/adapters/memstreamer"
 	"github.com/luno/workflow/adapters/memtimeoutstore"
+	"github.com/luno/workflow/internal/logger"
 )
 
 // Ensures that workflow.Workflow always implements workflow.API
@@ -96,22 +97,22 @@ type ExternalOTP struct {
 }
 
 func TestWorkflowAcceptanceTest(t *testing.T) {
-	t.Parallel()
-
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(func() {
 		cancel()
 	})
 
-	recordStore := memrecordstore.New()
+	eventStreamer := memstreamer.New()
+	recordStore := memrecordstore.New(memrecordstore.WithOutbox(ctx, eventStreamer, logger.New(io.Discard)))
 	clock := clock_testing.NewFakeClock(time.Now())
 	wf := acceptanceTestWorkflow().Build(
-		memstreamer.New(),
+		eventStreamer,
 		recordStore,
 		memrolescheduler.New(),
 		workflow.WithTimeoutStore(memtimeoutstore.New()),
 		workflow.WithClock(clock),
 		workflow.WithDebugMode(),
+		workflow.WithoutOutbox(),
 	)
 
 	wf.Run(ctx)
@@ -124,7 +125,7 @@ func TestWorkflowAcceptanceTest(t *testing.T) {
 	}
 
 	runID, err := wf.Trigger(ctx, fid, workflow.WithInitialValue[MyType, status](&mt))
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Once in the correct status, trigger third party callbacks
 	workflow.TriggerCallbackOn(t, wf, fid, runID, StatusEmailConfirmationSent, ExternalEmailVerified{
@@ -146,16 +147,16 @@ func TestWorkflowAcceptanceTest(t *testing.T) {
 	clock.Step(time.Hour)
 
 	_, err = wf.Await(ctx, fid, runID, StatusCompleted)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	r, err := recordStore.Latest(ctx, wf.Name(), fid)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, int(expectedFinalStatus), r.Status)
 	require.Equal(t, "Completed", r.Meta.StatusDescription)
 
 	var actual MyType
 	err = workflow.Unmarshal(r.Object, &actual)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	require.Equal(t, expectedUserID, actual.UserID)
 	require.Equal(t, strconv.FormatInt(expectedUserID, 10), actual.ForeignID())
@@ -164,6 +165,40 @@ func TestWorkflowAcceptanceTest(t *testing.T) {
 	require.Equal(t, expectedCellphone, actual.Cellphone)
 	require.Equal(t, expectedOTP, actual.OTP)
 	require.Equal(t, expectedOTPVerified, actual.OTPVerified)
+}
+
+func TestOutboxDisabled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(func() {
+		cancel()
+	})
+
+	eventStreamer := memstreamer.New()
+	recordStore := memrecordstore.New(memrecordstore.WithOutbox(ctx, eventStreamer, logger.New(io.Discard)))
+
+	b := workflow.NewBuilder[string, status]("super fast workflow")
+	b.AddStep(StatusInitiated, func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
+		return StatusProfileCreated, nil
+	}, StatusProfileCreated)
+	b.AddStep(StatusProfileCreated, func(ctx context.Context, r *workflow.Run[string, status]) (status, error) {
+		return StatusCompleted, nil
+	}, StatusCompleted)
+	wf := b.Build(
+		eventStreamer,
+		recordStore,
+		memrolescheduler.New(),
+		workflow.WithoutOutbox(),
+	)
+
+	wf.Run(ctx)
+	t.Cleanup(wf.Stop)
+
+	fid := strconv.FormatInt(expectedUserID, 10)
+	runID, err := wf.Trigger(ctx, fid)
+	require.NoError(t, err)
+
+	_, err = wf.Await(ctx, fid, runID, StatusCompleted)
+	require.NoError(t, err)
 }
 
 func acceptanceTestWorkflow() *workflow.Builder[MyType, status] {
@@ -277,7 +312,7 @@ func TestTimeout(t *testing.T) {
 	t.Cleanup(wf.Stop)
 
 	runID, err := wf.Trigger(ctx, "example")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	workflow.AwaitTimeoutInsert(t, wf, "example", runID, StatusProfileCreated)
 
@@ -285,7 +320,7 @@ func TestTimeout(t *testing.T) {
 	clock.Step(time.Hour)
 
 	got, err := wf.Await(ctx, "example", runID, StatusCompleted)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	require.Equal(t, expectedUserID, got.Object.UserID)
 }
@@ -435,7 +470,7 @@ func TestWorkflow_TestingRequire(t *testing.T) {
 
 	foreignID := "andrew"
 	_, err := wf.Trigger(ctx, foreignID)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	expected := MyType{
 		Email: "andrew@workflow.com",
@@ -488,7 +523,7 @@ func TestTimeTimerFunc(t *testing.T) {
 	t.Cleanup(wf.Stop)
 
 	runID, err := wf.Trigger(ctx, "Andrew Wormald")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	workflow.AwaitTimeoutInsert(t, wf, "Andrew Wormald", runID, StatusStart)
 
@@ -602,12 +637,12 @@ func TestStepConsumerLag(t *testing.T) {
 	_, err := wf.Trigger(ctx, foreignID, workflow.WithInitialValue[TimeWatcher, status](&TimeWatcher{
 		StartTime: clock.Now(),
 	}))
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	time.Sleep(time.Second)
 
 	latest, err := recordStore.Latest(ctx, wf.Name(), foreignID)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Ensure that the record has not been consumer or updated
 	require.Equal(t, int(StatusStart), latest.Status)
@@ -646,6 +681,45 @@ func TestExpectedProcesses(t *testing.T) {
 		memrecordstore.New(),
 		memrolescheduler.New(),
 		workflow.WithTimeoutStore(memtimeoutstore.New()),
+	)
+
+	w.Run(context.Background())
+	t.Cleanup(w.Stop)
+
+	for process := range w.States() {
+		require.Truef(t, expected[process], "process '%s' is missing expected value", process)
+	}
+
+	states := w.States()
+	require.Equal(t, len(expected), len(states), "unexpected process count")
+	for process := range states {
+		require.Truef(t, expected[process], "unexpected process '%s'", process)
+	}
+
+	for process := range expected {
+		require.Contains(t, states, process, "missing expected process '%s'", process)
+	}
+}
+
+func TestExpectedProcesses_outboxDisabled(t *testing.T) {
+	expected := map[string]bool{
+		"cellphone_number_submitted-consumer-1-of-2":  true,
+		"cellphone_number_submitted-consumer-2-of-2":  true,
+		"initiated-consumer-1-of-1":                   true,
+		"name_created-consumer-1-of-1":                true,
+		"otp_verified-timeout-auto-inserter-consumer": true,
+		"otp_verified-timeout-consumer":               true,
+		"completed-run-state-change-hook-consumer":    true,
+		"delete-consumer":                             true,
+		"paused-records-retry-consumer":               true,
+	}
+
+	w := acceptanceTestWorkflow().Build(
+		memstreamer.New(),
+		memrecordstore.New(),
+		memrolescheduler.New(),
+		workflow.WithTimeoutStore(memtimeoutstore.New()),
+		workflow.WithoutOutbox(),
 	)
 
 	w.Run(context.Background())
