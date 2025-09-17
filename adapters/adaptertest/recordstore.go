@@ -31,6 +31,10 @@ func RunRecordStoreTest(t *testing.T, factory func() workflow.RecordStore) {
 	}
 }
 
+// testLatest runs a subtest that verifies Store and Latest behaviour for a RecordStore.
+// It stores a record and asserts Latest returns that record when queried by workflow name
+// and foreign ID. It then updates the record's Status and RunState, stores it again,
+// and asserts Latest returns the updated record.
 func testLatest(t *testing.T, factory func() workflow.RecordStore) {
 	t.Run("Latest", func(t *testing.T) {
 		store := factory()
@@ -56,6 +60,12 @@ func testLatest(t *testing.T, factory func() workflow.RecordStore) {
 	})
 }
 
+// testLookup runs the "Lookup" subtest which stores a sample record and verifies
+// it can be retrieved by its RunID.
+//
+// The test creates a RecordStore via the provided factory, stores a deterministic
+// test record, looks it up using Lookup(ctx, RunID) and asserts the retrieved
+// record equals the stored one.
 func testLookup(t *testing.T, factory func() workflow.RecordStore) {
 	t.Run("Lookup", func(t *testing.T) {
 		store := factory()
@@ -72,6 +82,11 @@ func testLookup(t *testing.T, factory func() workflow.RecordStore) {
 	})
 }
 
+// testStore runs a subtest that verifies a RecordStore can create and update a record.
+// 
+// It stores a new test record, looks it up by RunID, updates the Status twice (to a middle
+// state and then to an end state), re-storing after each change and asserting the stored
+// record matches the expected state after each update.
 func testStore(t *testing.T, factory func() workflow.RecordStore) {
 	t.Run("RecordStore", func(t *testing.T) {
 		store := factory()
@@ -105,6 +120,7 @@ func testStore(t *testing.T, factory func() workflow.RecordStore) {
 	})
 }
 
+// and expected header values (topic, foreign ID and workflow name).
 func testListOutboxEvents(t *testing.T, factory func() workflow.RecordStore) {
 	t.Run("ListOutboxEvents", func(t *testing.T) {
 		store := factory()
@@ -133,6 +149,10 @@ func testListOutboxEvents(t *testing.T, factory func() workflow.RecordStore) {
 	})
 }
 
+// testDeleteOutboxEvent runs a subtest that verifies deleting an outbox event removes it from the store.
+// 
+// It creates a RecordStore via the provided factory, stores a test record, lists outbox events for the
+// workflow, deletes the first returned event by ID and then confirms no outbox events remain.
 func testDeleteOutboxEvent(t *testing.T, factory func() workflow.RecordStore) {
 	t.Run("DeleteOutboxEvent", func(t *testing.T) {
 		store := factory()
@@ -160,6 +180,12 @@ func testDeleteOutboxEvent(t *testing.T, factory func() workflow.RecordStore) {
 	})
 }
 
+// testList runs a suite of subtests that validate the RecordStore List behaviour.
+//
+// It exercises pagination and ordering, and verifies filtering by workflow name,
+// foreign ID, run state, status and creation time. The function uses the provided
+// factory to construct a workflow.RecordStore and asserts expected counts,
+// ordering and filtering semantics for each subtest.
 func testList(t *testing.T, factory func() workflow.RecordStore) {
 	workflowName := "my_workflow"
 	secondWorkflowName := "my_second_workflow"
@@ -438,6 +464,11 @@ func testList(t *testing.T, factory func() workflow.RecordStore) {
 
 }
 
+// dummyWireRecord returns a test *workflow.Record populated with deterministic, minimal fields for use in store tests.
+// 
+// The record uses a fixed ForeignID ("Andrew Wormald"), a newly generated UUID for RunID, a small JSON-encoded
+// object in Object, Status set to `statusStarted`, RunState set to `workflow.RunStateInitiated`, and CreatedAt/UpdatedAt
+// set to the current time. The testing.T is used to assert UUID and JSON marshaling succeed.
 func dummyWireRecord(t *testing.T, workflowName string) *workflow.Record {
 	foreignID := "Andrew Wormald"
 	runID, err := uuid.NewUUID()

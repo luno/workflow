@@ -285,7 +285,9 @@ type BuildOption func(w *buildOptions)
 // WithTimeoutStore allows the configuration of a TimeoutStore which is required when using timeouts in a workflow. It is
 // not required by default as timeouts are less common of a feature requirement but when needed the abstraction
 // of complexity of handling scheduling, expiring, and executing are incredibly useful and is included as one of the
-// three key feature offerings of workflow which are sequential steps, callbacks, and timeouts.
+// WithTimeoutStore sets the TimeoutStore used by the workflow to persist and manage configured timeouts.
+// Providing a TimeoutStore enables timeout transitions added via AddTimeout to be scheduled and stored.
+// If timeouts are configured in the workflow but no TimeoutStore is supplied at build time, Build will panic.
 func WithTimeoutStore(s TimeoutStore) BuildOption {
 	return func(w *buildOptions) {
 		w.timeoutStore = s
@@ -295,7 +297,7 @@ func WithTimeoutStore(s TimeoutStore) BuildOption {
 // WithoutOutbox disables the polling of the RecordStore outbox for pushing events to the provided EventStreamer
 // and allows for external submission of outbox messages to the EventStreamer.
 // This is useful when the workflow uses a record store that performs its own outbox purging,
-// typically when the record store is centralised and shared across multiple workflows and services.
+// workflow polls the RecordStore outbox; this option turns that polling off.
 func WithoutOutbox() BuildOption {
 	return func(w *buildOptions) {
 		w.outboxConfig.disabled = true
@@ -303,7 +305,7 @@ func WithoutOutbox() BuildOption {
 }
 
 // WithClock allows the configuring of workflow's use and access of time. Instead of using time.Now() and other
-// associated functionality from the time package a clock is used instead in order to make it testable.
+// Supplying a custom clock allows deterministic control of time (useful for testing).
 func WithClock(c clock.Clock) BuildOption {
 	return func(bo *buildOptions) {
 		bo.clock = c

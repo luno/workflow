@@ -17,6 +17,13 @@ type (
 	OutboxDeleter func(ctx context.Context, id string) error
 )
 
+// PurgeOutboxForever continuously purges outbox events until the context is cancelled.
+// 
+// It repeatedly calls purgeOutbox to process available outbox entries. If purgeOutbox
+// returns context.Canceled the function exits with nil. On any other error the error
+// is logged and the function waits one second (respecting context cancellation) before
+// retrying. The function blocks until the provided context is cancelled and always
+// returns nil on cancellation.
 func PurgeOutboxForever(
 	ctx context.Context,
 	lister OutboxLister,
@@ -50,6 +57,20 @@ func PurgeOutboxForever(
 	return nil
 }
 
+// purgeOutbox processes a single batch of outbox events retrieved via lister.
+//
+// It requests up to lookupLimit events; if none are returned it waits for
+// pollingFrequency (respecting ctx cancellation) and returns the wait result.
+// For each event it unmarshals an outboxpb.OutboxRecord from the event data,
+// converts protobuf headers to workflow headers, requires the workflow.HeaderTopic
+// header to determine the destination topic, and sends the event using an
+// EventSender obtained from stream.NewSender. A sender is reused per-topic for
+// the duration of the batch and closed before returning. After a successful
+// send each event is removed via deleter.
+//
+// Errors from lister, unmarshalling, missing topic header, creating a sender,
+// sending an event, deleting an event, or the wait are returned directly. The
+// operation honours context cancellation passed via ctx.
 func purgeOutbox(
 	ctx context.Context,
 	lister OutboxLister,
@@ -118,6 +139,9 @@ func purgeOutbox(
 	return nil
 }
 
+// wait waits for the given duration or until the context is cancelled.
+// If d is zero it returns immediately. If the context is cancelled before
+// the timer fires it returns ctx.Err(), otherwise it returns nil.
 func wait(ctx context.Context, d time.Duration) error {
 	if d == 0 {
 		return nil
