@@ -48,6 +48,10 @@ func RunEventStreamerTest(t *testing.T, factory func() workflow.EventStreamer) {
 		topic := "test-1"
 		sender, err := streamer.NewSender(ctx, topic)
 		require.NoError(t, err)
+		t.Cleanup(func() {
+			err := sender.Close()
+			require.NoError(t, err)
+		})
 
 		err = sender.Send(ctx, "123", 4, map[workflow.Header]string{
 			workflow.HeaderTopic: topic,
@@ -63,6 +67,10 @@ func RunEventStreamerTest(t *testing.T, factory func() workflow.EventStreamer) {
 
 		receiver, err := streamer.NewReceiver(ctx, topic, "my-receiver", workflow.StreamFromLatest())
 		require.NoError(t, err)
+		t.Cleanup(func() {
+			err := receiver.Close()
+			require.NoError(t, err)
+		})
 
 		t.Run("Should only receive events that come in after connecting", func(t *testing.T) {
 			wg.Add(1)
@@ -98,6 +106,10 @@ func RunEventStreamerTest(t *testing.T, factory func() workflow.EventStreamer) {
 
 			secondReceiver, err := streamer.NewReceiver(ctx, topic, "my-receiver", workflow.StreamFromLatest())
 			require.NoError(t, err)
+			t.Cleanup(func() {
+				err := secondReceiver.Close()
+				require.NoError(t, err)
+			})
 
 			// Should receive event send when receiver wasn't receiving events based on the offset being set.
 			e, ack, err := secondReceiver.Recv(ctx)
