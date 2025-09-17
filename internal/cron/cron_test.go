@@ -191,8 +191,8 @@ func TestParse(t *testing.T) {
 			wantErr:  true,
 		},
 		{
-			name:     "invalid weekday value",
-			spec:     "* * * * 7",
+			name:     "invalid weekday value (8)",
+			spec:     "* * * * 8",
 			baseTime: baseTime,
 			want:     time.Time{},
 			wantErr:  true,
@@ -223,6 +223,20 @@ func TestParse(t *testing.T) {
 			spec:     "59 23 * * 0",
 			baseTime: baseTime,
 			want:     time.Date(2025, 1, 5, 23, 59, 0, 0, time.UTC),
+			wantErr:  false,
+		},
+		{
+			name:     "at 11:59 PM on Sundays using 7",
+			spec:     "59 23 * * 7",
+			baseTime: baseTime,
+			want:     time.Date(2025, 1, 5, 23, 59, 0, 0, time.UTC),
+			wantErr:  false,
+		},
+		{
+			name:     "weekday 7 maps to Sunday morning",
+			spec:     "0 6 * * 7",
+			baseTime: baseTime,
+			want:     time.Date(2025, 1, 5, 6, 0, 0, 0, time.UTC),
 			wantErr:  false,
 		},
 		{

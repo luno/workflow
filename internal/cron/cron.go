@@ -86,7 +86,7 @@ func parseCrontab(spec string) (Schedule, error) {
 		return nil, fmt.Errorf("invalid month: %v", err)
 	}
 
-	weekday, err := parseField(fields[4], 0, 6)
+	weekday, err := parseWeekday(fields[4])
 	if err != nil {
 		return nil, fmt.Errorf("invalid weekday: %v", err)
 	}
@@ -98,6 +98,23 @@ func parseCrontab(spec string) (Schedule, error) {
 		month:   month,
 		weekday: weekday,
 	}, nil
+}
+
+func parseWeekday(field string) (int, error) {
+	if field == "*" || field == "?" {
+		return -1, nil
+	}
+	if field == "7" {
+		return 0, nil // Sunday alias
+	}
+	v, err := strconv.Atoi(field)
+	if err != nil {
+		return 0, fmt.Errorf("invalid number: %s", field)
+	}
+	if v < 0 || v > 6 {
+		return 0, fmt.Errorf("value %d out of range [0-6]", v)
+	}
+	return v, nil
 }
 
 func parseField(field string, min, max int) (int, error) {
