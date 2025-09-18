@@ -3,6 +3,8 @@ package cron
 import (
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestParse(t *testing.T) {
@@ -393,7 +395,9 @@ func TestParse(t *testing.T) {
 				return
 			}
 
-			got := schedule.Next(tt.baseTime)
+			got, ok := schedule.Next(tt.baseTime)
+			require.True(t, ok)
+
 			if !got.Equal(tt.want) {
 				t.Errorf("Schedule.Next() = %v, want %v", got, tt.want)
 			}
@@ -453,7 +457,8 @@ func BenchmarkScheduleNext(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				_ = schedule.Next(baseTime)
+				_, ok := schedule.Next(baseTime)
+				require.True(b, ok)
 			}
 		})
 	}

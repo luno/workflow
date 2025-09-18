@@ -8,7 +8,7 @@ import (
 )
 
 type Schedule interface {
-	Next(time.Time) time.Time
+	Next(time.Time) (time.Time, bool)
 }
 
 func Parse(spec string) (Schedule, error) {
@@ -138,8 +138,8 @@ type everySchedule struct {
 	duration time.Duration
 }
 
-func (e *everySchedule) Next(t time.Time) time.Time {
-	return t.Add(e.duration)
+func (e *everySchedule) Next(t time.Time) (time.Time, bool) {
+	return t.Add(e.duration), true
 }
 
 type cronSchedule struct {
@@ -150,17 +150,17 @@ type cronSchedule struct {
 	weekday int
 }
 
-func (c *cronSchedule) Next(t time.Time) time.Time {
+func (c *cronSchedule) Next(t time.Time) (time.Time, bool) {
 	next := t.Add(time.Minute).Truncate(time.Minute)
 
 	for i := 0; i < 4*365*24*60; i++ {
 		if c.matches(next) {
-			return next
+			return next, true
 		}
 		next = next.Add(time.Minute)
 	}
 
-	return time.Time{}
+	return time.Time{}, false
 }
 
 func (c *cronSchedule) matches(t time.Time) bool {

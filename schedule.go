@@ -50,7 +50,11 @@ func (w *Workflow[Type, Status]) Schedule(
 			lastRun = w.clock.Now()
 		}
 
-		nextRun := schedule.Next(lastRun)
+		nextRun, ok := schedule.Next(lastRun)
+		if !ok {
+			return fmt.Errorf("no next schedule found for spec: %s", spec)
+		}
+
 		err = waitUntil(ctx, w.clock, nextRun)
 		if err != nil {
 			return err
