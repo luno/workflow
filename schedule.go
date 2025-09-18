@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/robfig/cron/v3"
 	"k8s.io/utils/clock"
+
+	"github.com/luno/workflow/internal/cron"
 )
 
 func (w *Workflow[Type, Status]) Schedule(
@@ -24,7 +25,7 @@ func (w *Workflow[Type, Status]) Schedule(
 		opt(&options)
 	}
 
-	schedule, err := cron.ParseStandard(spec)
+	schedule, err := cron.Parse(spec)
 	if err != nil {
 		return err
 	}
@@ -49,7 +50,11 @@ func (w *Workflow[Type, Status]) Schedule(
 			lastRun = w.clock.Now()
 		}
 
-		nextRun := schedule.Next(lastRun)
+		nextRun, ok := schedule.Next(lastRun)
+		if !ok {
+			return fmt.Errorf("no next schedule found for spec: %s", spec)
+		}
+
 		err = waitUntil(ctx, w.clock, nextRun)
 		if err != nil {
 			return err
