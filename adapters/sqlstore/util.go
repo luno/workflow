@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"regexp"
 
 	"github.com/luno/jettison/errors"
 	"github.com/luno/jettison/j"
@@ -87,6 +88,9 @@ func (s *SQLStore) insertOutboxEvent(
 	workflowName string,
 	data []byte,
 ) (int64, error) {
+	if !regexp.MustCompile(`^[a-zA-Z0-9_]+$`).MatchString(s.outboxTableName) {
+		return 0, errors.New("invalid table name")
+	}
 	resp, err := tx.ExecContext(ctx, "insert into "+s.outboxTableName+" set "+
 		" id=?, workflow_name=?, data=?, created_at=now() ",
 		id,
