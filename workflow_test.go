@@ -785,3 +785,61 @@ func TestSaveAndRepeat(t *testing.T) {
 		Collection: expected,
 	})
 }
+
+func TestSaveAndRepeat_Concurrent(t *testing.T) {
+	ctx := context.Background()
+
+	type Custom struct {
+		WorkflowID int
+		Count      int
+	}
+
+	// Test concurrent SaveAndRepeat operations across multiple workflows
+	const numWorkflows = 5
+	const iterationsPerWorkflow = 10
+
+	var workflows []*workflow.Workflow[Custom, status]
+	var foreignIDs []string
+
+	for i := range numWorkflows {
+		bldr := workflow.NewBuilder[Custom, status](fmt.Sprintf("concurrent-%d", i))
+		bldr.AddStep(StatusStart, func(ctx context.Context, r *workflow.Run[Custom, status]) (status, error) {
+			r.Object.Count++
+			if r.Object.Count < iterationsPerWorkflow {
+				return r.SaveAndRepeat()
+			}
+			return StatusEnd, nil
+		}, StatusEnd)
+
+		recordStore := memrecordstore.New()
+		wf := bldr.Build(
+			memstreamer.New(),
+			recordStore,
+			memrolescheduler.New(),
+			workflow.WithDefaultOptions(
+				workflow.PollingFrequency(time.Nanosecond),
+			),
+			workflow.WithDebugMode(),
+		)
+
+		workflows = append(workflows, wf)
+		foreignIDs = append(foreignIDs, fmt.Sprintf("concurrent-%d", i))
+
+		wf.Run(ctx)
+		t.Cleanup(wf.Stop)
+	}
+
+	// Trigger all workflows concurrently
+	for i, wf := range workflows {
+		_, err := wf.Trigger(ctx, foreignIDs[i])
+		require.NoError(t, err)
+	}
+
+	// Wait for all workflows to complete
+	for i, wf := range workflows {
+		workflow.Require(t, wf, foreignIDs[i], StatusEnd, Custom{
+			WorkflowID: 0, // Default value since we didn't set it in trigger
+			Count:      iterationsPerWorkflow,
+		})
+	}
+}

@@ -91,7 +91,7 @@ const (
 	// corresponding event is created.
 	UpdateTypeDefault UpdateType = 0
 	// UpdateTypeStateOnly indicates an update that only modifies the RunState of the record without creating a new event.
-	UpdateTypeStateOnly = 1
+	UpdateTypeStateOnly UpdateType = 1
 )
 
 func (u UpdateType) String() string {

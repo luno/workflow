@@ -257,6 +257,12 @@ func WithDeleteDataFn(deleteData func(ctx context.Context) error) TestingRunOpti
 	}
 }
 
+func WithSaveAndRepeatFn(saveAndRepeat func(ctx context.Context) error) TestingRunOption {
+	return func(opts *testingRunOpts) {
+		opts.controller.saveAndRepeat = saveAndRepeat
+	}
+}
+
 type testingRunStateController struct {
 	pause         func(ctx context.Context) error
 	cancel        func(ctx context.Context) error
