@@ -150,7 +150,7 @@ func processTimeout[Type any, Status StatusType](
 		return nil
 	}
 
-	err = updater(ctx, Status(timeout.Status), next, run)
+	err = updater(ctx, Status(timeout.Status), next, run, record.Meta.Version)
 	if err != nil {
 		return err
 	}

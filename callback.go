@@ -92,5 +92,5 @@ func processCallback[Type any, Status StatusType](
 		return nil
 	}
 
-	return updater(ctx, currentStatus, next, run)
+	return updater(ctx, currentStatus, next, run, wr.Meta.Version)
 }
