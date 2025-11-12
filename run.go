@@ -44,6 +44,10 @@ func (r *Run[Type, Status]) Cancel(ctx context.Context, reason string) (Status, 
 	return Status(SkipTypeRunStateUpdate), nil
 }
 
+func (r *Run[Type, Status]) SaveAndRepeat() (Status, error) {
+	return Status(SkipTypeSaveAndRepeat), nil
+}
+
 func buildRun[Type any, Status StatusType](store storeFunc, wr *Record) (*Run[Type, Status], error) {
 	var t Type
 	err := Unmarshal(wr.Object, &t)

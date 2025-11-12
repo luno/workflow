@@ -11,6 +11,10 @@ func skipUpdate[Status StatusType](status Status) bool {
 	return ok
 }
 
+func isSaveAndRepeat[Status StatusType](status Status) bool {
+	return SkipType(status) == SkipTypeSaveAndRepeat
+}
+
 func skipUpdateDescription[Status StatusType](status Status) string {
 	description, ok := skipConfig[SkipType(status)]
 	if !ok {
@@ -25,6 +29,7 @@ type SkipType int
 var (
 	SkipTypeDefault        SkipType = 0
 	SkipTypeRunStateUpdate SkipType = -1
+	SkipTypeSaveAndRepeat  SkipType = -2
 )
 
 // skipConfig holds the skip values and descriptions as documentation as to what they mean.

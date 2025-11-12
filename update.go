@@ -58,6 +58,12 @@ func newUpdater[Type any, Status StatusType](
 			return nil
 		}
 
+		// Save and repeat skips transition validation and keeps the current status.
+		if isSaveAndRepeat(next) {
+			updatedRecord.Status = int(current)
+			return updateRecord(ctx, store, updatedRecord, record.RunState, current.String())
+		}
+
 		err = validateTransition(current, next, graph)
 		if err != nil {
 			return err

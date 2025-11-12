@@ -28,9 +28,10 @@ func TriggerCallbackOn[Type any, Status StatusType, Payload any](
 		panic("*workflow.Workflow required for testing utility functions")
 	}
 
-	_ = waitFor(t, w, foreignID, func(r *Record) (bool, error) {
+	_, err := waitFor(t, w, foreignID, func(r *Record) (bool, error) {
 		return r.Status == int(waitForStatus), nil
 	})
+	require.NoError(t, err)
 
 	b, err := json.Marshal(p)
 	require.NoError(t, err)
@@ -109,12 +110,13 @@ func Require[Type any, Status StatusType](
 		return
 	}
 
-	wr := waitFor(t, w, foreignID, func(r *Record) (bool, error) {
+	wr, err := waitFor(t, w, foreignID, func(r *Record) (bool, error) {
 		return r.Status == int(waitForStatus), nil
 	})
+	require.NoError(t, err)
 
 	var actual Type
-	err := Unmarshal(wr.Object, &actual)
+	err = Unmarshal(wr.Object, &actual)
 	require.NoError(t, err)
 
 	// Due to nuances in encoding libraries such as json with the ability to implement custom
@@ -147,12 +149,13 @@ func WaitFor[Type any, Status StatusType](
 		panic("*workflow.Workflow required for testing utility functions")
 	}
 
-	waitFor(t, w, foreignID, func(r *Record) (bool, error) {
+	_, err := waitFor(t, w, foreignID, func(r *Record) (bool, error) {
 		run, err := buildRun[Type, Status](w.recordStore.Store, r)
 		require.NoError(t, err)
 
 		return fn(run)
 	})
+	require.NoError(t, err)
 }
 
 func waitFor[Type any, Status StatusType](
@@ -160,14 +163,14 @@ func waitFor[Type any, Status StatusType](
 	w *Workflow[Type, Status],
 	foreignID string,
 	fn func(r *Record) (bool, error),
-) *Record {
+) (*Record, error) {
 	testingStore, ok := w.recordStore.(TestingRecordStore)
 	if !ok {
 		panic("TestingRecordStore implementation for record store dependency required")
 	}
 
 	var runID string
-	for runID == "" {
+	for runID == "" && w.ctx.Err() == nil {
 		latest, err := w.recordStore.Latest(context.Background(), w.Name(), foreignID)
 		if errors.Is(err, ErrRecordNotFound) {
 			continue
@@ -182,7 +185,7 @@ func waitFor[Type any, Status StatusType](
 	// testingStore.SetSnapshotOffset(w.name, foreignID, runID, 0)
 
 	var wr Record
-	for wr.RunID == "" {
+	for wr.RunID == "" && w.ctx.Err() == nil {
 		snapshots := testingStore.Snapshots(w.Name(), foreignID, runID)
 		for _, r := range snapshots {
 			ok, err := fn(r)
@@ -194,7 +197,7 @@ func waitFor[Type any, Status StatusType](
 		}
 	}
 
-	return &wr
+	return &wr, w.ctx.Err()
 }
 
 // NewTestingRun should be used when testing logic that defines a workflow.Run as a parameter. This is usually the
@@ -255,10 +258,11 @@ func WithDeleteDataFn(deleteData func(ctx context.Context) error) TestingRunOpti
 }
 
 type testingRunStateController struct {
-	pause      func(ctx context.Context) error
-	cancel     func(ctx context.Context) error
-	resume     func(ctx context.Context) error
-	deleteData func(ctx context.Context) error
+	pause         func(ctx context.Context) error
+	cancel        func(ctx context.Context) error
+	resume        func(ctx context.Context) error
+	deleteData    func(ctx context.Context) error
+	saveAndRepeat func(ctx context.Context) error
 }
 
 func (c *testingRunStateController) Pause(ctx context.Context, reason string) error {
@@ -291,6 +295,14 @@ func (c *testingRunStateController) DeleteData(ctx context.Context, reason strin
 	}
 
 	return c.deleteData(ctx)
+}
+
+func (c *testingRunStateController) SaveAndRepeat(ctx context.Context) error {
+	if c.saveAndRepeat == nil {
+		return nil
+	}
+
+	return c.saveAndRepeat(ctx)
 }
 
 var _ RunStateController = (*testingRunStateController)(nil)

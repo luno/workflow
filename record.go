@@ -1,6 +1,9 @@
 package workflow
 
-import "time"
+import (
+	"strconv"
+	"time"
+)
 
 // Record is the cornerstone of Workflow. Record must always be wire compatible with no generics as it's intended
 // purpose is to be the persisted data structure of a Run.
@@ -74,6 +77,32 @@ type Meta struct {
 	// It provides a line trace or path that helps track where the execution was initiated,
 	// offering context for debugging or auditing purposes by capturing the origin of the workflow trigger.
 	TraceOrigin string
+
+	// UpdateType indicates the type of update that is performed relating to the state being updated in the RecordStore
+	// and whether it results in a new event being created. UpdateType is useful for understanding the nature of
+	// the change made to the record and the intended consequences of that change.
+	UpdateType UpdateType
+}
+
+type UpdateType int
+
+const (
+	// UpdateTypeDefault indicates a standard update to the record that results in the state being updated and a new
+	// corresponding event is created.
+	UpdateTypeDefault UpdateType = 0
+	// UpdateTypeStateOnly indicates an update that only modifies the RunState of the record without creating a new event.
+	UpdateTypeStateOnly = 1
+)
+
+func (u UpdateType) String() string {
+	switch u {
+	case UpdateTypeDefault:
+		return "Default"
+	case UpdateTypeStateOnly:
+		return "State Only"
+	default:
+		return "UpdateType(" + strconv.FormatInt(int64(u), 10) + ")"
+	}
 }
 
 // TypedRecord differs from Record in that it contains a Typed Object and Typed Status
