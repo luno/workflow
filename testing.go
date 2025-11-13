@@ -170,7 +170,11 @@ func waitFor[Type any, Status StatusType](
 	}
 
 	var runID string
-	for runID == "" && w.ctx.Err() == nil {
+	for runID == "" {
+		if w.ctx.Err() != nil {
+			return nil, w.ctx.Err()
+		}
+
 		latest, err := w.recordStore.Latest(context.Background(), w.Name(), foreignID)
 		if errors.Is(err, ErrRecordNotFound) {
 			continue
@@ -185,7 +189,11 @@ func waitFor[Type any, Status StatusType](
 	// testingStore.SetSnapshotOffset(w.name, foreignID, runID, 0)
 
 	var wr Record
-	for wr.RunID == "" && w.ctx.Err() == nil {
+	for wr.RunID == "" {
+		if w.ctx.Err() != nil {
+			return nil, w.ctx.Err()
+		}
+
 		snapshots := testingStore.Snapshots(w.Name(), foreignID, runID)
 		for _, r := range snapshots {
 			ok, err := fn(r)
@@ -197,7 +205,7 @@ func waitFor[Type any, Status StatusType](
 		}
 	}
 
-	return &wr, w.ctx.Err()
+	return &wr, nil
 }
 
 // NewTestingRun should be used when testing logic that defines a workflow.Run as a parameter. This is usually the
