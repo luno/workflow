@@ -7,8 +7,7 @@ type StatusType interface {
 }
 
 func skipUpdate[Status StatusType](status Status) bool {
-	_, ok := skipConfig[skipType(status)]
-	return ok
+	return skipType(status) == skipTypeDefault || skipType(status) == skipTypeRunStateUpdate
 }
 
 func isSaveAndRepeat[Status StatusType](status Status) bool {
@@ -46,4 +45,5 @@ func allSkipTypes() []int {
 var skipConfig = map[skipType]string{
 	skipTypeDefault:        "Zero status with nil error value should result in a skip",
 	skipTypeRunStateUpdate: "Internal run state update taken place. Skip normal newUpdater",
+	skipTypeSaveAndRepeat:  "Save and repeat operation: record saved and re-queued for processing",
 }
