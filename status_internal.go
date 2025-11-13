@@ -7,16 +7,16 @@ type StatusType interface {
 }
 
 func skipUpdate[Status StatusType](status Status) bool {
-	_, ok := skipConfig[SkipType(status)]
+	_, ok := skipConfig[skipType(status)]
 	return ok
 }
 
 func isSaveAndRepeat[Status StatusType](status Status) bool {
-	return SkipType(status) == SkipTypeSaveAndRepeat
+	return skipType(status) == skipTypeSaveAndRepeat
 }
 
 func skipUpdateDescription[Status StatusType](status Status) string {
-	description, ok := skipConfig[SkipType(status)]
+	description, ok := skipConfig[skipType(status)]
 	if !ok {
 		return "Unknown skip reason '" + status.String() + "'"
 	}
@@ -24,16 +24,16 @@ func skipUpdateDescription[Status StatusType](status Status) string {
 	return description
 }
 
-type SkipType int
+type skipType int
 
 var (
-	SkipTypeDefault        SkipType = 0
-	SkipTypeRunStateUpdate SkipType = -1
-	SkipTypeSaveAndRepeat  SkipType = -2
+	skipTypeDefault        skipType = 0
+	skipTypeRunStateUpdate skipType = -1
+	skipTypeSaveAndRepeat  skipType = -2
 )
 
 // skipConfig holds the skip values and descriptions as documentation as to what they mean.
-var skipConfig = map[SkipType]string{
-	SkipTypeDefault:        "Zero status with nil error value should result in a skip",
-	SkipTypeRunStateUpdate: "Internal run state update taken place. Skip normal newUpdater",
+var skipConfig = map[skipType]string{
+	skipTypeDefault:        "Zero status with nil error value should result in a skip",
+	skipTypeRunStateUpdate: "Internal run state update taken place. Skip normal newUpdater",
 }

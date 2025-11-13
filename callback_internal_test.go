@@ -136,7 +136,7 @@ func TestProcessCallback(t *testing.T) {
 
 		callbackFn := CallbackFunc[string, testStatus](func(ctx context.Context, r *Run[string, testStatus], reader io.Reader) (testStatus, error) {
 			calls["callbackFunc"] += 1
-			return testStatus(SkipTypeDefault), nil
+			return testStatus(skipTypeDefault), nil
 		})
 
 		updater := func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error {
