@@ -81,7 +81,7 @@ func processCallback[Type any, Status StatusType](
 
 	if skipUpdate(next) {
 		w.logger.Debug(ctx, "skipping update", map[string]string{
-			"description":   skipUpdate(next).,
+			"description":   skipUpdateDescription(next),
 			"workflow_name": w.Name(),
 			"foreign_id":    run.ForeignID,
 			"run_id":        run.RunID,
