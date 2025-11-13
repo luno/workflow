@@ -1,8 +1,6 @@
 package workflow
 
-import (
-	"time"
-)
+import "time"
 
 // Record is the cornerstone of Workflow. Record must always be wire compatible with no generics as it's intended
 // purpose is to be the persisted data structure of a Run.
