@@ -216,15 +216,3 @@ func (a apiImpl[Type, Status]) Callback(ctx context.Context, foreignID string, s
 func (a apiImpl[Type, Status]) Run(ctx context.Context) {}
 
 func (a apiImpl[Type, Status]) Stop() {}
-
-// TestWaitFor_ContextCancellation tests that WaitFor handles context cancellation gracefully
-// Note: This test is simplified since WaitFor's internal context handling is complex
-func TestWaitFor_ContextCancellation(t *testing.T) {
-	// This test validates that WaitFor doesn't panic or hang when context is cancelled
-	// The actual context cancellation behavior is tested through integration tests
-	t.Skip("WaitFor context cancellation testing requires internal implementation details")
-}
-
-// Note: Testing SaveAndRepeat functionality through NewTestingRun is
-// complex due to the private controller field. This functionality is
-// better tested through integration tests in workflow_test.go
