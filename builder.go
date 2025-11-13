@@ -30,7 +30,7 @@ func NewBuilder[Type any, Status StatusType](name string) *Builder[Type, Status]
 			consumers:     make(map[Status]consumerConfig[Type, Status]),
 			callback:      make(map[Status][]callback[Type, Status]),
 			timeouts:      make(map[Status]timeouts[Type, Status]),
-			statusGraph:   graph.New(),
+			statusGraph:   graph.New(allSkipTypes()...),
 			errorCounter:  errorcounter.New(),
 			internalState: make(map[string]State),
 			logger: &logger{

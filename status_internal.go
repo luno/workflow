@@ -30,7 +30,17 @@ var (
 	skipTypeDefault        skipType = 0
 	skipTypeRunStateUpdate skipType = -1
 	skipTypeSaveAndRepeat  skipType = -2
+	skipTypeSentinel       skipType = -3
 )
+
+func allSkipTypes() []int {
+	var all []int
+	for i := skipTypeDefault; i > skipTypeSentinel; i-- {
+		all = append(all, int(i))
+	}
+
+	return all
+}
 
 // skipConfig holds the skip values and descriptions as documentation as to what they mean.
 var skipConfig = map[skipType]string{

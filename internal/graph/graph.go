@@ -1,13 +1,21 @@
 package graph
 
-import "slices"
+import (
+	"slices"
+)
 
-func New() *Graph {
+func New(reservedNodes ...int) *Graph {
+	rs := make(map[int]bool)
+	for _, node := range reservedNodes {
+		rs[node] = true
+	}
+
 	return &Graph{
-		graph:      make(map[int][]int),
-		starting:   make(map[int]bool),
-		terminal:   make(map[int]bool),
-		validNodes: make(map[int]bool),
+		graph:         make(map[int][]int),
+		starting:      make(map[int]bool),
+		terminal:      make(map[int]bool),
+		validNodes:    make(map[int]bool),
+		reservedNodes: rs,
 	}
 }
 
@@ -17,9 +25,20 @@ type Graph struct {
 	starting   map[int]bool
 	terminal   map[int]bool
 	validNodes map[int]bool
+
+	// reservedNode is for values that are reserved for the user and cannot be used as nodes in the graph.
+	reservedNodes map[int]bool
 }
 
 func (g *Graph) AddTransition(from int, to int) {
+	if _, reserved := g.reservedNodes[from]; reserved {
+		panic("cannot use reserved node as 'from' node")
+	}
+
+	if _, reserved := g.reservedNodes[to]; reserved {
+		panic("cannot use reserved node as 'to' node")
+	}
+
 	if _, ok := g.validNodes[from]; !ok {
 		g.nodeOrder = append(g.nodeOrder, from)
 	}
