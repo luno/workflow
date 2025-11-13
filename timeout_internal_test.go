@@ -30,7 +30,7 @@ func TestProcessTimeout(t *testing.T) {
 	require.NoError(t, err)
 
 	type calls struct {
-		updater      func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error
+		updater      func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus], workingVersion uint) error
 		store        func(ctx context.Context, record *Record) error
 		timeoutFunc  func(ctx context.Context, r *Run[string, testStatus], now time.Time) (testStatus, error)
 		completeFunc func(ctx context.Context, id int64) error
@@ -50,7 +50,7 @@ func TestProcessTimeout(t *testing.T) {
 			name: "Golden path consume - initiated",
 			caller: func(call map[string]int) calls {
 				return calls{
-					updater: func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error {
+					updater: func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus], workingVersion uint) error {
 						call["updater"] += 1
 						require.Equal(t, "new data", *record.Object)
 						return nil
@@ -88,7 +88,7 @@ func TestProcessTimeout(t *testing.T) {
 			name: "Golden path consume - running",
 			caller: func(call map[string]int) calls {
 				return calls{
-					updater: func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error {
+					updater: func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus], workingVersion uint) error {
 						call["updater"] += 1
 						require.Equal(t, "new data", *record.Object)
 						return nil

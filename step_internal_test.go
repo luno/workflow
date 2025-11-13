@@ -63,7 +63,7 @@ func Test_stepConsumer(t *testing.T) {
 			return statusEnd, nil
 		})
 
-		updater := func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error {
+		updater := func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus], workingVersion uint) error {
 			calls["updater"] += 1
 			require.Equal(t, "new data", *record.Object)
 			return nil
@@ -114,7 +114,7 @@ func Test_stepConsumer(t *testing.T) {
 			return statusEnd, nil
 		})
 
-		updater := func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error {
+		updater := func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus], workingVersion uint) error {
 			calls["updater"] += 1
 			require.Equal(t, "new data", *record.Object)
 			return nil
@@ -164,7 +164,7 @@ func Test_stepConsumer(t *testing.T) {
 			return testStatus(SkipTypeDefault), nil
 		})
 
-		updater := func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error {
+		updater := func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus], workingVersion uint) error {
 			calls["updater"] += 1
 			return nil
 		}
@@ -215,7 +215,7 @@ func Test_stepConsumer(t *testing.T) {
 			return 0, testErr
 		})
 
-		updater := func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus]) error {
+		updater := func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus], workingVersion uint) error {
 			calls["updater"] += 1
 			return nil
 		}

@@ -204,7 +204,7 @@ func stepConsumer[Type any, Status StatusType](
 			return nil
 		}
 
-		return updater(ctx, Status(record.Status), next, run)
+		return updater(ctx, Status(record.Status), next, run, record.Meta.Version)
 	}
 }
 

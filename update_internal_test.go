@@ -106,14 +106,16 @@ func TestUpdater(t *testing.T) {
 			expectedErr: testErr,
 		},
 		{
-			name: "Exit early if lookup record status has changed",
+			name: "Record version has changed - error and retry",
 			lookup: func(context.Context, string) (*Record, error) {
 				return &Record{
-					Status: int(statusEnd),
+					Meta: Meta{
+						Version: 1,
+					},
 				}, nil
 			},
 			current:     statusMiddle,
-			expectedErr: nil,
+			expectedErr: fmt.Errorf("record was modified since it was loaded: run_id=, expected_version=0, actual_version=1"),
 		},
 		{
 			name: "No valid transition available",
@@ -156,9 +158,9 @@ func TestUpdater(t *testing.T) {
 			}
 
 			updater := newUpdater[string, testStatus](tc.lookup, store, g, c)
-			err := updater(ctx, tc.current, tc.update.Status, &tc.update)
+			err := updater(ctx, tc.current, tc.update.Status, &tc.update, 0)
 			if err != nil {
-				require.Equal(t, tc.expectedErr.Error(), err.Error())
+				require.EqualError(t, err, tc.expectedErr.Error())
 			}
 		})
 	}

@@ -14,7 +14,7 @@ type (
 	lookupFunc func(ctx context.Context, runID string) (*Record, error)
 	storeFunc  func(ctx context.Context, record *Record) error
 
-	updater[Type any, Status StatusType] func(ctx context.Context, current Status, next Status, run *Run[Type, Status]) error
+	updater[Type any, Status StatusType] func(ctx context.Context, current Status, next Status, update *Run[Type, Status], workingVersion uint) error
 )
 
 func newUpdater[Type any, Status StatusType](
@@ -23,7 +23,7 @@ func newUpdater[Type any, Status StatusType](
 	graph *graph.Graph,
 	clock clock.Clock,
 ) updater[Type, Status] {
-	return func(ctx context.Context, current Status, next Status, record *Run[Type, Status]) error {
+	return func(ctx context.Context, current Status, next Status, record *Run[Type, Status], workingVersion uint) error {
 		object, err := Marshal(&record.Object)
 		if err != nil {
 			return err
@@ -52,10 +52,14 @@ func newUpdater[Type any, Status StatusType](
 			return err
 		}
 
+		if latest.RunState.Finished() {
+			return fmt.Errorf("cannot update record as it is already finished: run_id=%s, run_state=%s", latest.RunID, latest.RunState.String())
+		}
+
 		// Ensure that the record still has the intended status. If not then another consumer will be processing this
 		// record.
-		if Status(latest.Status) != current {
-			return nil
+		if latest.Meta.Version != workingVersion {
+			return fmt.Errorf("record was modified since it was loaded: run_id=%s, expected_version=%d, actual_version=%d", latest.RunID, workingVersion, latest.Meta.Version)
 		}
 
 		err = validateTransition(current, next, graph)
