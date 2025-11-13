@@ -2,26 +2,117 @@ package workflow
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestNoopRunStateController(t *testing.T) {
-	ctrl := testingRunStateController{}
+func TestTestingRunStateController(t *testing.T) {
+	ctx := context.Background()
 
-	ctx := t.Context()
-	err := ctrl.Pause(ctx, "")
-	require.NoError(t, err)
+	t.Run("methods return nil error when no functions set", func(t *testing.T) {
+		ctrl := testingRunStateController{}
 
-	err = ctrl.Resume(ctx)
-	require.NoError(t, err)
+		err := ctrl.Pause(ctx, "test reason")
+		require.NoError(t, err)
 
-	err = ctrl.Cancel(ctx, "")
-	require.NoError(t, err)
+		err = ctrl.Resume(ctx)
+		require.NoError(t, err)
 
-	err = ctrl.DeleteData(ctx, "")
-	require.NoError(t, err)
+		err = ctrl.Cancel(ctx, "test reason")
+		require.NoError(t, err)
+
+		err = ctrl.DeleteData(ctx, "test reason")
+		require.NoError(t, err)
+
+		err = ctrl.SaveAndRepeat(ctx)
+		require.NoError(t, err)
+	})
+
+	t.Run("methods call provided functions", func(t *testing.T) {
+		var pauseCalled, resumeCalled, cancelCalled, deleteDataCalled, saveAndRepeatCalled bool
+
+		ctrl := testingRunStateController{
+			pause: func(ctx context.Context) error {
+				pauseCalled = true
+				return nil
+			},
+			resume: func(ctx context.Context) error {
+				resumeCalled = true
+				return nil
+			},
+			cancel: func(ctx context.Context) error {
+				cancelCalled = true
+				return nil
+			},
+			deleteData: func(ctx context.Context) error {
+				deleteDataCalled = true
+				return nil
+			},
+			saveAndRepeat: func(ctx context.Context) error {
+				saveAndRepeatCalled = true
+				return nil
+			},
+		}
+
+		err := ctrl.Pause(ctx, "test reason")
+		require.NoError(t, err)
+		require.True(t, pauseCalled)
+
+		err = ctrl.Resume(ctx)
+		require.NoError(t, err)
+		require.True(t, resumeCalled)
+
+		err = ctrl.Cancel(ctx, "test reason")
+		require.NoError(t, err)
+		require.True(t, cancelCalled)
+
+		err = ctrl.DeleteData(ctx, "test reason")
+		require.NoError(t, err)
+		require.True(t, deleteDataCalled)
+
+		err = ctrl.SaveAndRepeat(ctx)
+		require.NoError(t, err)
+		require.True(t, saveAndRepeatCalled)
+	})
+
+	t.Run("methods propagate errors", func(t *testing.T) {
+		testErr := errors.New("test error")
+
+		ctrl := testingRunStateController{
+			pause: func(ctx context.Context) error {
+				return testErr
+			},
+			resume: func(ctx context.Context) error {
+				return testErr
+			},
+			cancel: func(ctx context.Context) error {
+				return testErr
+			},
+			deleteData: func(ctx context.Context) error {
+				return testErr
+			},
+			saveAndRepeat: func(ctx context.Context) error {
+				return testErr
+			},
+		}
+
+		err := ctrl.Pause(ctx, "test reason")
+		require.Equal(t, testErr, err)
+
+		err = ctrl.Resume(ctx)
+		require.Equal(t, testErr, err)
+
+		err = ctrl.Cancel(ctx, "test reason")
+		require.Equal(t, testErr, err)
+
+		err = ctrl.DeleteData(ctx, "test reason")
+		require.Equal(t, testErr, err)
+
+		err = ctrl.SaveAndRepeat(ctx)
+		require.Equal(t, testErr, err)
+	})
 }
 
 func TestRunStateControllerTransitions(t *testing.T) {

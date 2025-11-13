@@ -68,7 +68,7 @@ func (rs RunState) Stopped() bool {
 	}
 }
 
-// RunStateController allows the interaction with a specific workflow record.
+// RunStateController allows the interaction with a specific workflow run.
 type RunStateController interface {
 	// Pause will take the workflow run specified and move it into a temporary state where it will no longer be processed.
 	// A paused workflow run can be resumed by calling Resume. ErrUnableToPause is returned when a workflow is not in a

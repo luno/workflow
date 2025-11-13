@@ -24,12 +24,12 @@ func (r *Run[Type, Status]) Pause(ctx context.Context, reason string) (Status, e
 		return 0, err
 	}
 
-	return Status(SkipTypeRunStateUpdate), nil
+	return Status(skipTypeRunStateUpdate), nil
 }
 
 // Skip is a util function to skip the update and move on to the next event (consumer) or execution (callback)
 func (r *Run[Type, Status]) Skip() (Status, error) {
-	return Status(SkipTypeDefault), nil
+	return Status(skipTypeDefault), nil
 }
 
 // Cancel is intended to be used inside a workflow process where (Status, error) are the return signature. This allows
@@ -41,7 +41,11 @@ func (r *Run[Type, Status]) Cancel(ctx context.Context, reason string) (Status, 
 		return 0, err
 	}
 
-	return Status(SkipTypeRunStateUpdate), nil
+	return Status(skipTypeRunStateUpdate), nil
+}
+
+func (r *Run[Type, Status]) SaveAndRepeat() (Status, error) {
+	return Status(skipTypeSaveAndRepeat), nil
 }
 
 func buildRun[Type any, Status StatusType](store storeFunc, wr *Record) (*Run[Type, Status], error) {

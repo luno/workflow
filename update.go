@@ -62,6 +62,12 @@ func newUpdater[Type any, Status StatusType](
 			return fmt.Errorf("record was modified since it was loaded: run_id=%s, expected_version=%d, actual_version=%d", latest.RunID, workingVersion, latest.Meta.Version)
 		}
 
+		// Save and repeat skips transition validation and keeps the current status.
+		if isSaveAndRepeat(next) {
+			updatedRecord.Status = int(current)
+			return updateRecord(ctx, store, updatedRecord, record.RunState, current.String())
+		}
+
 		err = validateTransition(current, next, graph)
 		if err != nil {
 			return err

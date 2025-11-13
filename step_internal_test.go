@@ -161,7 +161,7 @@ func Test_stepConsumer(t *testing.T) {
 
 		consumer := ConsumerFunc[string, testStatus](func(ctx context.Context, r *Run[string, testStatus]) (testStatus, error) {
 			calls["consumerFunc"] += 1
-			return testStatus(SkipTypeDefault), nil
+			return testStatus(skipTypeDefault), nil
 		})
 
 		updater := func(ctx context.Context, current testStatus, next testStatus, record *Run[string, testStatus], workingVersion uint) error {

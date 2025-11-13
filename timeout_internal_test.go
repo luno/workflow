@@ -129,7 +129,7 @@ func TestProcessTimeout(t *testing.T) {
 					timeoutFunc: func(ctx context.Context, r *Run[string, testStatus], now time.Time) (testStatus, error) {
 						call["timeout/TimeoutFunc"] += 1
 						*r.Object = "new data"
-						return testStatus(SkipTypeDefault), nil
+						return testStatus(skipTypeDefault), nil
 					},
 				}
 			},

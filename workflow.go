@@ -272,6 +272,9 @@ func runOnce(
 	if errors.Is(err, context.Canceled) {
 		// Exit cleanly if error returned is cancellation of context
 		return err
+	} else if errors.Is(err, context.DeadlineExceeded) {
+		// Exit cleanly if context's deadline was exceeded
+		return err
 	} else if err != nil {
 		logger.Error(ctx, fmt.Errorf("run error [role=%s], [process=%s]: %v", role, processName, err))
 
@@ -287,6 +290,9 @@ func runOnce(
 		// Context can be cancelled by the role scheduler and thus return nil to attempt to gain the role again
 		// and if the parent context was cancelled then that will exit safely.
 		return nil
+	} else if errors.Is(err, context.DeadlineExceeded) {
+		// Exit cleanly if context's deadline was exceeded
+		return err
 	} else if err != nil {
 		logger.Error(ctx, fmt.Errorf("run error [role=%s], [process=%s]: %v", role, processName, err))
 		metrics.ProcessErrors.WithLabelValues(workflowName, processName).Inc()

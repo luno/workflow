@@ -231,9 +231,7 @@ func BenchmarkWorkflow(b *testing.B) {
 
 func benchmarkWorkflow(b *testing.B, numberOfSteps int) {
 	ctx, cancel := context.WithCancel(context.Background())
-	b.Cleanup(func() {
-		cancel()
-	})
+	b.Cleanup(cancel)
 
 	bldr := workflow.NewBuilder[MyType, status]("benchmark")
 
@@ -727,5 +725,121 @@ func TestExpectedProcesses_outboxDisabled(t *testing.T) {
 
 	for process := range w.States() {
 		require.Truef(t, expected[process], "process '%s' is missing expected value", process)
+	}
+}
+
+func TestSaveAndRepeat(t *testing.T) {
+	iterations := 100
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	type Custom struct {
+		Count      int
+		Collection []string
+	}
+
+	bldr := workflow.NewBuilder[Custom, status]("save and repeat")
+	bldr.AddStep(StatusStart, func(ctx context.Context, r *workflow.Run[Custom, status]) (status, error) {
+		r.Object.Count++
+		r.Object.Collection = append(r.Object.Collection, fmt.Sprintf("item-%d", r.Object.Count))
+
+		if r.Object.Count < iterations {
+			return r.SaveAndRepeat()
+		}
+
+		return StatusEnd, nil
+	}, StatusEnd)
+
+	recordStore := memrecordstore.New()
+	clock := clock_testing.NewFakeClock(time.Now())
+	wf := bldr.Build(
+		memstreamer.New(),
+		recordStore,
+		memrolescheduler.New(),
+		workflow.WithClock(clock),
+		workflow.WithDefaultOptions(
+			workflow.PollingFrequency(time.Nanosecond),
+		),
+		workflow.WithOutboxOptions(
+			workflow.OutboxPollingFrequency(time.Nanosecond),
+		),
+		workflow.WithDebugMode(),
+	)
+
+	wf.Run(ctx)
+	t.Cleanup(wf.Stop)
+
+	fid := "custom-save-and-repeat"
+	_, err := wf.Trigger(ctx, fid)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var expected []string
+	for i := range iterations {
+		expected = append(expected, fmt.Sprintf("item-%d", i+1))
+	}
+
+	workflow.Require(t, wf, fid, StatusEnd, Custom{
+		Count:      iterations,
+		Collection: expected,
+	})
+}
+
+func TestSaveAndRepeat_Concurrent(t *testing.T) {
+	ctx := context.Background()
+
+	type Custom struct {
+		WorkflowID int
+		Count      int
+	}
+
+	// Test concurrent SaveAndRepeat operations across multiple workflows
+	const numWorkflows = 5
+	const iterationsPerWorkflow = 10
+
+	var workflows []*workflow.Workflow[Custom, status]
+	var foreignIDs []string
+
+	for i := range numWorkflows {
+		bldr := workflow.NewBuilder[Custom, status](fmt.Sprintf("concurrent-%d", i))
+		bldr.AddStep(StatusStart, func(ctx context.Context, r *workflow.Run[Custom, status]) (status, error) {
+			r.Object.Count++
+			if r.Object.Count < iterationsPerWorkflow {
+				return r.SaveAndRepeat()
+			}
+			return StatusEnd, nil
+		}, StatusEnd)
+
+		recordStore := memrecordstore.New()
+		wf := bldr.Build(
+			memstreamer.New(),
+			recordStore,
+			memrolescheduler.New(),
+			workflow.WithDefaultOptions(
+				workflow.PollingFrequency(time.Nanosecond),
+			),
+			workflow.WithDebugMode(),
+		)
+
+		workflows = append(workflows, wf)
+		foreignIDs = append(foreignIDs, fmt.Sprintf("concurrent-%d", i))
+
+		wf.Run(ctx)
+		t.Cleanup(wf.Stop)
+	}
+
+	// Trigger all workflows concurrently
+	for i, wf := range workflows {
+		_, err := wf.Trigger(ctx, foreignIDs[i])
+		require.NoError(t, err)
+	}
+
+	// Wait for all workflows to complete
+	for i, wf := range workflows {
+		workflow.Require(t, wf, foreignIDs[i], StatusEnd, Custom{
+			WorkflowID: 0, // Default value since we didn't set it in trigger
+			Count:      iterationsPerWorkflow,
+		})
 	}
 }

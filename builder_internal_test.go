@@ -561,3 +561,21 @@ func TestOnComplete(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, testErr, actualFn(nil, nil))
 }
+
+func TestPanicForUsingReservedNodeValues(t *testing.T) {
+	b := NewBuilder[string, testStatus]("")
+
+	for _, skipType := range allSkipTypes() {
+		require.PanicsWithValue(t,
+			"cannot use reserved node as 'from' node",
+			func() {
+				b.AddStep(testStatus(skipType), nil, statusEnd)
+			}, "Using reserved nodes should panic")
+
+		require.PanicsWithValue(t,
+			"cannot use reserved node as 'to' node",
+			func() {
+				b.AddStep(statusStart, nil, testStatus(skipType))
+			}, "Using reserved nodes should panic")
+	}
+}

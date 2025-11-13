@@ -58,3 +58,36 @@ func TestGraph(t *testing.T) {
 	expectedNodes := []int{1, 2, 3, 4, 5}
 	require.Equal(t, expectedNodes, actualNodes)
 }
+
+func TestGraphReservedNodes(t *testing.T) {
+	g := graph.New(-1, 99)
+	// Ensure no panic on adding transitions that are not reserved nodes
+	g.AddTransition(1, 2)
+	require.True(t, g.IsTerminal(2))
+	require.True(t, g.IsValid(1))
+	require.True(t, g.IsValid(2))
+
+	require.PanicsWithValue(t,
+		"cannot use reserved node as 'from' node",
+		func() {
+			g.AddTransition(-1, 1)
+		}, "Using reserved nodes should panic")
+
+	require.PanicsWithValue(t,
+		"cannot use reserved node as 'to' node",
+		func() {
+			g.AddTransition(1, -1)
+		}, "Using reserved nodes should panic")
+
+	require.PanicsWithValue(t,
+		"cannot use reserved node as 'from' node",
+		func() {
+			g.AddTransition(99, 1)
+		}, "Using reserved nodes should panic")
+
+	require.PanicsWithValue(t,
+		"cannot use reserved node as 'to' node",
+		func() {
+			g.AddTransition(1, 99)
+		}, "Using reserved nodes should panic")
+}
