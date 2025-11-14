@@ -14,8 +14,6 @@ import (
 	"github.com/luno/workflow/adapters/kafkastreamer"
 )
 
-const brokerAddress = "localhost:9092"
-
 func TestStreamer(t *testing.T) {
 	adaptertest.RunEventStreamerTest(t, func() workflow.EventStreamer {
 		ctx := t.Context()
