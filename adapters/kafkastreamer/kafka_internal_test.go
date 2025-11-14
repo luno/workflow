@@ -48,3 +48,11 @@ func TestDefaultConfig(t *testing.T) {
 	require.True(t, sc.sharedConfig.Producer.Return.Successes)
 	require.True(t, sc.sharedConfig.Producer.Return.Errors)
 }
+
+func TestPanicIfConfigNil(t *testing.T) {
+	require.PanicsWithValue(t,
+		"sarama config cannot be nil",
+		func() {
+			_ = New([]string{""}, WithConfig(nil))
+		}, "")
+}

@@ -15,6 +15,10 @@ type Option func(*StreamConstructor)
 
 func WithConfig(config *sarama.Config) Option {
 	return func(sc *StreamConstructor) {
+		if config == nil {
+			panic("sarama config cannot be nil")
+		}
+
 		sc.sharedConfig = config
 	}
 }
