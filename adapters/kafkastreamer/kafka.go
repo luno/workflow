@@ -11,11 +11,25 @@ import (
 	"github.com/luno/workflow"
 )
 
-func New(brokers []string) *StreamConstructor {
-	return &StreamConstructor{
+type Option func(*StreamConstructor)
+
+func WithConfig(config *sarama.Config) Option {
+	return func(sc *StreamConstructor) {
+		sc.sharedConfig = config
+	}
+}
+
+func New(brokers []string, opts ...Option) *StreamConstructor {
+	sc := &StreamConstructor{
 		sharedConfig: newConfig(),
 		brokers:      brokers,
 	}
+
+	for _, opt := range opts {
+		opt(sc)
+	}
+
+	return sc
 }
 
 func newConfig() *sarama.Config {
