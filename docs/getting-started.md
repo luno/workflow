@@ -35,19 +35,20 @@ import (
 type TaskStatus int
 
 const (
-    TaskCreated    TaskStatus = iota + 1
-    TaskValidated
-    TaskProcessed
-    TaskCompleted
+    TaskStatusUnknown   TaskStatus = 0
+    TaskStatusCreated   TaskStatus = 1
+    TaskStatusValidated TaskStatus = 2
+    TaskStatusProcessed TaskStatus = 3
+    TaskStatusCompleted TaskStatus = 4
 )
 
 func (s TaskStatus) String() string {
     switch s {
-    case TaskCreated:    return "Created"
-    case TaskValidated:  return "Validated"
-    case TaskProcessed:  return "Processed"
-    case TaskCompleted:  return "Completed"
-    default:            return "Unknown"
+    case TaskStatusCreated:   return "Created"
+    case TaskStatusValidated: return "Validated"
+    case TaskStatusProcessed: return "Processed"
+    case TaskStatusCompleted: return "Completed"
+    default:                 return "Unknown"
     }
 }
 
@@ -70,22 +71,22 @@ func NewTaskWorkflow() *workflow.Workflow[Task, TaskStatus] {
     b := workflow.NewBuilder[Task, TaskStatus]("task-processor")
 
     // Step 1: Validate the task
-    b.AddStep(TaskCreated, func(ctx context.Context, r *workflow.Run[Task, TaskStatus]) (TaskStatus, error) {
+    b.AddStep(TaskStatusCreated, func(ctx context.Context, r *workflow.Run[Task, TaskStatus]) (TaskStatus, error) {
         // Validate the task
         if r.Object.Name == "" {
             r.Object.Valid = false
-            return TaskValidated, fmt.Errorf("task name cannot be empty")
+            return TaskStatusValidated, fmt.Errorf("task name cannot be empty")
         }
 
         r.Object.Valid = true
         fmt.Printf("✓ Validated task: %s\n", r.Object.Name)
-        return TaskValidated, nil
-    }, TaskValidated)
+        return TaskStatusValidated, nil
+    }, TaskStatusValidated)
 
     // Step 2: Process the task
-    b.AddStep(TaskValidated, func(ctx context.Context, r *workflow.Run[Task, TaskStatus]) (TaskStatus, error) {
+    b.AddStep(TaskStatusValidated, func(ctx context.Context, r *workflow.Run[Task, TaskStatus]) (TaskStatus, error) {
         if !r.Object.Valid {
-            return TaskCompleted, nil // Skip processing invalid tasks
+            return TaskStatusCompleted, nil // Skip processing invalid tasks
         }
 
         // Simulate some processing work
@@ -96,14 +97,14 @@ func NewTaskWorkflow() *workflow.Workflow[Task, TaskStatus] {
         r.Object.Data = fmt.Sprintf("processed-%s", r.Object.Data)
 
         fmt.Printf("✓ Processed task: %s\n", r.Object.Name)
-        return TaskProcessed, nil
-    }, TaskProcessed, TaskCompleted)
+        return TaskStatusProcessed, nil
+    }, TaskStatusProcessed, TaskStatusCompleted)
 
     // Step 3: Complete the task
-    b.AddStep(TaskProcessed, func(ctx context.Context, r *workflow.Run[Task, TaskStatus]) (TaskStatus, error) {
+    b.AddStep(TaskStatusProcessed, func(ctx context.Context, r *workflow.Run[Task, TaskStatus]) (TaskStatus, error) {
         fmt.Printf("✓ Completed task: %s at %s\n", r.Object.Name, r.Object.ProcessedAt.Format(time.RFC3339))
-        return TaskCompleted, nil
-    }, TaskCompleted)
+        return TaskStatusCompleted, nil
+    }, TaskStatusCompleted)
 
     // Build with in-memory adapters for simplicity
     return b.Build(
@@ -146,7 +147,7 @@ func main() {
 
         // Wait for completion (with timeout)
         ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-        run, err := wf.Await(ctx, task.ID, runID, TaskCompleted)
+        run, err := wf.Await(ctx, task.ID, runID, TaskStatusCompleted)
         cancel()
 
         if err != nil {

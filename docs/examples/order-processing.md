@@ -33,16 +33,17 @@ import (
 type OrderStatus int
 
 const (
-    OrderCreated OrderStatus = iota + 1
-    OrderValidated
-    PaymentProcessing
-    PaymentProcessed
-    PaymentFailed
-    InventoryReserved
-    InventoryFailed
-    OrderFulfilled
-    OrderCancelled
-    OrderRefunded
+    OrderStatusUnknown         OrderStatus = 0
+    OrderStatusCreated         OrderStatus = 1
+    OrderStatusValidated       OrderStatus = 2
+    OrderStatusPaymentProcessing OrderStatus = 3
+    OrderStatusPaymentProcessed OrderStatus = 4
+    OrderStatusPaymentFailed   OrderStatus = 5
+    OrderStatusInventoryReserved OrderStatus = 6
+    OrderStatusInventoryFailed OrderStatus = 7
+    OrderStatusFulfilled       OrderStatus = 8
+    OrderStatusCancelled       OrderStatus = 9
+    OrderStatusRefunded        OrderStatus = 10
 )
 
 func (s OrderStatus) String() string {

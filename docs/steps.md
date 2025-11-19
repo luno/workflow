@@ -524,10 +524,11 @@ const (
 
 // ✅ Good
 const (
-    OrderCreated OrderStatus = iota + 1
-    PaymentProcessed
-    InventoryReserved
-    OrderFulfilled
+    OrderStatusUnknown         OrderStatus = 0
+    OrderStatusCreated         OrderStatus = 1
+    OrderStatusPaymentProcessed OrderStatus = 2
+    OrderStatusInventoryReserved OrderStatus = 3
+    OrderStatusFulfilled       OrderStatus = 4
 )
 ```
 

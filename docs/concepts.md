@@ -43,15 +43,16 @@ type Run[Type any, Status StatusType] struct {
 
 Every Run progresses through a finite state machine:
 
-| RunState | Description |
-|----------|-------------|
-| **Initiated** | Run created but not yet processed |
-| **Running** | Currently being processed by a workflow step |
-| **Paused** | Temporarily stopped (usually due to errors) |
-| **Completed** | Successfully finished all steps |
-| **Cancelled** | Terminated before completion |
-| **RequestedDataDeleted** | Data deletion requested (e.g., for GDPR) |
-| **DataDeleted** | Data has been scrubbed/deleted |
+| RunState | Value | Description |
+|----------|-------|-------------|
+| **Unknown** | 0 | Default zero value, has no meaning |
+| **Initiated** | 1 | Run created but not yet processed |
+| **Running** | 2 | Currently being processed by a workflow step |
+| **Paused** | 3 | Temporarily stopped (usually due to errors) |
+| **Cancelled** | 4 | Terminated before completion |
+| **Completed** | 5 | Successfully finished all steps |
+| **DataDeleted** | 6 | Data has been scrubbed/deleted |
+| **RequestedDataDeleted** | 7 | Data deletion requested (e.g., for GDPR) |
 
 ```mermaid
 stateDiagram-v2

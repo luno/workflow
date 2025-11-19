@@ -106,9 +106,10 @@ import (
 
 type TaskStatus int
 const (
-    TaskCreated TaskStatus = iota + 1
-    TaskProcessed
-    TaskCompleted
+    TaskStatusUnknown   TaskStatus = 0
+    TaskStatusCreated   TaskStatus = 1
+    TaskStatusProcessed TaskStatus = 2
+    TaskStatusCompleted TaskStatus = 3
 )
 
 type Task struct {
@@ -119,15 +120,15 @@ type Task struct {
 func main() {
     b := workflow.NewBuilder[Task, TaskStatus]("task-processor")
 
-    b.AddStep(TaskCreated, func(ctx context.Context, r *workflow.Run[Task, TaskStatus]) (TaskStatus, error) {
+    b.AddStep(TaskStatusCreated, func(ctx context.Context, r *workflow.Run[Task, TaskStatus]) (TaskStatus, error) {
         fmt.Printf("Processing: %s\n", r.Object.Name)
-        return TaskProcessed, nil
-    }, TaskProcessed)
+        return TaskStatusProcessed, nil
+    }, TaskStatusProcessed)
 
-    b.AddStep(TaskProcessed, func(ctx context.Context, r *workflow.Run[Task, TaskStatus]) (TaskStatus, error) {
+    b.AddStep(TaskStatusProcessed, func(ctx context.Context, r *workflow.Run[Task, TaskStatus]) (TaskStatus, error) {
         fmt.Printf("Completed: %s\n", r.Object.Name)
-        return TaskCompleted, nil
-    }, TaskCompleted)
+        return TaskStatusCompleted, nil
+    }, TaskStatusCompleted)
 
     wf := b.Build(memstreamer.New(), memrecordstore.New(), memrolescheduler.New())
 
@@ -142,21 +143,21 @@ func main() {
     }))
 
     // Wait for completion
-    wf.Await(ctx, "task-1", runID, TaskCompleted)
+    wf.Await(ctx, "task-1", runID, TaskStatusCompleted)
     fmt.Println("✅ Workflow completed!")
 }
 ```
 
 ## Enterprise Ready
 
-**Workflow** powers mission-critical systems processing millions of transactions daily with:
+**Workflow** provides enterprise-grade features:
 
-- ✅ **Exactly-once processing** guarantees
-- ✅ **Circuit breakers** prevent cascade failures
-- ✅ **Graceful degradation** under load
-- ✅ **Zero-downtime deployments**
-- ✅ **Comprehensive metrics** and alerting
-- ✅ **Multi-region** deployment support
+- ✅ **Exactly-once processing** guarantees via transactional outbox pattern
+- ✅ **Built-in error handling** with pause and retry mechanisms
+- ✅ **Comprehensive observability** via Prometheus metrics and Web UI
+- ✅ **Horizontal scaling** through role-based scheduling
+- ✅ **Infrastructure flexibility** via pluggable adapters
+- ✅ **Production deployment** patterns for various scales
 
 ## Documentation
 
