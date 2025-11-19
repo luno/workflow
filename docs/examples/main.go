@@ -87,18 +87,18 @@ func main() {
 		}
 
 		// Monitor progress (in real app, this would be done asynchronously)
-		go func(orderID string) {
+		go func(orderID, runId string) {
 			ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 			defer cancel()
 
-			run, err := wf.Await(ctx, orderID, runID, OrderStatusFulfilled)
+			run, err := wf.Await(ctx, orderID, runId, OrderStatusFulfilled)
 			if err != nil {
 				panic(err)
 			}
 
 			wg.Done()
 			fmt.Printf("✅ [%s] Workflow completed with status: %s\n", orderID, run.Status)
-		}(order.ID)
+		}(order.ID, runID)
 	}
 
 	// Let workflows complete
