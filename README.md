@@ -16,304 +16,370 @@
 
 # Workflow
 
-**Workflow** is a distributed event driven workflow framework that runs robust, durable, and
-scalable sequential business logic on your services.
+A type-safe, event-driven workflow orchestration library for Go that provides durable execution of multi-step business processes with built-in observability and horizontal scaling.
 
-**Workflow** uses a [RoleScheduler](https://github.com/luno/workflow/blob/main/rolescheduler.go) to distribute the work
- across your instances through a role assignment process (similar to a leadership election process, but with more than
- a single role of leader).
+## Overview
 
-**Workflow** expects to be run on multiple instances but can also be run on single
- instances. Using the above-mentioned [RoleScheduler](https://github.com/luno/workflow/blob/main/rolescheduler.go),
-**Workflow** is able to make sure each process only runs once at any given time
- regardless if you are running 40 instances of your service or 1 instance.
+**Workflow** is a distributed workflow framework designed to run robust, durable, and scalable sequential business logic. It takes an event-driven approach where workflows are defined as type-safe state machines, automatically persisted, and distributed across multiple instances through role-based scheduling.
 
----
+**Key Features:**
+- **Type-safe state machines**: Compile-time guarantees using Go generics
+- **Event-driven architecture**: Asynchronous processing with automatic persistence
+- **Pluggable adapters**: Support for any database, message queue, or storage system
+- **Horizontal scaling**: Role-based scheduling ensures distributed execution
+- **Built-in observability**: Metrics, logging, and web UI for monitoring
+- **Rich feature set**: Callbacks, timeouts, connectors, and lifecycle hooks
 
-## Features
+## When to Use Workflow
 
-- **Tech stack agnostic:** Use Kafka, Cassandra, Redis, MongoDB, Postgresql, MySQL, RabbitM, or Reflex - the choice is yours!
-- **Graph based (Directed Acyclic Graph - DAG):** Design the workflow by defining small units of work called "Steps".
-- **TDD:** **Workflow** was built using TDD and remains well-supported through a suit of tools.
-- **Callbacks:** Allow for manual callbacks from webhooks or manual triggers from consoles to progress the workflow, such as approval buttons or third-party webhooks.  
-- **Event fusion:** Add event connectors to your workflow to consume external event streams (even if it's from a different event streaming platform).
-- **Hooks:** Write hooks that execute on core changes in a workflow Run.
-- **Schedule:** Allows standard cron spec to schedule workflows 
-- **Timeouts:** Set either a dynamic or static time for a workflow to wait for. Once the timeout finishes everything continues as it was.
-- **Parallel consumers:** Specify how many step consumers should run or specify the default for all consumers. 
-- **Consumer management:** Consumer management and graceful shutdown of all processes making sure there is no goroutine leaks!
+**Perfect for:**
+- Order processing pipelines with validation and fulfillment steps
+- User onboarding flows with verification and approval processes
+- Payment processing with retries, fraud checks, and settlements
+- Data processing pipelines with transformation and validation
+- Complex approval workflows with multiple stakeholders
 
----
+**Choose Workflow over alternatives when:**
+- You need tight Go integration with compile-time type safety
+- You prefer event-driven patterns over RPC-style definitions
+- You want full control over your infrastructure choices
+- You need lightweight deployment without external dependencies
+
+## Core Architecture
+
+### State Machines & Events
+Workflows are defined as directed acyclic graphs (DAGs) where each step is a typed function:
+
+```go
+type OrderStatus int
+const (
+    OrderCreated OrderStatus = iota + 1
+    PaymentProcessed
+    InventoryReserved
+    OrderFulfilled
+)
+
+type Order struct {
+    ID     string
+    Amount float64
+    Items  []Item
+}
+
+// Define workflow steps
+b := workflow.NewBuilder[Order, OrderStatus]("order-processing")
+b.AddStep(OrderCreated, ProcessPayment, PaymentProcessed)
+b.AddStep(PaymentProcessed, ReserveInventory, InventoryReserved)
+b.AddStep(InventoryReserved, FulfillOrder, OrderFulfilled)
+```
+
+### Event-Driven Processing
+When steps complete, events are published to drive progression:
+
+```go
+type Event struct {
+    ID        int64             // Unique event identifier
+    ForeignID string            // Links to workflow instance
+    Type      int               // Status the workflow moved to
+    Headers   map[Header]string // Metadata
+    CreatedAt time.Time         // Event timestamp
+}
+```
+
+### Role-Based Distribution
+Each step runs as a separate process with unique roles, enabling horizontal scaling:
+
+```go
+// Only one instance processes this role across your fleet
+role := "order-processing:payment:consumer:1:of:3"
+```
+
+## Quick Start
+
+```go
+package main
+
+import (
+    "context"
+    "time"
+    "github.com/luno/workflow"
+    "github.com/luno/workflow/adapters/memstreamer"
+    "github.com/luno/workflow/adapters/memrecordstore"
+    "github.com/luno/workflow/adapters/memrolescheduler"
+)
+
+// 1. Define your types
+type Status int
+const (
+    StatusStarted Status = iota + 1
+    StatusProcessed
+    StatusCompleted
+)
+
+type Task struct {
+    Name        string
+    ProcessedAt *time.Time
+}
+
+// 2. Build the workflow
+func NewTaskWorkflow() *workflow.Workflow[Task, Status] {
+    b := workflow.NewBuilder[Task, Status]("task-processor")
+
+    b.AddStep(StatusStarted, func(ctx context.Context, r *workflow.Run[Task, Status]) (Status, error) {
+        now := time.Now()
+        r.Object.ProcessedAt = &now
+        return StatusProcessed, nil
+    }, StatusProcessed)
+
+    b.AddStep(StatusProcessed, func(ctx context.Context, r *workflow.Run[Task, Status]) (Status, error) {
+        // Do processing work
+        return StatusCompleted, nil
+    }, StatusCompleted)
+
+    return b.Build(
+        memstreamer.New(),
+        memrecordstore.New(),
+        memrolescheduler.New(),
+    )
+}
+
+func main() {
+    wf := NewTaskWorkflow()
+
+    // Start background processing
+    ctx := context.Background()
+    wf.Run(ctx)
+    defer wf.Stop()
+
+    // Trigger a workflow instance
+    runID, err := wf.Trigger(ctx, "task-123")
+    if err != nil {
+        panic(err)
+    }
+
+    // Wait for completion
+    run, err := wf.Await(ctx, "task-123", runID, StatusCompleted)
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Printf("Task completed: %+v\n", run.Object)
+}
+```
+
+## Advanced Features
+
+### Timeouts & Scheduling
+Handle time-based operations with durable timeouts:
+
+```go
+b.AddTimeout(
+    StatusPaymentPending,
+    workflow.DurationTimerFunc[Order, OrderStatus](30*time.Minute),
+    func(ctx context.Context, r *workflow.Run[Order, OrderStatus], now time.Time) (OrderStatus, error) {
+        return StatusPaymentExpired, nil
+    },
+    StatusPaymentExpired,
+)
+```
+
+### Callbacks & External Events
+Handle webhooks and manual interventions:
+
+```go
+b.AddCallback(StatusPendingApproval, func(ctx context.Context, r *workflow.Run[Order, OrderStatus], reader io.Reader) (OrderStatus, error) {
+    // Handle approval webhook
+    return StatusApproved, nil
+})
+
+// Trigger callback from webhook handler
+err := wf.Callback(ctx, "order-123", StatusPendingApproval, approvalPayload)
+```
+
+### Event Connectors
+Connect to external event streams:
+
+```go
+b.AddConnector("payment-events",
+    kafkaConnector,
+    func(ctx context.Context, api workflow.API[Order, OrderStatus], event *workflow.ConnectorEvent) error {
+        return api.Trigger(ctx, event.ForeignID, workflow.WithStartAt(StatusPaymentReceived))
+    },
+)
+```
+
+### Lifecycle Hooks
+React to workflow state changes:
+
+```go
+b.OnPause(func(ctx context.Context, r *workflow.Run[Order, OrderStatus]) error {
+    // Send alert when workflow pauses due to errors
+    return sendAlert("Workflow paused", r.ForeignID)
+})
+
+b.OnComplete(func(ctx context.Context, r *workflow.Run[Order, OrderStatus]) error {
+    // Clean up resources, send notifications
+    return notifyCompletion(r.Object)
+})
+```
 
 ## Installation
-To start using workflow you will need to add the workflow module to your project. You can do this by running:
+
+To start using workflow, add the workflow module to your project:
+
 ```bash
 go get github.com/luno/workflow
 ```
 
----
-
 ## Adapters
-Adapters enable **Workflow** to be tech stack agnostic by placing an interface /
- protocol between **Workflow** and the tech stack. **Workflow**
- uses adapters to understand how to use that specific tech stack.
 
-For example, the Kafka adapter enables workflow
- to produce messages to a topic as well as consume them from a topic using a set of predefined methods that wrap the
- kafka client. [Reflex](https://github.com/luno/reflex) is an event streaming framework that works very differently
- to Kafka and the adapter pattern allows for the differences to be contained and localised in the adapter and not
- spill into the main implementation.
+Adapters enable **Workflow** to be tech stack agnostic by placing an interface/protocol between **Workflow** and your chosen technology stack. **Workflow** uses adapters to understand how to interact with different systems.
+
+For example, the Kafka adapter enables workflow to produce and consume messages using predefined methods that wrap the kafka client. [Reflex](https://github.com/luno/reflex) is an event streaming framework that works differently to Kafka, and the adapter pattern allows these differences to be contained within the adapter.
 
 ### Event Streamer
-The [EventStreamer](https://github.com/luno/workflow/blob/main/eventstream.go) adapter interface defines what is needed
- to be satisfied in order for an event streaming platform or framework to be used by **Workflow**. 
+The [EventStreamer](eventstreamer.go) adapter interface defines what is needed for an event streaming platform to be used by **Workflow**.
 
-All implementations of the EventStreamer interface should be tested using [adaptertest.TestEventStreamer](https://github.com/luno/workflow/blob/main/adapters/adaptertest/eventstreaming.go)
+All implementations should be tested using [adaptertest.TestEventStreamer](adapters/adaptertest/eventstreaming.go).
 
-### Record Store
-The [RecordStore](https://github.com/luno/workflow/blob/main/store.go) adapter interface defines what is needed to
- satisfied in order for a storage solution to be used by **Workflow**.
+**Available adapters:**
+- **kafkastreamer**: Apache Kafka integration with consumer groups
+- **reflexstreamer**: Integration with Luno's Reflex event sourcing library
+- **memstreamer**: In-memory event streaming for testing
 
-All implementations of the RecordStore interface should be tested using [adaptertest.RunRecordStoreTest](https://github.com/luno/workflow/blob/main/adapters/adaptertest/recordstore.go)
-
-### Role Scheduler
-The [RoleScheduler](https://github.com/luno/workflow/blob/main/rolescheduler.go) adapter interface defines what is needed to
-satisfied in order for a role scheduling solution to be used by **Workflow**.
-
-All implementations of the RoleScheduler interface should be tested using [adaptertest.RunRoleSchedulerTest](https://github.com/luno/workflow/blob/main/adapters/adaptertest/rolescheduler.go)
-
-There are more adapters available but only the above 3 are core requirements to use **Workflow**. To start, use the
- in-memory implementations as that is the simplest way to experiment and get used to **Workflow**. For testing other
- adapter types be sure to look at [adaptertest](https://github.com/luno/workflow/blob/main/adapters/adaptertest) which
- are tests written for adapters to ensure that they meet the specification. 
-
-Adapters, except for the in-memory implementations, don't come with the core **Workflow** module such as `kafkastreamer`, `reflexstreamer`, `sqlstore`,
- `sqltimeout`, `rinkrolescheduler`, `webui` and many more. If you wish to use these you need to add them individually
- based on your needs or build out your own adapter.
-
-#### Kafka
 ```bash
+# Kafka
 go get github.com/luno/workflow/adapters/kafkastreamer
-```
 
-#### Reflex
-```bash
+# Reflex
 go get github.com/luno/workflow/adapters/reflexstreamer
 ```
 
-#### SQL Store
+### Record Store
+The [RecordStore](store.go) adapter interface defines what is needed for a storage solution to be used by **Workflow**.
+
+All implementations should be tested using [adaptertest.RunRecordStoreTest](adapters/adaptertest/recordstore.go).
+
+**Available adapters:**
+- **sqlstore**: Production SQL storage (MySQL, PostgreSQL)
+- **memrecordstore**: In-memory storage for testing
+
 ```bash
+# SQL Store
 go get github.com/luno/workflow/adapters/sqlstore
 ```
 
-#### SQL Timeout
-```bash
-go get github.com/luno/workflow/adapters/sqltimeout
-```
+### Role Scheduler
+The [RoleScheduler](rolescheduler.go) adapter interface defines what is needed for a role scheduling solution to be used by **Workflow**.
 
-#### Rink Role Scheduler
+All implementations should be tested using [adaptertest.RunRoleSchedulerTest](adapters/adaptertest/rolescheduler.go).
+
+**Available adapters:**
+- **rinkrolescheduler**: Distributed scheduling via Luno's Rink library
+- **memrolescheduler**: Single-instance scheduling for development
+
 ```bash
+# Rink Role Scheduler
 go get github.com/luno/workflow/adapters/rinkrolescheduler
 ```
 
-#### WebUI
+### Additional Adapters
+- **sqltimeout**: SQL-based durable timeout scheduling
+- **webui**: Web interface for monitoring and debugging workflows
+- **jlog**: Structured logging integration
+
 ```bash
+# SQL Timeout
+go get github.com/luno/workflow/adapters/sqltimeout
+
+# WebUI
 go get github.com/luno/workflow/adapters/webui
 ```
+
+**Note:** Adapters (except in-memory implementations) are separate modules that must be added individually based on your needs, or you can build your own adapter.
 
 ---
 
 ## Connectors
-Connectors allow **Workflow** to consume events from an event streaming platform or
- framework and either trigger a workflow run or provide a callback to the workflow run. This means that Connectors can act
- as a way for **Workflow** to connect with the rest of the system.
 
-Connectors are implemented as adapters as they would share a lot of the same code as implementations of an
- EventStreamer and can be seen as a subsection of an adapter.
+Connectors allow **Workflow** to consume events from external event streaming platforms and either trigger a workflow run or provide a callback to an existing workflow run. This enables **Workflow** to connect with the rest of your system through event fusion.
+
+Connectors are implemented as adapters since they share similar functionality with EventStreamer implementations.
 
 An example can be found [here](_examples/connector).
 
 ---
 
-## Basic Usage
+## What is a Workflow Run
 
-### Step 1: Define the workflow
-```go
-package usage
+When a **Workflow** is triggered, it creates an individual workflow instance called a **Run**. Each run has a lifecycle represented as a finite state machine with the following states:
 
-import (
-	"context"
+| Run State | Value | Description |
+|-----------|-------|-------------|
+| Unknown | 0 | Default zero value, has no meaning |
+| Initiated | 1 | Assigned at creation, yet to be processed |
+| Running | 2 | Currently being processed by a workflow step |
+| Paused | 3 | Temporary stoppage that can be resumed or cancelled. Prevents new triggers for the same Foreign ID |
+| Completed | 4 | Successfully finished all configured steps |
+| Cancelled | 5 | Terminated before completion |
+| Data Deleted | 6 | Run Object has been modified to remove data (e.g., PII scrubbing) |
+| Requested Data Deleted | 7 | Request state for applying delete operation to Run Object |
 
-	"github.com/luno/workflow"
-)
+A Run can only exist in one state at any given time, and the RunState allows for control over the Run.
 
-type Step int
-
-func (s Step) String() string {
-	switch s {
-	case StepOne:
-		return "One"
-	case StepTwo:
-		return "Two"
-	case StepThree:
-		return "Three"
-	default:
-		return "Unknown"
-	}
-}
-
-const (
-	StepUnknown Step = 0
-	StepOne Step = 1
-	StepTwo Step = 2
-	StepThree Step = 3
-)
-
-type MyType struct {
-	Field string
-}
-
-func Workflow() *workflow.Workflow[MyType, Step] {
-	b := workflow.NewBuilder[MyType, Step]("my workflow name")
-
-	b.AddStep(StepOne, func(ctx context.Context, r *workflow.Run[MyType, Step]) (Step, error) {
-		r.Object.Field = "Hello,"
-		return StepTwo, nil
-	}, StepTwo)
-
-	b.AddStep(StepTwo, func(ctx context.Context, r *workflow.Run[MyType, Step]) (Step, error) {
-		r.Object.Field += " world!"
-		return StepThree, nil
-	}, StepThree)
-
-	return b.Build(...)
-}
-```
 ```mermaid
 ---
-title: The above defined workflow creates the below Directed Acyclic Graph
+title: Workflow Run State Transitions
 ---
 stateDiagram-v2
-	direction LR
-    
-	[*]-->One
-    One-->Two
-    Two-->Three
-    Three-->[*]
-```
-### Step 2: Run the workflow
-```go
-wf := usage.Workflow()
+    direction LR
 
-ctx := context.Background()
-wf.Run(ctx)
-```
-**Stop:** To stop all processes and wait for them to shut down correctly call
-```go
-wf.Stop()
-```
-### Step 3: Trigger the workflow
-```go
-foreignID := "82347982374982374"
-runID, err := wf.Trigger(ctx, foreignID)
-if err != nil {
-	...
-}
-```
-**Awaiting results:** If appropriate and desired you can wait for the workflow to complete. Using context timeout (cancellation) is advised.
-```go
-foreignID := "82347982374982374"
-runID, err := wf.Trigger(ctx, foreignID)
-if err != nil {
-	...
-}
-
-ctx, cancel := context.WithTimeout(ctx, 10 * time.Second)
-defer cancel()
-
-record, err := wf.Await(ctx, foreignID, runID, StepThree)
-if err != nil {
-	...
-}
-```
-
-### Detailed examples
-Head on over to [./_examples](./_examples) to get familiar with **callbacks**, **timeouts**, **testing**, **connectors** and
- more about the syntax in depth 😊
-
----
-
-## What is a workflow Run
-
-When a **Workflow** is triggered it creates an individual workflow instance called a Run. This is represented as workflow.Run in
-**Workflow**. Each run has a lifecycle which is a finite set of states - commonly
-referred to as Finite State Machine. Each
- workflow Run has the following of states (called RunState in **Workflow**):
-
-| Run State              | Value (int) | Description                                                                                                 |
-|------------------------|-------------|-------------------------------------------------------------------------------------------------------------|
-| Unknown                | 0 | Has no meaning. Protects against default zero value.                                                        |
-| Initiated              | 1 | State assinged at creation of Run and is yet to be processed.                                               |
-| Running                | 2 | Has begun to be processed and is currently still being processed by a step in the workflow.                 |
-| Paused                 | 3 | Temporary stoppage that can be resumed or cancelled. Will prevent any new triggers of the same Foreign ID.  |
-| Completed              | 4 | Finished all the steps configured at time of execution.                                                     |
-| Cancelled              | 5 | Did not complete all the steps and was terminated before completion.                                        |
-| Data Deleted           | 6 | Run Object has been modified to remove data or has been entirely removed. Likely for PII scrubbing reasons. |
-| Requested Data Deleted | 7 | Request state for the workflow to apply the default or custom provided delete operation to the Run Object.  |
-
-
-A Run can only exist in one state at any given time and the RunState allows for control over the Run.
-```mermaid
----
-title: Diagram the run states of a workflow
----
-stateDiagram-v2
-	direction LR
-    
     Initiated-->Running
-    
+
     Running-->Completed
     Running-->Paused
 
     Paused-->Running
-    
+
     Running --> Cancelled
     Paused --> Cancelled
-    
+
     state Finished {
         Completed --> RequestedDataDeleted
         Cancelled --> RequestedDataDeleted
-            
+
         DataDeleted-->RequestedDataDeleted
         RequestedDataDeleted-->DataDeleted
     }
 ```
+
 ---
+
 ## Hooks
 
-Hooks allow for you to write some functionality for Runs that enter a specific RunState. For example when
-using `PauseAfterErrCount` the usage of the OnPause hook can be used to send a notification to a team to notify
-them that a specific Run has errored to the threshold and now has been paused and should be investigated. Another
-example is handling a known sentinel error in a **Workflow** Run and cancelling the Run by calling (where r is *Run)
-r.Cancel(ctx) or if a **Workflow** Run is manually cancelled from a UI then a notifgication can be sent to the team for visibility.
+Hooks allow you to write functionality that executes when Runs enter specific RunStates. For example, when using `PauseAfterErrCount`, you can use the OnPause hook to send notifications when a Run has errored beyond the threshold and been paused for investigation.
 
-Hooks run in an event consumer. This means that it will retry until a nil error has been returned and is durable
-across deploys and interruptions. At-least-once delivery is guaranteed, and it is advised to use the RunID as an
-idempotency key to ensure that the operation is idempotent.
+Hooks run in event consumers with retry mechanisms until a nil error is returned, providing durability across deploys and interruptions. At-least-once delivery is guaranteed - use the RunID as an idempotency key to ensure operations are idempotent.
 
 ### Available Hooks:
 
-| Hook          | Parameter(s)                    | Return(s) | Description                               | Is Event Driven? |
-|---------------|---------------------------------|-----------|-------------------------------------------|------------------|
-| OnPause       | workflow.RunStateChangeHookFunc | error     | Fired when a Run enters RunStatePaused    | Yes              |
-| OnCancelled   | workflow.RunStateChangeHookFunc | error     | Fired when a Run enters RunStateCancelled | Yes              |
-| OnCompleted   | workflow.RunStateChangeHookFunc | error     | Fired when a Run enters RunStateCompleted | Yes              |
+| Hook | Parameter | Return | Description | Event Driven? |
+|------|-----------|---------|-------------|---------------|
+| OnPause | RunStateChangeHookFunc | error | Fired when a Run enters RunStatePaused | Yes |
+| OnCancel | RunStateChangeHookFunc | error | Fired when a Run enters RunStateCancelled | Yes |
+| OnComplete | RunStateChangeHookFunc | error | Fired when a Run enters RunStateCompleted | Yes |
+
+```go
+b.OnPause(func(ctx context.Context, r *workflow.Run[Order, Status]) error {
+    // Send alert when workflow pauses due to errors
+    return sendAlert("Workflow paused", r.ForeignID)
+})
+```
 
 ---
 
 ## Configuration Options
 
-This package provides several options to configure the behavior of the workflow process. You can use these options to customize the instance count, polling frequency, error handling, lag settings, and more. Each option is defined as a function that takes a pointer to an `options` struct and modifies it accordingly. Below is a description of each available option:
+This package provides several options to configure the behavior of workflow processes. You can use these options to customize instance count, polling frequency, error handling, lag settings, and more.
 
 ### `ParallelCount`
 
@@ -321,10 +387,9 @@ This package provides several options to configure the behavior of the workflow 
 func ParallelCount(instances int) Option
 ```
 
-- **Description:** Defines the number of instances of the workflow process. These instances are distributed consistently, each named to reflect its position (e.g., "consumer-1-of-5"). This helps in managing parallelism in workflow execution.
-- **Parameters:**
-    - `instances`: The total number of parallel instances to create.
-- **Usage Example:**
+**Description:** Defines the number of instances of the workflow process. These instances are distributed consistently, each named to reflect its position (e.g., "consumer-1-of-5"). This helps in managing parallelism in workflow execution.
+
+**Usage Example:**
 ```go
 b.AddStep(
     StepOne,
@@ -341,10 +406,9 @@ b.AddStep(
 func PollingFrequency(d time.Duration) Option
 ```
 
-- **Description:** Sets the duration at which the workflow process polls for changes. Adjust this to control how frequently the process checks for new events or updates.
-- **Parameters:**
-    - `d`: The polling frequency as a `time.Duration`.
-- **Usage Example:**
+**Description:** Sets the duration at which the workflow process polls for changes. Adjust this to control how frequently the process checks for new events or updates.
+
+**Usage Example:**
 ```go
 b.AddStep(
     StepOne,
@@ -361,10 +425,9 @@ b.AddStep(
 func ErrBackOff(d time.Duration) Option
 ```
 
-- **Description:** Defines the duration for which the workflow process will back off after encountering an error. This is useful for managing retries and avoiding rapid repeated failures.
-- **Parameters:**
-    - `d`: The backoff duration as a `time.Duration`.
-- **Usage Example:**
+**Description:** Defines the duration for which the workflow process will back off after encountering an error. This is useful for managing retries and avoiding rapid repeated failures.
+
+**Usage Example:**
 ```go
 b.AddStep(
     StepOne,
@@ -374,16 +437,16 @@ b.AddStep(
     workflow.ErrBackOff(5 * time.Minute)
 )
 ```
+
 ### `LagAlert`
 
 ```go
 func LagAlert(d time.Duration) Option
 ```
 
-- **Description:** Specifies the time threshold before a Prometheus metric switches to true, indicating that the workflow consumer is struggling to keep up. This can signal the need to convert to a parallel consumer.
-- **Parameters:**
-    - `d`: The duration of the lag alert as a `time.Duration`.
-- **Usage Example:**
+**Description:** Specifies the time threshold before a Prometheus metric switches to true, indicating that the workflow consumer is struggling to keep up. This can signal the need to convert to a parallel consumer.
+
+**Usage Example:**
 ```go
 b.AddStep(
     StepOne,
@@ -393,16 +456,16 @@ b.AddStep(
     workflow.LagAlert(15 * time.Minute),
 )
 ```
+
 ### `ConsumeLag`
 
 ```go
 func ConsumeLag(d time.Duration) Option
 ```
 
-- **Description:** Defines the maximum age of events that the consumer will process. Events newer than the specified duration will be held until they are older than the lag period.
-- **Parameters:**
-    - `d`: The lag duration as a `time.Duration`.
-- **Usage Example:**
+**Description:** Defines the maximum age of events that the consumer will process. Events newer than the specified duration will be held until they are older than the lag period.
+
+**Usage Example:**
 ```go
 b.AddStep(
     StepOne,
@@ -412,16 +475,16 @@ b.AddStep(
     workflow.ConsumeLag(10 * time.Minute),
 )
 ```
+
 ### `PauseAfterErrCount`
 
 ```go
 func PauseAfterErrCount(count int) Option
 ```
 
-- **Description:** Sets the number of errors allowed before a record is updated to `RunStatePaused`. This mechanism acts similarly to a Dead Letter Queue, preventing further processing of problematic records and allowing for investigation and retry.
-- **Parameters:**
-    - `count`: The maximum number of errors before pausing.
-- **Usage Example:**
+**Description:** Sets the number of errors allowed before a record is updated to `RunStatePaused`. This mechanism acts similarly to a Dead Letter Queue, preventing further processing of problematic records and allowing for investigation and retry.
+
+**Usage Example:**
 ```go
 b.AddStep(
     StepOne,
@@ -432,40 +495,138 @@ b.AddStep(
 )
 ```
 
----
+### Global Configuration
+
+Apply options to the entire workflow:
+
+```go
+wf := b.Build(
+    eventStreamer, recordStore, roleScheduler,
+    workflow.WithDefaultOptions(
+        workflow.ParallelCount(5),
+        workflow.ErrBackOff(time.Second),
+    ),
+    workflow.WithDebugMode(),
+    workflow.WithTimeoutStore(timeoutStore),
+)
+```
+
+## Monitoring & Observability
+
+### Built-in Metrics
+Workflow exposes Prometheus metrics for monitoring:
+- Consumer lag and throughput
+- Error rates and pause counts
+- Processing times and queue depths
+
+### Web UI
+Monitor workflows in real-time:
+
+```go
+// Add to your HTTP server
+http.Handle("/", webui.HomeHandlerFunc(webui.Paths{
+    List:       "/api/list",
+    ObjectData: "/api/object",
+}))
+http.HandleFunc("/api/list", webui.ListHandlerFunc(recordStore))
+http.HandleFunc("/api/object", webui.ObjectDataHandlerFunc(recordStore))
+```
+
+### Debugging
+Enable debug mode for detailed logging:
+
+```go
+wf := b.Build(..., workflow.WithDebugMode())
+```
+
+## Production Deployment
+
+### Scaling Patterns
+- **Single Instance**: Use mem* adapters for simple deployments
+- **Horizontally Scaled**: Use SQL + Kafka + Rink for production
+- **Multi-Region**: Deploy role scheduler per region with shared storage
+
+### Error Handling
+```go
+// Built-in error handling with pause and retry
+b.AddStep(StatusProcessing, func(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
+    if err := externalAPICall(); err != nil {
+        if isRetryableError(err) {
+            return 0, err // Will retry with backoff
+        }
+        return StatusFailed, nil // Move to failed state
+    }
+    return StatusCompleted, nil
+}).WithOptions(workflow.PauseAfterErrCount(5))
+```
+
+### Best Practices
+
+1. **Break up complex business logic into small steps**: Decompose complex workflows into manageable, focused steps for better maintainability and debugging.
+
+2. **Use Workflow for meaningful data production with CQRS**: **Workflow** can produce new meaningful data, not just execute logic. Consider implementing a CQRS pattern where the workflow acts as the "Command" and data is persisted in a more queryable manner.
+
+3. **Maintain backwards compatibility**: Changes to workflows must be backwards compatible. For non-backwards compatible changes:
+   - Add the new workflow alongside the existing one
+   - Route new triggers to the new workflow
+   - Allow the old workflow to finish processing existing Runs
+   - Remove the old workflow once all Runs are complete
+   - Alternatively, add versioning to your Object type (though this affects the DAG structure)
+
+4. **Understand latency expectations**: **Workflow** is not intended for low-latency use cases. Asynchronous event-driven systems prioritize decoupling, durability, workload distribution, and complex logic breakdown over speed.
+
+5. **Monitor with Prometheus metrics**: Ensure the built-in Prometheus metrics are used for monitoring and alerting to maintain operational visibility.
+
+## Comparison with Alternatives
+
+| Feature | Workflow | Temporal | Zeebe/Camunda |
+|---------|----------|----------|---------------|
+| Type Safety | Compile-time (Go generics) | Runtime validation | Runtime (BPMN) |
+| Architecture | Event-driven state machines | RPC-based activities | Token-based execution |
+| Definition | Go code | Go/Java/Python code | BPMN XML |
+| Infrastructure | Pluggable adapters | Requires Temporal cluster | External engine required |
+| Deployment | Library in your app | Separate server/workers | Separate engine |
+| Language Support | Go-native | Multi-language | Multi-language |
 
 ## Glossary
 
-| **Term**          | **Description**                                                                                                                                                                                                       |
-|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Builder**       | A struct type that facilitates the construction of workflows. It provides methods for adding steps, callbacks, timeouts, and connecting workflows.                                                                    |
-| **Callback**      | A method in the workflow API that can be used to trigger a callback function for a specified status. It passes data from a reader to the specified callback function.                                                 |
-| **Consumer**      | A component that consumes events from an event stream. In this context, it refers to the background consumer goroutines launched by the workflow.                                                                     |
-| **EventStreamer** | An interface representing a stream for workflow events. It includes methods for producing and consuming events.                                                                                                       |
-| **Graph**         | A representation of the workflow's structure, showing the relationships between different statuses and transitions.                                                                                                   |
-| **Hooks**         | An event driven process that take place on a Workflow's Run's lifecycle defined in a finite number of states called RunState.                                                                                         |
-| **Producer**      | A component that produces events to an event stream. It is responsible for sending events to the stream.                                                                                                              |
-| **Record**        | Is the "wire format" and representation of a Run that can be stored and retrieved. The RecordStore is used for storing and retrieving records.                                                                        |
-| **RecordStore**   | An interface representing a store for Record(s). It defines the methods needed for storing and retrieving records. The RecordStore's underlying technology must support transactions in order to prevent dual-writes. |
-| **RoleScheduler** | An interface representing a scheduler for roles in the workflow. It is responsible for coordinating the execution of different roles.                                                                                 |
-| **Run**           | A Run is the representation of the instance that is created and processed by the Workflow. Each time Trigger is called a new "Run" is created.                                                                        |
-| **RunState**      | RunState defines the finite number of states that a Run can be in. This is used to control and monitor the lifecycle of Runs.                                                                                         |
-| **Topic**         | A method that generates a topic for producing events in the event streamer based on the workflow name and status.                                                                                                     |
-| **Trigger**       | A method in the workflow API that initiates a workflow for a specified foreignID and starting status. It returns a Run ID and allows for additional configuration options.                                            |
+| **Term** | **Description** |
+|----------|-----------------|
+| **Builder** | A struct type that facilitates the construction of workflows. It provides methods for adding steps, callbacks, timeouts, and connecting workflows. |
+| **Callback** | A method in the workflow API that can be used to trigger a callback function for a specified status. It passes data from a reader to the specified callback function. |
+| **Consumer** | A component that consumes events from an event stream. In this context, it refers to the background consumer goroutines launched by the workflow. |
+| **EventStreamer** | An interface representing a stream for workflow events. It includes methods for producing and consuming events. |
+| **Graph** | A representation of the workflow's structure, showing the relationships between different statuses and transitions. |
+| **Hooks** | Event-driven processes that take place on a Workflow's Run's lifecycle defined in a finite number of states called RunState. |
+| **Producer** | A component that produces events to an event stream. It is responsible for sending events to the stream. |
+| **Record** | The "wire format" and representation of a Run that can be stored and retrieved. The RecordStore is used for storing and retrieving records. |
+| **RecordStore** | An interface representing a store for Record(s). It defines the methods needed for storing and retrieving records. The RecordStore's underlying technology must support transactions in order to prevent dual-writes. |
+| **RoleScheduler** | An interface representing a scheduler for roles in the workflow. It is responsible for coordinating the execution of different roles. |
+| **Run** | A Run is the representation of the instance that is created and processed by the Workflow. Each time Trigger is called a new "Run" is created. |
+| **RunState** | RunState defines the finite number of states that a Run can be in. This is used to control and monitor the lifecycle of Runs. |
+| **Topic** | A method that generates a topic for producing events in the event streamer based on the workflow name and status. |
+| **Trigger** | A method in the workflow API that initiates a workflow for a specified foreignID and starting status. It returns a Run ID and allows for additional configuration options. |
 
 ---
 
-## Best practices
+## Examples
 
-1. Break up complex business logic into small steps.
-2. **Workflow** can be used to produce new meaningful data and not just be used to execute logic. If it is used for this, it's suggested
-to implement a CQRS pattern where the workflow acts as the "Command" and the data is persisted into a more queryable manner.
-3. Changes to workflows must be backwards compatible. If you need to introduce a non-backwards compatible change
-   then the non-backwards compatible workflow should be added alongside the existing workflow with
-   the non-backwards compatible workflow receiving all the incoming triggers. The old workflow should be given time
-   to finish processing any workflows it started and once it has finished processing all the existing non-finished Runs
-   then it may be safely removed. Alternatively versioning can be added internally to your Object type that you provide,
-   but this results in changes to the workflow's Directed Acyclic Graph (map of steps connecting together).
-4. **Workflow** is not intended for low-latency. Asynchronous event driven systems are not meant to be low-latency but
-   prioritise decoupling, durability, distribution of workload, and breakdown of complex logic (to name a few).
-5. Ensure that the prometheus metrics that come with **Workflow** are being used for monitoring and alerting.
+Comprehensive examples are available in the [_examples](_examples) directory:
+- [Getting Started](_examples/gettingstarted) - Basic workflow definition
+- [Callbacks](_examples/callback) - External event handling
+- [Timeouts](_examples/timeout) - Time-based operations
+- [Schedule](_examples/schedule) - Cron-based scheduling
+- [Connectors](_examples/connector) - External stream integration
+- [Web UI](_examples/webui) - Monitoring interface
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and contribution guidelines.
+
+## License
+
+[MIT License](LICENSE)
+
+---
