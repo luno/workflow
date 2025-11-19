@@ -146,12 +146,12 @@ b.AddStep(PaymentFailed, retryPayment, PaymentProcessed, OrderCancelled)
 Each workflow step creates a unique role:
 
 ```
-workflow-name:status:consumer:shard:total-shards
+workflow-name-status-consumer-shard-of-total-shards
 ```
 
 Examples:
-- `order-processing:payment:consumer:1:of:1` (single instance)
-- `order-processing:payment:consumer:1:of:3` (sharded across 3 instances)
+- `order-processing-1-consumer-1-of-1` (single instance)
+- `order-processing-2-consumer-1-of-3` (sharded across 3 instances)
 
 The RoleScheduler ensures only one process holds each role at any time, enabling:
 
@@ -169,11 +169,11 @@ b.AddStep(OrderCreated, processPayment, PaymentProcessed).
 ```
 
 This creates roles:
-- `order-processing:payment:consumer:1:of:5`
-- `order-processing:payment:consumer:2:of:5`
-- `order-processing:payment:consumer:3:of:5`
-- `order-processing:payment:consumer:4:of:5`
-- `order-processing:payment:consumer:5:of:5`
+- `order-processing-1-consumer-1-of-5`
+- `order-processing-1-consumer-2-of-5`
+- `order-processing-1-consumer-3-of-5`
+- `order-processing-1-consumer-4-of-5`
+- `order-processing-1-consumer-5-of-5`
 
 Events are distributed across shards using consistent hashing on the ForeignID.
 

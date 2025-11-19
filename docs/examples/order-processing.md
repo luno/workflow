@@ -48,17 +48,17 @@ const (
 
 func (s OrderStatus) String() string {
     switch s {
-    case OrderCreated:       return "Created"
-    case OrderValidated:     return "Validated"
-    case PaymentProcessing:  return "PaymentProcessing"
-    case PaymentProcessed:   return "PaymentProcessed"
-    case PaymentFailed:      return "PaymentFailed"
-    case InventoryReserved:  return "InventoryReserved"
-    case InventoryFailed:    return "InventoryFailed"
-    case OrderFulfilled:     return "Fulfilled"
-    case OrderCancelled:     return "Cancelled"
-    case OrderRefunded:      return "Refunded"
-    default:                return "Unknown"
+    case OrderStatusCreated:         return "Created"
+    case OrderStatusValidated:       return "Validated"
+    case OrderStatusPaymentProcessing: return "PaymentProcessing"
+    case OrderStatusPaymentProcessed: return "PaymentProcessed"
+    case OrderStatusPaymentFailed:   return "PaymentFailed"
+    case OrderStatusInventoryReserved: return "InventoryReserved"
+    case OrderStatusInventoryFailed: return "InventoryFailed"
+    case OrderStatusFulfilled:       return "Fulfilled"
+    case OrderStatusCancelled:       return "Cancelled"
+    case OrderStatusRefunded:        return "Refunded"
+    default:                        return "Unknown"
     }
 }
 
@@ -111,53 +111,53 @@ func NewOrderWorkflow() *workflow.Workflow[Order, OrderStatus] {
     b := workflow.NewBuilder[Order, OrderStatus]("order-processing")
 
     // Step 1: Validate order
-    b.AddStep(OrderCreated, validateOrder, OrderValidated, OrderCancelled).
+    b.AddStep(OrderStatusCreated, validateOrder, OrderStatusValidated, OrderStatusCancelled).
         WithOptions(
             workflow.ErrBackOff(time.Second * 5),
             workflow.PauseAfterErrCount(3),
         )
 
     // Step 2: Process payment (with retries)
-    b.AddStep(OrderValidated, processPayment, PaymentProcessing, PaymentFailed, OrderCancelled).
+    b.AddStep(OrderStatusValidated, processPayment, OrderStatusPaymentProcessing, OrderStatusPaymentFailed, OrderStatusCancelled).
         WithOptions(
             workflow.ErrBackOff(time.Second * 10),
             workflow.PauseAfterErrCount(5),
         )
 
     // Step 3: Complete payment processing
-    b.AddStep(PaymentProcessing, completePayment, PaymentProcessed, PaymentFailed)
+    b.AddStep(OrderStatusPaymentProcessing, completePayment, OrderStatusPaymentProcessed, OrderStatusPaymentFailed)
 
     // Step 4: Reserve inventory
-    b.AddStep(PaymentProcessed, reserveInventory, InventoryReserved, InventoryFailed)
+    b.AddStep(OrderStatusPaymentProcessed, reserveInventory, OrderStatusInventoryReserved, OrderStatusInventoryFailed)
 
     // Step 5: Fulfill order
-    b.AddStep(InventoryReserved, fulfillOrder, OrderFulfilled)
+    b.AddStep(OrderStatusInventoryReserved, fulfillOrder, OrderStatusFulfilled)
 
     // Error handling flows
-    b.AddStep(PaymentFailed, handlePaymentFailure, OrderCancelled, PaymentProcessing) // Allow retry
-    b.AddStep(InventoryFailed, handleInventoryFailure, OrderCancelled, OrderRefunded)
+    b.AddStep(OrderStatusPaymentFailed, handlePaymentFailure, OrderStatusCancelled, OrderStatusPaymentProcessing) // Allow retry
+    b.AddStep(OrderStatusInventoryFailed, handleInventoryFailure, OrderStatusCancelled, OrderStatusRefunded)
 
     // Cancellation flow
-    b.AddStep(OrderCancelled, processCancellation, OrderRefunded)
+    b.AddStep(OrderStatusCancelled, processCancellation, OrderStatusRefunded)
 
     // Add timeouts
     b.AddTimeout(
-        PaymentProcessing,
+        OrderStatusPaymentProcessing,
         workflow.DurationTimerFunc[Order, OrderStatus](5*time.Minute),
         func(ctx context.Context, r *workflow.Run[Order, OrderStatus], now time.Time) (OrderStatus, error) {
-            return PaymentFailed, nil
+            return OrderStatusPaymentFailed, nil
         },
-        PaymentFailed,
+        OrderStatusPaymentFailed,
     )
 
     // Add hooks for monitoring
-    b.OnComplete(func(ctx context.Context, r *workflow.Run[Order, OrderStatus]) error {
-        fmt.Printf("📊 Order %s completed in %v\n", r.Object.ID, time.Since(r.CreatedAt))
+    b.OnComplete(func(ctx context.Context, record *workflow.TypedRecord[Order, OrderStatus]) error {
+        fmt.Printf("📊 Order %s completed in %v\n", record.Object.ID, time.Since(record.CreatedAt))
         return nil
     })
 
-    b.OnPause(func(ctx context.Context, r *workflow.Run[Order, OrderStatus]) error {
-        fmt.Printf("⚠️ Order %s paused due to errors - requires investigation\n", r.Object.ID)
+    b.OnPause(func(ctx context.Context, record *workflow.TypedRecord[Order, OrderStatus]) error {
+        fmt.Printf("⚠️ Order %s paused due to errors - requires investigation\n", record.Object.ID)
         // In real implementation, send alert to operations team
         return nil
     })
@@ -209,14 +209,14 @@ func validateOrder(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (Or
 
     if len(errors) > 0 {
         r.Object.ValidationErrors = errors
-        return OrderCancelled, nil
+        return OrderStatusCancelled, nil
     }
 
     now := time.Now()
     r.Object.ValidatedAt = &now
     fmt.Printf("✅ Order %s validated successfully\n", r.Object.ID)
 
-    return OrderValidated, nil
+    return OrderStatusValidated, nil
 }
 
 func processPayment(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
@@ -236,11 +236,11 @@ func processPayment(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (O
         if isRetryablePaymentError(err) && r.Object.PaymentAttempts < 3 {
             return 0, fmt.Errorf("payment failed (retryable): %w", err)
         }
-        return PaymentFailed, nil
+        return OrderStatusPaymentFailed, nil
     }
 
     r.Object.PaymentID = paymentID
-    return PaymentProcessing, nil
+    return OrderStatusPaymentProcessing, nil
 }
 
 func completePayment(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
@@ -256,14 +256,14 @@ func completePayment(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (
     case "completed":
         now := time.Now()
         r.Object.PaidAt = &now
-        return PaymentProcessed, nil
+        return OrderStatusPaymentProcessed, nil
     case "failed":
-        return PaymentFailed, nil
+        return OrderStatusPaymentFailed, nil
     case "processing":
         // Still processing, check again later
-        return PaymentProcessing, nil
+        return OrderStatusPaymentProcessing, nil
     default:
-        return PaymentFailed, nil
+        return OrderStatusPaymentFailed, nil
     }
 }
 
@@ -273,7 +273,7 @@ func reserveInventory(ctx context.Context, r *workflow.Run[Order, OrderStatus]) 
     reservationID, err := inventoryService.ReserveItems(r.Object.Items)
     if err != nil {
         if errors.Is(err, ErrInsufficientInventory) {
-            return InventoryFailed, nil
+            return OrderStatusInventoryFailed, nil
         }
         return 0, err // Retryable error
     }
@@ -281,7 +281,7 @@ func reserveInventory(ctx context.Context, r *workflow.Run[Order, OrderStatus]) 
     r.Object.ReservationID = reservationID
     fmt.Printf("✅ Inventory reserved with ID %s\n", reservationID)
 
-    return InventoryReserved, nil
+    return OrderStatusInventoryReserved, nil
 }
 
 func fulfillOrder(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
@@ -305,7 +305,7 @@ func fulfillOrder(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (Ord
 
     fmt.Printf("🎉 Order %s fulfilled! Tracking number: %s\n", r.Object.ID, trackingNumber)
 
-    return OrderFulfilled, nil
+    return OrderStatusFulfilled, nil
 }
 
 // Error handlers
@@ -317,10 +317,10 @@ func handlePaymentFailure(ctx context.Context, r *workflow.Run[Order, OrderStatu
     if r.Object.PaymentAttempts < 3 && hasAlternativePaymentMethod(r.Object.CustomerID) {
         fmt.Printf("🔄 Retrying payment with alternative method\n")
         r.Object.PaymentMethod = getAlternativePaymentMethod(r.Object.CustomerID)
-        return PaymentProcessing, nil
+        return OrderStatusPaymentProcessing, nil
     }
 
-    return OrderCancelled, nil
+    return OrderStatusCancelled, nil
 }
 
 func handleInventoryFailure(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
@@ -335,11 +335,11 @@ func handleInventoryFailure(ctx context.Context, r *workflow.Run[Order, OrderSta
     if len(availableItems) > 0 && len(availableItems) < len(r.Object.Items) {
         // Offer partial fulfillment (simplified - in real app, would need customer consent)
         r.Object.Items = availableItems
-        return InventoryReserved, nil
+        return OrderStatusInventoryReserved, nil
     }
 
     // No inventory available - refund payment
-    return OrderRefunded, nil
+    return OrderStatusRefunded, nil
 }
 
 func processCancellation(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
@@ -362,7 +362,7 @@ func processCancellation(ctx context.Context, r *workflow.Run[Order, OrderStatus
     now := time.Now()
     r.Object.CancelledAt = &now
 
-    return OrderRefunded, nil
+    return OrderStatusRefunded, nil
 }
 
 // Mock service implementations (replace with real implementations)
@@ -542,7 +542,7 @@ func main() {
             ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
             defer cancel()
 
-            run, err := wf.Await(ctx, orderID, runID, OrderFulfilled, OrderCancelled, OrderRefunded)
+            run, err := wf.Await(ctx, orderID, runID, OrderStatusFulfilled, OrderStatusCancelled, OrderStatusRefunded)
             if err != nil {
                 fmt.Printf("⏰ Order %s workflow timed out or failed: %v\n", orderID, err)
                 return
@@ -597,7 +597,7 @@ Uses hooks to track completion times and alert on paused workflows.
 ### Scaling
 - Enable parallel processing for high-volume periods:
   ```go
-  b.AddStep(OrderCreated, validateOrder, OrderValidated, OrderCancelled).
+  b.AddStep(OrderStatusCreated, validateOrder, OrderStatusValidated, OrderStatusCancelled).
       WithOptions(workflow.ParallelCount(10))
   ```
 

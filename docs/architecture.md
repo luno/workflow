@@ -99,12 +99,12 @@ type RoleScheduler interface {
 
 **Role Naming Convention:**
 ```
-{workflow-name}:{status}:{process-type}:{shard}:{total-shards}
+{workflow-name}-{status}-{process-type}-{shard}-of-{total-shards}
 ```
 
 Examples:
-- `order-processing:payment:consumer:1:of:1`
-- `user-onboarding:email:timeout:2:of:3`
+- `order-processing-1-consumer-1-of-1`
+- `user-onboarding-2-timeout-consumer-2-of-3`
 
 ## Data Flow
 
