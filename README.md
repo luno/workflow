@@ -173,44 +173,20 @@ func main() {
 | **[Hooks](docs/hooks.md)** | React to workflow lifecycle changes |
 | **[Configuration](docs/configuration.md)** | Tune performance and behavior |
 | **[Monitoring](docs/monitoring.md)** | Observability and debugging |
-| **[Deployment](docs/deployment.md)** | Production deployment patterns |
 | **[Adapters](docs/adapters.md)** | Infrastructure integration guide |
 
 ### Examples & Tutorials
 
 | Example | Description |
 |---------|-------------|
-| **[Order Processing](docs/examples/order-processing.md)** | E-commerce workflow with payments & fulfillment |
-| **[User Onboarding](docs/examples/user-onboarding.md)** | Multi-step user activation flow |
-| **[Data Pipeline](docs/examples/data-pipeline.md)** | ETL workflow with validation |
-| **[Payment Processing](docs/examples/payment-processing.md)** | Financial workflow with retries |
-| **[Approval Workflow](docs/examples/approval-workflow.md)** | Multi-stakeholder approvals |
+| **[Order Processing](docs/examples/order-processing.go)** | Complete e-commerce workflow with payments & fulfillment |
 
-### Advanced Topics
-
-| Topic | Description |
-|-------|-------------|
-| **[Error Handling](docs/advanced/error-handling.md)** | Comprehensive error strategies |
-| **[Testing](docs/advanced/testing.md)** | Testing workflows and adapters |
-| **[Performance](docs/advanced/performance.md)** | Optimization and tuning |
-| **[Migration](docs/advanced/migration.md)** | Upgrading and backwards compatibility |
-| **[Troubleshooting](docs/advanced/troubleshooting.md)** | Common issues and solutions |
-
-### API Reference
-
-| Reference | Description |
-|-----------|-------------|
-| **[Workflow API](docs/api/workflow-api.md)** | Core Workflow methods |
-| **[Builder API](docs/api/builder-api.md)** | Workflow construction |
-| **[Run API](docs/api/run-api.md)** | Runtime workflow management |
-| **[Options API](docs/api/options-api.md)** | Configuration options |
 
 ## Community & Support
 
 - 📚 **[Documentation](docs/)** - Comprehensive guides and examples
 - 🐛 **[Issues](https://github.com/luno/workflow/issues)** - Bug reports and feature requests
 - 💬 **[Discussions](https://github.com/luno/workflow/discussions)** - Community Q&A
-- 📖 **[Contributing](CONTRIBUTING.md)** - How to contribute
 
 ## Installation
 
