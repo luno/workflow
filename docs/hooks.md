@@ -169,22 +169,32 @@ builder.OnComplete(func(ctx context.Context, record *workflow.TypedRecord[Order,
 })
 ```
 
-### Non-Retriable Errors
+### Error Handling Patterns
 
-Skip retries by returning a non-retriable error:
+Handle different error conditions appropriately:
 
 ```go
-import "github.com/luno/workflow/internal/errorsinternal"
+import (
+    "context"
+    "log"
+    "github.com/luno/workflow"
+)
 
 builder.OnComplete(func(ctx context.Context, record *workflow.TypedRecord[Order, Status]) error {
     if record.Object.CustomerEmail == "" {
-        // Don't retry for missing email
-        return errorsinternal.NewNonRetriableError(errors.New("customer email is required"))
+        // Log the condition and return nil to avoid retrying
+        log.Printf("Order %s completed but no customer email for notification", record.Object.ID)
+        return nil
     }
 
+    // Call external service and return its error (allows retry if it fails)
     return sendEmail(ctx, record.Object.CustomerEmail)
 })
 ```
+
+**Return `nil`** when you want to skip retries (e.g., for missing data or business logic conditions).
+
+**Return an `error`** when you want the hook to retry (e.g., for transient network failures).
 
 ### Error Isolation
 

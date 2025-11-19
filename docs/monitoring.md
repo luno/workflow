@@ -92,10 +92,10 @@ Gauge showing the current state of workflow processes.
 
 ```promql
 # Processes in error state
-workflow_process_states{process_state="2"}
+workflow_process_states == 2
 
 # Healthy running processes
-workflow_process_states{process_state="1"}
+workflow_process_states == 1
 ```
 
 ### Lag Metrics
@@ -580,14 +580,23 @@ Monitor these KPIs for workflow system health:
 Use metrics to plan scaling:
 
 ```promql
-# CPU utilization correlation with throughput
-rate(workflow_process_latency_seconds_count[5m]) vs increase(cpu_usage_seconds[5m])
+# Throughput (requests/sec):
+rate(workflow_process_latency_seconds_count[5m])
 
-# Memory usage correlation with concurrent workflows
-count(workflow_run_state_changes{current_run_state="Running"}) vs memory_usage_bytes
+# CPU Usage (seconds/sec):
+increase(cpu_usage_seconds[5m])
 
-# Lag vs processing rate
-workflow_process_lag_seconds vs rate(workflow_process_latency_seconds_count[5m])
+# Concurrent Workflows:
+count(workflow_run_state_changes{current_run_state="Running"})
+
+# Memory Usage (bytes):
+memory_usage_bytes
+
+# Processing Lag (seconds):
+workflow_process_lag_seconds
+
+# Processing Rate (events/sec):
+rate(workflow_process_latency_seconds_count[5m])
 ```
 
 ## Best Practices
