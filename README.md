@@ -48,15 +48,15 @@ A type-safe, event-driven workflow orchestration library for Go that provides du
 ## Core Architecture
 
 ### State Machines & Events
-Workflows are defined as directed acyclic graphs (DAGs) where each step is a typed function:
+Workflows are defined as state machines where each step is a typed function:
 
 ```go
 type OrderStatus int
 const (
-    OrderCreated OrderStatus = iota + 1
-    PaymentProcessed
-    InventoryReserved
-    OrderFulfilled
+    OrderCreated      OrderStatus = 1
+    PaymentProcessed  OrderStatus = 2
+    InventoryReserved OrderStatus = 3
+    OrderFulfilled    OrderStatus = 4
 )
 
 type Order struct {
@@ -571,7 +571,7 @@ b.AddStep(StatusProcessing, func(ctx context.Context, r *workflow.Run[Order, Ord
    - Route new triggers to the new workflow
    - Allow the old workflow to finish processing existing Runs
    - Remove the old workflow once all Runs are complete
-   - Alternatively, add versioning to your Object type (though this affects the DAG structure)
+   - Alternatively, add versioning to your Object type (though this affects the workflow structure)
 
 4. **Understand latency expectations**: **Workflow** is not intended for low-latency use cases. Asynchronous event-driven systems prioritize decoupling, durability, workload distribution, and complex logic breakdown over speed.
 
