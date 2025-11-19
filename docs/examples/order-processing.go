@@ -305,8 +305,7 @@ func fulfillOrder(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (Ord
 func handlePaymentFailure(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
 	fmt.Printf("❌ [%s] Handling payment failure\n", r.Object.ID)
 
-	// If we haven't exceeded retry attempts, try alternative payment method
-	if r.Object.PaymentAttempts < 3 && hasAlternativePaymentMethod(r.Object.CustomerID) {
+	if hasAlternativePaymentMethod(r.Object.CustomerID) {
 		fmt.Printf("🔄 [%s] Retrying payment with alternative method\n", r.Object.ID)
 		r.Object.PaymentMethod = getAlternativePaymentMethod(r.Object.CustomerID)
 		return OrderStatusPaymentProcessing, nil
