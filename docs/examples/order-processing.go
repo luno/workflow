@@ -121,8 +121,8 @@ func NewOrderWorkflow() *workflow.Workflow[Order, OrderStatus] {
 	b.AddStep(OrderStatusInventoryReserved, fulfillOrder, OrderStatusFulfilled)
 
 	// Error handling flows
-	b.AddStep(OrderStatusPaymentFailed, handlePaymentFailure, OrderStatusCancelled, OrderStatusPaymentProcessing) // Allow retry
-	b.AddStep(OrderStatusInventoryFailed, handleInventoryFailure, OrderStatusCancelled, OrderStatusRefunded)
+	b.AddStep(OrderStatusPaymentFailed, handlePaymentFailure, OrderStatusCancelled, OrderStatusPaymentProcessing)
+	b.AddStep(OrderStatusInventoryFailed, handleInventoryFailure, OrderStatusRefunded, OrderStatusInventoryReserved)
 
 	// Cancellation flow
 	b.AddStep(OrderStatusCancelled, processCancellation, OrderStatusRefunded)
