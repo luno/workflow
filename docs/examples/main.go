@@ -14,7 +14,12 @@ func main() {
 	fmt.Println("🚀 Starting Order Processing Workflow Example")
 	fmt.Println(strings.Repeat("=", 60))
 
-	wf := NewOrderWorkflow()
+	// Create service instances
+	paymentService := &MockPaymentService{}
+	inventoryService := &MockInventoryService{}
+	shippingService := &MockShippingService{}
+
+	wf := NewOrderWorkflow(paymentService, inventoryService, shippingService)
 
 	ctx := context.Background()
 	wf.Run(ctx)

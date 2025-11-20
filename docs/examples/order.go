@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/luno/workflow"
@@ -95,37 +96,34 @@ type Address struct {
 	Country string `json:"country"`
 }
 
-// Mock external services
-var (
-	inventoryService = &MockInventoryService{}
-	paymentService   = &MockPaymentService{}
-	shippingService  = &MockShippingService{}
-)
-
-func NewOrderWorkflow() *workflow.Workflow[Order, OrderStatus] {
+func NewOrderWorkflow(
+	paymentService *MockPaymentService,
+	inventoryService *MockInventoryService,
+	shippingService *MockShippingService,
+) *workflow.Workflow[Order, OrderStatus] {
 	b := workflow.NewBuilder[Order, OrderStatus]("order-processing")
 
 	// Step 1: Validate order
 	b.AddStep(OrderStatusCreated, validateOrder, OrderStatusValidated, OrderStatusCancelled)
 
 	// Step 2: Process payment (with retries)
-	b.AddStep(OrderStatusValidated, processPayment, OrderStatusPaymentProcessing, OrderStatusPaymentFailed, OrderStatusCancelled)
+	b.AddStep(OrderStatusValidated, processPayment(paymentService), OrderStatusPaymentProcessing, OrderStatusPaymentFailed, OrderStatusCancelled)
 
 	// Step 3: Complete payment processing
-	b.AddStep(OrderStatusPaymentProcessing, completePayment, OrderStatusPaymentProcessed, OrderStatusPaymentFailed)
+	b.AddStep(OrderStatusPaymentProcessing, completePayment(paymentService), OrderStatusPaymentProcessed, OrderStatusPaymentFailed)
 
 	// Step 4: Reserve inventory
-	b.AddStep(OrderStatusPaymentProcessed, reserveInventory, OrderStatusInventoryReserved, OrderStatusInventoryFailed)
+	b.AddStep(OrderStatusPaymentProcessed, reserveInventory(inventoryService), OrderStatusInventoryReserved, OrderStatusInventoryFailed)
 
 	// Step 5: Fulfill order
-	b.AddStep(OrderStatusInventoryReserved, fulfillOrder, OrderStatusFulfilled)
+	b.AddStep(OrderStatusInventoryReserved, fulfillOrder(shippingService), OrderStatusFulfilled)
 
 	// Error handling flows
-	b.AddStep(OrderStatusPaymentFailed, handlePaymentFailure, OrderStatusCancelled, OrderStatusPaymentProcessing)
-	b.AddStep(OrderStatusInventoryFailed, handleInventoryFailure, OrderStatusRefunded, OrderStatusInventoryReserved)
+	b.AddStep(OrderStatusPaymentFailed, handlePaymentFailure(paymentService), OrderStatusCancelled, OrderStatusPaymentProcessing)
+	b.AddStep(OrderStatusInventoryFailed, handleInventoryFailure(inventoryService, paymentService), OrderStatusRefunded, OrderStatusInventoryReserved)
 
 	// Cancellation flow
-	b.AddStep(OrderStatusCancelled, processCancellation, OrderStatusRefunded)
+	b.AddStep(OrderStatusCancelled, processCancellation(inventoryService, paymentService), OrderStatusRefunded)
 
 	// Add timeouts
 	b.AddTimeout(
@@ -154,9 +152,6 @@ func NewOrderWorkflow() *workflow.Workflow[Order, OrderStatus] {
 		memrecordstore.New(),
 		memrolescheduler.New(),
 		workflow.WithTimeoutStore(memtimeoutstore.New()),
-		workflow.WithDefaultOptions(
-			workflow.ErrBackOff(time.Millisecond),
-		),
 	)
 }
 
@@ -210,154 +205,173 @@ func validateOrder(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (Or
 	return OrderStatusValidated, nil
 }
 
-func processPayment(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
-	fmt.Printf("💳 [%s] Processing payment (attempt %d)\n", r.Object.ID, r.Object.PaymentAttempts+1)
+func processPayment(ps *MockPaymentService) func(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
+	return func(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
+		fmt.Printf("💳 [%s] Processing payment (attempt %d)\n", r.Object.ID, r.Object.PaymentAttempts+1)
 
-	r.Object.PaymentAttempts++
+		r.Object.PaymentAttempts++
 
-	// Simulate payment processing
-	paymentID, err := paymentService.ProcessPayment(PaymentRequest{
-		Amount:        r.Object.Total,
-		PaymentMethod: r.Object.PaymentMethod,
-		CustomerID:    r.Object.CustomerID,
-		OrderID:       r.Object.ID,
-	})
-	if err != nil {
-		if isRetryablePaymentError(err) && r.Object.PaymentAttempts < 3 {
-			// Try again until no longer tryable or max attempts reached
-			return r.SaveAndRepeat()
+		// Simulate payment processing
+		paymentID, err := ps.ProcessPayment(PaymentRequest{
+			Amount:        r.Object.Total,
+			PaymentMethod: r.Object.PaymentMethod,
+			CustomerID:    r.Object.CustomerID,
+			OrderID:       r.Object.ID,
+		})
+		if err != nil {
+			if isRetryablePaymentError(err) && r.Object.PaymentAttempts < 3 {
+				// Try again until no longer tryable or max attempts reached
+				return r.SaveAndRepeat()
+			}
+
+			fmt.Printf("❌ [%s] Payment processing failed: %v\n", r.Object.ID, err)
+			return OrderStatusPaymentFailed, nil
 		}
 
-		fmt.Printf("❌ [%s] Payment processing failed: %v\n", r.Object.ID, err)
-		return OrderStatusPaymentFailed, nil
-	}
-
-	r.Object.PaymentID = paymentID
-	return OrderStatusPaymentProcessing, nil
-}
-
-func completePayment(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
-	fmt.Printf("✅ [%s] Confirming payment %s\n", r.Object.ID, r.Object.PaymentID)
-
-	// Check payment status
-	status, err := paymentService.GetPaymentStatus(r.Object.PaymentID)
-	if err != nil {
-		return 0, err
-	}
-
-	switch status {
-	case "completed":
-		now := time.Now()
-		r.Object.PaidAt = &now
-		return OrderStatusPaymentProcessed, nil
-	case "failed":
-		return OrderStatusPaymentFailed, nil
-	case "processing":
-		// Still processing, check again later
+		r.Object.PaymentID = paymentID
 		return OrderStatusPaymentProcessing, nil
-	default:
-		return OrderStatusPaymentFailed, nil
 	}
 }
 
-func reserveInventory(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
-	fmt.Printf("📦 [%s] Reserving inventory\n", r.Object.ID)
+func completePayment(ps *MockPaymentService) func(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
+	return func(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
+		fmt.Printf("✅ [%s] Confirming payment %s\n", r.Object.ID, r.Object.PaymentID)
 
-	reservationID, err := inventoryService.ReserveItems(r.Object.Items)
-	if err != nil {
-		if errors.Is(err, ErrInsufficientInventory) {
-			return OrderStatusInventoryFailed, nil
+		// Check payment status
+		status, err := ps.GetPaymentStatus(r.Object.PaymentID)
+		if err != nil {
+			return 0, err
 		}
-		return 0, err // Retryable error
+
+		switch status {
+		case "completed":
+			now := time.Now()
+			r.Object.PaidAt = &now
+			return OrderStatusPaymentProcessed, nil
+		case "failed":
+			return OrderStatusPaymentFailed, nil
+		case "processing":
+			// Still processing, check again later
+			return OrderStatusPaymentProcessing, nil
+		default:
+			return OrderStatusPaymentFailed, nil
+		}
 	}
-
-	r.Object.ReservationID = reservationID
-	fmt.Printf("✅ [%s] Inventory reserved with ID %s\n", r.Object.ID, reservationID)
-
-	return OrderStatusInventoryReserved, nil
 }
 
-func fulfillOrder(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
-	fmt.Printf("🚚 [%s] Fulfilling order\n", r.Object.ID)
+func reserveInventory(is *MockInventoryService) func(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
+	return func(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
+		fmt.Printf("📦 [%s] Reserving inventory\n", r.Object.ID)
 
-	// Create shipment
-	trackingNumber, err := shippingService.CreateShipment(ShipmentRequest{
-		OrderID:         r.Object.ID,
-		Items:           r.Object.Items,
-		ShippingAddress: r.Object.ShippingAddress,
-		ReservationID:   r.Object.ReservationID,
-	})
-	if err != nil {
-		return 0, err
+		reservationID, err := is.ReserveItems(r.Object.Items)
+		if err != nil {
+			if errors.Is(err, ErrInsufficientInventory) {
+				return OrderStatusInventoryFailed, nil
+			}
+			return 0, err // Retryable error
+		}
+
+		r.Object.ReservationID = reservationID
+		fmt.Printf("✅ [%s] Inventory reserved with ID %s\n", r.Object.ID, reservationID)
+
+		return OrderStatusInventoryReserved, nil
 	}
+}
 
-	r.Object.TrackingNumber = trackingNumber
-	now := time.Now()
-	r.Object.FulfilledAt = &now
+func fulfillOrder(ss *MockShippingService) func(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
+	return func(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
+		fmt.Printf("🚚 [%s] Fulfilling order\n", r.Object.ID)
 
-	fmt.Printf("🎉 [%s] Order fulfilled! Tracking number: %s\n", r.Object.ID, trackingNumber)
+		// Create shipment
+		trackingNumber, err := ss.CreateShipment(ShipmentRequest{
+			OrderID:         r.Object.ID,
+			Items:           r.Object.Items,
+			ShippingAddress: r.Object.ShippingAddress,
+			ReservationID:   r.Object.ReservationID,
+		})
+		if err != nil {
+			return 0, err
+		}
 
-	return OrderStatusFulfilled, nil
+		r.Object.TrackingNumber = trackingNumber
+		now := time.Now()
+		r.Object.FulfilledAt = &now
+
+		fmt.Printf("🎉 [%s] Order fulfilled! Tracking number: %s\n", r.Object.ID, trackingNumber)
+
+		return OrderStatusFulfilled, nil
+	}
 }
 
 // Error handlers
 
-func handlePaymentFailure(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
-	fmt.Printf("❌ [%s] Handling payment failure\n", r.Object.ID)
+func handlePaymentFailure(ps *MockPaymentService) func(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
+	return func(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
+		fmt.Printf("❌ [%s] Handling payment failure\n", r.Object.ID)
 
-	if hasAlternativePaymentMethod(r.Object.CustomerID) {
-		fmt.Printf("🔄 [%s] Retrying payment with alternative method\n", r.Object.ID)
-		r.Object.PaymentMethod = getAlternativePaymentMethod(r.Object.CustomerID)
-		return OrderStatusPaymentProcessing, nil
+		if hasAlternativePaymentMethod(r.Object.CustomerID) {
+			fmt.Printf("🔄 [%s] Retrying payment with alternative method\n", r.Object.ID)
+			r.Object.PaymentMethod = getAlternativePaymentMethod(r.Object.CustomerID)
+			return OrderStatusPaymentProcessing, nil
+		}
+
+		return OrderStatusCancelled, nil
 	}
-
-	return OrderStatusCancelled, nil
 }
 
-func handleInventoryFailure(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
-	fmt.Printf("📦 [%s] Handling inventory failure\n", r.Object.ID)
+func handleInventoryFailure(is *MockInventoryService, ps *MockPaymentService) func(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
+	return func(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
+		fmt.Printf("📦 [%s] Handling inventory failure\n", r.Object.ID)
 
-	// Check if we have partial inventory
-	availableItems, err := inventoryService.CheckPartialAvailability(r.Object.Items)
-	if err != nil {
-		return 0, err
+		// Check if we have partial inventory
+		availableItems, err := is.CheckPartialAvailability(r.Object.Items)
+		if err != nil {
+			return 0, err
+		}
+
+		if len(availableItems) > 0 && len(availableItems) < len(r.Object.Items) {
+			// Offer partial fulfillment (simplified - in real app, would need customer consent)
+			r.Object.Items = availableItems
+			return OrderStatusInventoryReserved, nil
+		}
+
+		// No inventory available - refund payment
+		err = ps.RefundPayment(r.Object.PaymentID)
+		if err != nil {
+			return 0, err
+		}
+
+		return OrderStatusRefunded, nil
 	}
-
-	if len(availableItems) > 0 && len(availableItems) < len(r.Object.Items) {
-		// Offer partial fulfillment (simplified - in real app, would need customer consent)
-		r.Object.Items = availableItems
-		return OrderStatusInventoryReserved, nil
-	}
-
-	// No inventory available - refund payment
-	return OrderStatusRefunded, nil
 }
 
-func processCancellation(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
-	fmt.Printf("🚫 [%s] Processing cancellation\n", r.Object.ID)
+func processCancellation(is *MockInventoryService, ps *MockPaymentService) func(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
+	return func(ctx context.Context, r *workflow.Run[Order, OrderStatus]) (OrderStatus, error) {
+		fmt.Printf("🚫 [%s] Processing cancellation\n", r.Object.ID)
 
-	if r.Object.PaymentID == "" && r.Object.ReservationID == "" {
-		return r.Cancel(ctx, "No payment to refund")
-	}
-
-	// Release inventory reservation if exists
-	if r.Object.ReservationID != "" {
-		if err := inventoryService.ReleaseReservation(r.Object.ReservationID); err != nil {
-			return 0, err
+		if r.Object.PaymentID == "" && r.Object.ReservationID == "" {
+			return r.Cancel(ctx, "No payment to refund")
 		}
-	}
 
-	// Refund payment if exists
-	if r.Object.PaymentID != "" {
-		if err := paymentService.RefundPayment(r.Object.PaymentID); err != nil {
-			return 0, err
+		// Release inventory reservation if exists
+		if r.Object.ReservationID != "" {
+			if err := is.ReleaseReservation(r.Object.ReservationID); err != nil {
+				return 0, err
+			}
 		}
+
+		// Refund payment if exists
+		if r.Object.PaymentID != "" {
+			if err := ps.RefundPayment(r.Object.PaymentID); err != nil {
+				return 0, err
+			}
+		}
+
+		now := time.Now()
+		r.Object.CancelledAt = &now
+
+		return OrderStatusRefunded, nil
 	}
-
-	now := time.Now()
-	r.Object.CancelledAt = &now
-
-	return OrderStatusRefunded, nil
 }
 
 // Mock service implementations
@@ -380,7 +394,7 @@ func (s *MockPaymentService) ProcessPayment(req PaymentRequest) (string, error) 
 		return "", errors.New("payment declined by bank")
 	}
 
-	return fmt.Sprintf("pay_%s_%d", req.OrderID, time.Now().Unix()), nil
+	return fmt.Sprintf("pay_%s", req.OrderID), nil
 }
 
 func (s *MockPaymentService) GetPaymentStatus(paymentID string) (string, error) {
@@ -393,7 +407,10 @@ func (s *MockPaymentService) RefundPayment(paymentID string) error {
 	return nil
 }
 
-type MockInventoryService struct{}
+type MockInventoryService struct {
+	mu      sync.Mutex
+	counter int
+}
 
 var ErrInsufficientInventory = errors.New("insufficient inventory")
 
@@ -405,7 +422,11 @@ func (s *MockInventoryService) ReserveItems(items []OrderItem) (string, error) {
 		}
 	}
 
-	return fmt.Sprintf("res_%d", time.Now().Unix()), nil
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.counter++
+
+	return fmt.Sprintf("res_%d", s.counter), nil
 }
 
 func (s *MockInventoryService) CheckPartialAvailability(items []OrderItem) ([]OrderItem, error) {
