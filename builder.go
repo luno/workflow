@@ -277,6 +277,9 @@ type buildOptions struct {
 	errorCounter   ErrorCounter
 }
 
+// defaultBuildOptions constructs a buildOptions value populated with the package defaults for
+// outboxConfig, defaultOptions and autoPauseRetry.
+// Optional fields such as logger and errorCounter are left at their zero values.
 func defaultBuildOptions() buildOptions {
 	return buildOptions{
 		outboxConfig:   defaultOutboxConfig(),
@@ -323,21 +326,24 @@ func WithDebugMode() BuildOption {
 	}
 }
 
-// WithLogger allows for specifying a custom logger. The default is to use a wrapped version of log/slog's Logger.
+// WithLogger sets a custom logger to be used when building the workflow.
+// The provided Logger replaces the default wrapped log/slog logger used by the builder.
 func WithLogger(l Logger) BuildOption {
 	return func(bo *buildOptions) {
 		bo.logger = l
 	}
 }
 
-// WithErrorCounter allows for specifying a custom error counter. The default is errorcounter.New().
+// WithErrorCounter returns a BuildOption that sets the workflow's error counter to the provided ErrorCounter implementation.
+// If not supplied, the workflow uses errorcounter.New().
 func WithErrorCounter(ec ErrorCounter) BuildOption {
 	return func(bo *buildOptions) {
 		bo.errorCounter = ec
 	}
 }
 
-// WithDefaultOptions applies the provided options to the entire workflow and not just to an individual process.
+// WithDefaultOptions returns a BuildOption that applies the given options as the workflow-wide defaults.
+// The supplied options become the defaults used for all steps, timeouts and connectors created by the builder.
 func WithDefaultOptions(opts ...Option) BuildOption {
 	return func(bo *buildOptions) {
 		var o options

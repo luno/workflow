@@ -100,6 +100,11 @@ func consumeStepEvents[Type any, Status StatusType](
 	}, errBackOff)
 }
 
+// stepConsumer returns a function that processes a single event for a workflow step.
+// The returned handler looks up the record for the event, validates record/event version and run state,
+// executes the provided stepLogic, and conditionally persists the resulting update via the updater.
+// It increments skip metrics for missing records, version mismatches, stopped runs and explicit skip outcomes;
+// on stepLogic errors it may pause the run (using maybePause) and, if not paused, returns an error for retry.
 func stepConsumer[Type any, Status StatusType](
 	workflowName string,
 	processName string,

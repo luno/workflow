@@ -5,6 +5,7 @@ import (
 	"sync"
 )
 
+// New creates and returns a Counter with an initialised internal store ready for use.
 func New() *Counter {
 	return &Counter{
 		store: make(map[string]int),
