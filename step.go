@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/luno/workflow/internal/errorcounter"
 	"github.com/luno/workflow/internal/metrics"
 )
 
@@ -111,7 +110,7 @@ func stepConsumer[Type any, Status StatusType](
 	logger Logger,
 	updater updater[Type, Status],
 	pauseAfterErrCount int,
-	errorCounter errorcounter.ErrorCounter,
+	errorCounter ErrorCounter,
 ) func(ctx context.Context, e *Event) error {
 	return func(ctx context.Context, e *Event) error {
 		record, err := lookupFn(ctx, e.ForeignID)

@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	clock_testing "k8s.io/utils/clock/testing"
 
+	"github.com/luno/workflow/internal/errorcounter"
 	"github.com/luno/workflow/internal/graph"
 	internal_logger "github.com/luno/workflow/internal/logger"
 )
@@ -116,6 +117,7 @@ func TestBuildOptions(t *testing.T) {
 	clock := clock_testing.NewFakeClock(now)
 	timeoutStore := (TimeoutStore)(nil)
 	logger := internal_logger.New(os.Stdout)
+	customErrorCounter := errorcounter.New()
 	opts := options{
 		parallelCount:      2,
 		pollingFrequency:   time.Millisecond,
@@ -141,6 +143,7 @@ func TestBuildOptions(t *testing.T) {
 		WithClock(clock),
 		WithDebugMode(),
 		WithLogger(logger),
+		WithErrorCounter(customErrorCounter),
 		WithDefaultOptions(
 			ParallelCount(opts.parallelCount),
 			PollingFrequency(opts.pollingFrequency),
@@ -156,6 +159,7 @@ func TestBuildOptions(t *testing.T) {
 	require.Equal(t, clock, w.clock)
 	require.True(t, w.logger.debugMode)
 	require.Equal(t, logger, w.logger.inner)
+	require.Equal(t, customErrorCounter, w.errorCounter)
 	require.Equal(t, opts, w.defaultOpts)
 	require.True(t, strings.Contains(runtime.FuncForPC(reflect.ValueOf(w.customDelete).Pointer()).Name(), "github.com/luno/workflow.TestBuildOptions.WithCustomDelete"))
 	object, err := w.customDelete(&Record{
@@ -297,13 +301,13 @@ func TestConnectorConstruction(t *testing.T) {
 
 type mockConnector struct{}
 
-func (mc mockConnector) Make(ctx context.Context, consumerName string) (ConnectorConsumer, error) {
+func (mc mockConnector) Make(_ context.Context, _ string) (ConnectorConsumer, error) {
 	return &mockExternalConsumer{}, nil
 }
 
 type mockExternalConsumer struct{}
 
-func (m mockExternalConsumer) Recv(ctx context.Context) (*ConnectorEvent, Ack, error) {
+func (m mockExternalConsumer) Recv(_ context.Context) (*ConnectorEvent, Ack, error) {
 	return nil, nil, errors.New("not implemented")
 }
 
@@ -560,6 +564,24 @@ func TestOnComplete(t *testing.T) {
 	actualFn, ok := b.workflow.runStateChangeHooks[RunStateCompleted]
 	require.True(t, ok)
 	require.Equal(t, testErr, actualFn(nil, nil))
+}
+
+func TestWithErrorCounter(t *testing.T) {
+	customEC := errorcounter.New()
+
+	b := NewBuilder[string, testStatus]("test error counter")
+	b.AddStep(statusStart, nil, statusMiddle)
+	wf := b.Build(nil, nil, nil, WithErrorCounter(customEC))
+
+	require.Equal(t, customEC, wf.errorCounter)
+}
+
+func TestDefaultErrorCounter(t *testing.T) {
+	b := NewBuilder[string, testStatus]("test default error counter")
+	b.AddStep(statusStart, nil, statusMiddle)
+	wf := b.Build(nil, nil, nil)
+
+	require.NotNil(t, wf.errorCounter)
 }
 
 func TestPanicForUsingReservedNodeValues(t *testing.T) {

@@ -9,3 +9,10 @@ var (
 	ErrOutboxRecordNotFound = errors.New("outbox record not found")
 	ErrInvalidTransition    = errors.New("invalid transition")
 )
+
+// ErrorCounter defines an interface for counting occurrences of errors with optional labels.
+type ErrorCounter interface {
+	Add(err error, labels ...string) int
+	Count(err error, labels ...string) int
+	Clear(err error, labels ...string)
+}
