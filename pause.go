@@ -9,7 +9,9 @@ import (
 
 // maybePause will either return a nil error if it has failed to pause the record and should be retried. A non-nil
 // error is returned when no faults have taken place and the corresponding bool returns true when the Run is paused
-// and returns false when the Run was not paused.
+// maybePause decides whether to pause a Run after its accumulated errors reach a configured threshold and performs the pause when the threshold is met.
+// If pauseAfterErrCount is zero the function does nothing. When the Run is paused the error counter for that error/process/run is cleared.
+// Returns true if the Run was paused, false otherwise; returns a non-nil error only if attempting to pause the Run fails.
 func maybePause[Type any, Status StatusType](
 	ctx context.Context,
 	pauseAfterErrCount int,
