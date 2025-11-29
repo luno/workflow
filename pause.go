@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"k8s.io/utils/clock"
-
-	"github.com/luno/workflow/internal/errorcounter"
 )
 
 // maybePause will either return a nil error if it has failed to pause the record and should be retried. A non-nil
@@ -15,7 +13,7 @@ import (
 func maybePause[Type any, Status StatusType](
 	ctx context.Context,
 	pauseAfterErrCount int,
-	counter errorcounter.ErrorCounter,
+	counter ErrorCounter,
 	originalErr error,
 	processName string,
 	run *Run[Type, Status],

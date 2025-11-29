@@ -245,6 +245,10 @@ func (b *Builder[Type, Status]) Build(
 		b.workflow.logger.inner = bo.logger
 	}
 
+	if bo.errorCounter != nil {
+		b.workflow.errorCounter = bo.errorCounter
+	}
+
 	if len(b.workflow.timeouts) > 0 && b.workflow.timeoutStore == nil {
 		panic("Cannot configure timeouts without providing TimeoutStore for workflow")
 	}
@@ -270,6 +274,7 @@ type buildOptions struct {
 	timeoutStore   TimeoutStore
 	logger         Logger
 	autoPauseRetry pausedRecordsRetry
+	errorCounter   ErrorCounter
 }
 
 func defaultBuildOptions() buildOptions {
@@ -322,6 +327,13 @@ func WithDebugMode() BuildOption {
 func WithLogger(l Logger) BuildOption {
 	return func(bo *buildOptions) {
 		bo.logger = l
+	}
+}
+
+// WithErrorCounter allows for specifying a custom error counter. The default is errorcounter.New().
+func WithErrorCounter(ec ErrorCounter) BuildOption {
+	return func(bo *buildOptions) {
+		bo.errorCounter = ec
 	}
 }
 

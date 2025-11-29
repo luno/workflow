@@ -5,24 +5,18 @@ import (
 	"sync"
 )
 
-type ErrorCounter interface {
-	Add(err error, labels ...string) int
-	Count(err error, labels ...string) int
-	Clear(err error, labels ...string)
-}
-
-func New() ErrorCounter {
-	return &counter{
+func New() *Counter {
+	return &Counter{
 		store: make(map[string]int),
 	}
 }
 
-type counter struct {
+type Counter struct {
 	mu    sync.Mutex
 	store map[string]int
 }
 
-func (c *counter) Add(err error, labels ...string) int {
+func (c *Counter) Add(err error, labels ...string) int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -32,7 +26,7 @@ func (c *counter) Add(err error, labels ...string) int {
 	return c.store[errMsg]
 }
 
-func (c *counter) Count(err error, labels ...string) int {
+func (c *Counter) Count(err error, labels ...string) int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -41,7 +35,7 @@ func (c *counter) Count(err error, labels ...string) int {
 	return c.store[errMsg]
 }
 
-func (c *counter) Clear(err error, labels ...string) {
+func (c *Counter) Clear(err error, labels ...string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

@@ -10,7 +10,6 @@ import (
 
 	"k8s.io/utils/clock"
 
-	"github.com/luno/workflow/internal/errorcounter"
 	"github.com/luno/workflow/internal/graph"
 	"github.com/luno/workflow/internal/metrics"
 )
@@ -99,7 +98,7 @@ type Workflow[Type any, Status StatusType] struct {
 	// errorCounter keeps a central in-mem state of errors from consumers and timeouts in order to implement
 	// PauseAfterstatusGraphErrCount. The tracking of errors is done in a way where errors need to be unique per process
 	// (consumer / timeout).
-	errorCounter errorcounter.ErrorCounter
+	errorCounter ErrorCounter
 }
 
 func (w *Workflow[Type, Status]) Name() string {
