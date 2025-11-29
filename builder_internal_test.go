@@ -301,13 +301,13 @@ func TestConnectorConstruction(t *testing.T) {
 
 type mockConnector struct{}
 
-func (mc mockConnector) Make(ctx context.Context, consumerName string) (ConnectorConsumer, error) {
+func (mc mockConnector) Make(_ context.Context, _ string) (ConnectorConsumer, error) {
 	return &mockExternalConsumer{}, nil
 }
 
 type mockExternalConsumer struct{}
 
-func (m mockExternalConsumer) Recv(ctx context.Context) (*ConnectorEvent, Ack, error) {
+func (m mockExternalConsumer) Recv(_ context.Context) (*ConnectorEvent, Ack, error) {
 	return nil, nil, errors.New("not implemented")
 }
 
