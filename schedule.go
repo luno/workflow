@@ -33,21 +33,21 @@ func (w *Workflow[Type, Status]) Schedule(
 	role := makeRole(w.Name(), foreignID, "scheduler", spec)
 	processName := makeRole(foreignID, "scheduler", spec)
 
+	var lastRun time.Time
+
 	w.launching.Add(1)
 	w.run(role, processName, func(ctx context.Context) error {
-		latestEntry, err := w.recordStore.Latest(ctx, w.Name(), foreignID)
-		if errors.Is(err, ErrRecordNotFound) {
-			// NoReturnErr: Rather use zero value for lastRunID and use current clock for first run.
-			latestEntry = &Record{}
-		} else if err != nil {
-			return err
-		}
-
-		lastRun := latestEntry.CreatedAt
-
-		// If there is no previous executions of this workflow then schedule the very next from now.
 		if lastRun.IsZero() {
-			lastRun = w.clock.Now()
+			latestEntry, err := w.recordStore.Latest(ctx, w.Name(), foreignID)
+			if errors.Is(err, ErrRecordNotFound) {
+				// NoReturnErr: Rather set the last run to now if there are no previous runs.
+				lastRun = w.clock.Now()
+			} else if err != nil {
+				return err
+			} else {
+				// Assign the last run timestamp so that we can use that to determine when it should run next.
+				lastRun = latestEntry.CreatedAt
+			}
 		}
 
 		nextRun, ok := schedule.Next(lastRun)
@@ -81,17 +81,19 @@ func (w *Workflow[Type, Status]) Schedule(
 			shouldTrigger = true
 		}
 
-		if !shouldTrigger {
-			return nil
-		}
+		// Update the last run in order to skip this scheduled slot as it was filtered out.
+		lastRun = w.clock.Now()
 
-		_, err = w.Trigger(ctx, foreignID, tOpts...)
-		if errors.Is(err, ErrWorkflowInProgress) {
-			// NoReturnErr: Fallthrough to schedule next workflow as there is already one in progress. If this
-			// happens it is likely that we scheduled a workflow and were unable to schedule the next.
-			return nil
-		} else if err != nil {
-			return err
+		// Filter excludes this run. Wait till the next scheduled time to attempt to trigger again.
+		if shouldTrigger {
+			_, err = w.Trigger(ctx, foreignID, tOpts...)
+			if errors.Is(err, ErrWorkflowInProgress) {
+				// NoReturnErr: Fallthrough to schedule next workflow as there is already one in progress. If this
+				// happens it is likely that we scheduled a workflow and were unable to schedule the next.
+				return nil
+			} else if err != nil {
+				return err
+			}
 		}
 
 		return nil
@@ -102,6 +104,9 @@ func (w *Workflow[Type, Status]) Schedule(
 
 func waitUntil(ctx context.Context, clock clock.Clock, until time.Time) error {
 	timeDiffAsDuration := until.Sub(clock.Now())
+	if timeDiffAsDuration <= 0 {
+		return nil
+	}
 
 	t := clock.NewTimer(timeDiffAsDuration)
 	defer t.Stop()
