@@ -235,3 +235,173 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEqual(t, firstRun.RunID, secondRun.RunID, "New run should be created when filter returns true")
 }
+
+func TestWorkflow_ScheduleWithInitialValue(t *testing.T) {
+	workflowName := "initial value test"
+	b := workflow.NewBuilder[MyType, status](workflowName)
+	b.AddStep(StatusStart, func(ctx context.Context, run *workflow.Run[MyType, status]) (status, error) {
+		require.Equal(t, "test-email@example.com", run.Object.Email)
+		return StatusEnd, nil
+	}, StatusEnd)
+
+	now := time.Date(2023, time.April, 9, 8, 30, 0, 0, time.UTC)
+	clock := clock_testing.NewFakeClock(now)
+	recordStore := memrecordstore.New()
+	wf := b.Build(
+		memstreamer.New(),
+		recordStore,
+		memrolescheduler.New(),
+		workflow.WithClock(clock),
+		workflow.WithDefaultOptions(
+			workflow.PollingFrequency(time.Millisecond),
+		),
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	wf.Run(ctx)
+	t.Cleanup(wf.Stop)
+
+	initialValue := &MyType{
+		UserID: 123,
+		Email:  "test-email@example.com",
+	}
+	opt := workflow.WithScheduleInitialValue[MyType, status](initialValue)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		wg.Done()
+		err := wf.Schedule("test", "@monthly", opt)
+		require.NoError(t, err)
+	}()
+	wg.Wait()
+
+	// Move to May 1st - first scheduled time
+	expectedTimestamp := time.Date(2023, time.May, 1, 0, 0, 0, 0, time.UTC)
+	clock.SetTime(expectedTimestamp)
+
+	// Allow scheduling to take place
+	time.Sleep(10 * time.Millisecond)
+
+	run, err := recordStore.Latest(ctx, workflowName, "test")
+	require.NoError(t, err)
+
+	// Wait for run to complete and verify initial value was used
+	_, err = wf.Await(ctx, run.ForeignID, run.RunID, StatusEnd)
+	require.NoError(t, err)
+}
+
+func TestWorkflow_ScheduleFilterError(t *testing.T) {
+	workflowName := "filter error test"
+	b := workflow.NewBuilder[MyType, status](workflowName)
+	b.AddStep(StatusStart, func(ctx context.Context, run *workflow.Run[MyType, status]) (status, error) {
+		return StatusEnd, nil
+	}, StatusEnd)
+
+	now := time.Date(2023, time.April, 9, 8, 30, 0, 0, time.UTC)
+	clock := clock_testing.NewFakeClock(now)
+	recordStore := memrecordstore.New()
+	wf := b.Build(
+		memstreamer.New(),
+		recordStore,
+		memrolescheduler.New(),
+		workflow.WithClock(clock),
+		workflow.WithDefaultOptions(
+			workflow.PollingFrequency(time.Millisecond),
+		),
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	wf.Run(ctx)
+	t.Cleanup(wf.Stop)
+
+	filterError := errors.New("filter error")
+	filter := func(ctx context.Context) (bool, error) {
+		return false, filterError
+	}
+	opt := workflow.WithScheduleFilter[MyType, status](filter)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		wg.Done()
+		err := wf.Schedule("error-test", "@monthly", opt)
+		require.NoError(t, err)
+	}()
+	wg.Wait()
+
+	// Move to May 1st - first scheduled time
+	expectedTimestamp := time.Date(2023, time.May, 1, 0, 0, 0, 0, time.UTC)
+	clock.SetTime(expectedTimestamp)
+
+	// Allow scheduling to take place and expect it to fail due to filter error
+	time.Sleep(50 * time.Millisecond)
+
+	// Verify no record was created due to filter error
+	_, err := recordStore.Latest(ctx, workflowName, "error-test")
+	require.True(t, errors.Is(err, workflow.ErrRecordNotFound))
+}
+
+func TestWorkflow_ScheduleExistingRun(t *testing.T) {
+	workflowName := "existing run test"
+	b := workflow.NewBuilder[MyType, status](workflowName)
+	b.AddStep(StatusStart, func(ctx context.Context, run *workflow.Run[MyType, status]) (status, error) {
+		return StatusEnd, nil
+	}, StatusEnd)
+
+	now := time.Date(2023, time.April, 9, 8, 30, 0, 0, time.UTC)
+	clock := clock_testing.NewFakeClock(now)
+	recordStore := memrecordstore.New()
+	wf := b.Build(
+		memstreamer.New(),
+		recordStore,
+		memrolescheduler.New(),
+		workflow.WithClock(clock),
+		workflow.WithDefaultOptions(
+			workflow.PollingFrequency(time.Millisecond),
+		),
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	wf.Run(ctx)
+	t.Cleanup(wf.Stop)
+
+	// Create an initial run first and wait for completion
+	_, err := wf.Trigger(ctx, "existing-test")
+	require.NoError(t, err)
+
+	firstRun, err := recordStore.Latest(ctx, workflowName, "existing-test")
+	require.NoError(t, err)
+
+	// Wait for the first run to complete
+	_, err = wf.Await(ctx, firstRun.ForeignID, firstRun.RunID, StatusEnd)
+	require.NoError(t, err)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		wg.Done()
+		err := wf.Schedule("existing-test", "@monthly")
+		require.NoError(t, err)
+	}()
+	wg.Wait()
+
+	// Allow scheduler initialization
+	time.Sleep(10 * time.Millisecond)
+
+	// Move to May 1st - first scheduled time
+	expectedTimestamp := time.Date(2023, time.May, 1, 0, 0, 0, 0, time.UTC)
+	clock.SetTime(expectedTimestamp)
+
+	// Allow scheduling to take place
+	time.Sleep(10 * time.Millisecond)
+
+	secondRun, err := recordStore.Latest(ctx, workflowName, "existing-test")
+	require.NoError(t, err)
+
+	// Should be a new run scheduled based on the existing run's timestamp
+	require.NotEqual(t, firstRun.RunID, secondRun.RunID)
+}
