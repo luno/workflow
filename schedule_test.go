@@ -169,10 +169,9 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	wf.Run(ctx)
 	t.Cleanup(wf.Stop)
 
-	skipVal := true
-	shouldSkip := &skipVal
+	shouldSkip := false
 	filter := func(ctx context.Context) (bool, error) {
-		return *shouldSkip, nil
+		return !shouldSkip, nil
 	}
 	opt := workflow.WithScheduleFilter[MyType, status](filter)
 
@@ -185,53 +184,54 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	}()
 	wg.Wait()
 
-	// Grab the time from the clock for expectation as to the time we expect the entry to have
+	// Allow scheduling to initialize
+	time.Sleep(10 * time.Millisecond)
+
+	// Verify no record exists initially
+	_, err := recordStore.Latest(ctx, workflowName, "andrew")
+	require.True(t, errors.Is(err, workflow.ErrRecordNotFound))
+
+	// Test 1: Filter allows scheduling (shouldSkip = false)
+	// Move to May 1st - first scheduled time
 	expectedTimestamp := time.Date(2023, time.May, 1, 0, 0, 0, 0, time.UTC)
 	clock.SetTime(expectedTimestamp)
 
 	// Allow scheduling to take place
 	time.Sleep(10 * time.Millisecond)
 
+	firstRun, err := recordStore.Latest(ctx, workflowName, "andrew")
+	require.NoError(t, err)
+
+	// Wait for first run to complete
+	_, err = wf.Await(ctx, firstRun.ForeignID, firstRun.RunID, StatusEnd)
+	require.NoError(t, err)
+
+	// Test 2: Filter blocks scheduling (shouldSkip = true)
+	shouldSkip = true
+
+	// Move to June 1st - second scheduled time, but filter should block it
 	expectedTimestamp = time.Date(2023, time.June, 1, 0, 0, 0, 0, time.UTC)
 	clock.SetTime(expectedTimestamp)
 
-	// Allow scheduling to take place
+	// Allow scheduling attempt to take place
 	time.Sleep(10 * time.Millisecond)
 
-	first, err := recordStore.Latest(ctx, workflowName, "andrew")
-	require.NoError(t, err)
-
-	// Skip until the next run
-	*shouldSkip = true
-
-	time.Sleep(10 * time.Millisecond)
-
+	// Should still be the same run as before since scheduling was blocked
 	latest, err := recordStore.Latest(ctx, workflowName, "andrew")
 	require.NoError(t, err)
+	require.Equal(t, firstRun.RunID, latest.RunID, "No new run should be created when filter returns false")
 
-	// Ensure no new runs have been scheduled
-	require.Equal(t, first.RunID, latest.RunID)
+	// Test 3: Filter allows scheduling again (shouldSkip = false)
+	shouldSkip = false
 
-	_, err = wf.Await(ctx, latest.ForeignID, latest.RunID, StatusEnd)
-	require.NoError(t, err)
-
-	*shouldSkip = false
-
+	// Move to July 1st - third scheduled time, filter should allow it
 	expectedTimestamp = time.Date(2023, time.July, 1, 0, 0, 0, 0, time.UTC)
 	clock.SetTime(expectedTimestamp)
 
 	// Allow scheduling to take place
 	time.Sleep(10 * time.Millisecond)
 
-	// Move time forward by a month to allow the next schedule to be due
-	expectedTimestamp = time.Date(2023, time.August, 1, 0, 0, 0, 0, time.UTC)
-	clock.SetTime(expectedTimestamp)
-
-	// Allow scheduling to take place
-	time.Sleep(10 * time.Millisecond)
-
-	latest, err = recordStore.Latest(ctx, workflowName, "andrew")
+	secondRun, err := recordStore.Latest(ctx, workflowName, "andrew")
 	require.NoError(t, err)
-
-	require.NotEqual(t, first.RunID, latest.RunID)
+	require.NotEqual(t, firstRun.RunID, secondRun.RunID, "New run should be created when filter returns true")
 }
