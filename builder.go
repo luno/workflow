@@ -3,7 +3,6 @@ package workflow
 import (
 	"context"
 	"os"
-	"sync"
 	"time"
 
 	"k8s.io/utils/clock"
@@ -39,11 +38,7 @@ func NewBuilder[Type any, Status StatusType](name string) *Builder[Type, Status]
 				inner:     interal_logger.New(os.Stdout),
 			},
 			runStateChangeHooks: make(map[RunState]RunStateChangeHookFunc[Type, Status]),
-			runPool: sync.Pool{
-				New: func() interface{} {
-					return &Run[Type, Status]{}
-				},
-			},
+			runPool:             newRunPool[Type, Status](),
 		},
 	}
 }

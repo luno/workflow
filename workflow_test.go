@@ -225,7 +225,7 @@ func BenchmarkWorkflow(b *testing.B) {
 		benchmarkWorkflow(b, 10)
 	})
 	b.Run("100", func(b *testing.B) {
-		benchmarkWorkflow(b, 10)
+		benchmarkWorkflow(b, 100)
 	})
 }
 

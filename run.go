@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"sync"
 )
 
 // Run is a representation of a workflow run. It incorporates all the fields from the Record as well as
@@ -55,6 +56,22 @@ type (
 	runCollector[Type any, Status StatusType] func() *Run[Type, Status]
 	runReleaser[Type any, Status StatusType]  func(*Run[Type, Status])
 )
+
+// newRunPool creates a new sync.Pool for Run objects with 10 pre-allocated instances
+func newRunPool[Type any, Status StatusType]() *sync.Pool {
+	pool := sync.Pool{
+		New: func() interface{} {
+			return &Run[Type, Status]{}
+		},
+	}
+
+	// Pre-allocate 10 Run objects in the pool for better performance
+	for i := 0; i < 10; i++ {
+		pool.Put(&Run[Type, Status]{})
+	}
+
+	return &pool
+}
 
 func buildRun[Type any, Status StatusType](collector runCollector[Type, Status], store storeFunc, wr *Record) (*Run[Type, Status], error) {
 	var t Type
