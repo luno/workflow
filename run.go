@@ -16,9 +16,6 @@ type Run[Type any, Status StatusType] struct {
 	controller RunStateController
 }
 
-func (r *Run[Type, Status]) reset() {
-}
-
 // Pause is intended to be used inside a workflow process where (Status, error) are the return signature. This allows
 // the user to simply type "return r.Pause(ctx)" to pause a record from inside a workflow which results in the record
 // being temporarily left alone and will not be processed until it is resumed.
