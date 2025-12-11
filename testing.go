@@ -150,8 +150,11 @@ func WaitFor[Type any, Status StatusType](
 	}
 
 	_, err := waitFor(t, w, foreignID, func(r *Record) (bool, error) {
-		run, err := buildRun[Type, Status](w.recordStore.Store, r)
+		run, err := buildRun[Type, Status](w.newRunObj(), w.recordStore.Store, r)
 		require.NoError(t, err)
+
+		// Ensure the run is returned to the pool when we're done
+		defer w.releaseRun(run)
 
 		return fn(run)
 	})

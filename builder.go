@@ -38,6 +38,7 @@ func NewBuilder[Type any, Status StatusType](name string) *Builder[Type, Status]
 				inner:     interal_logger.New(os.Stdout),
 			},
 			runStateChangeHooks: make(map[RunState]RunStateChangeHookFunc[Type, Status]),
+			runPool:             newRunPool[Type, Status](),
 		},
 	}
 }

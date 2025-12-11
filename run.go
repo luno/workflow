@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"sync"
 )
 
 // Run is a representation of a workflow run. It incorporates all the fields from the Record as well as
@@ -48,7 +49,28 @@ func (r *Run[Type, Status]) SaveAndRepeat() (Status, error) {
 	return Status(skipTypeSaveAndRepeat), nil
 }
 
-func buildRun[Type any, Status StatusType](store storeFunc, wr *Record) (*Run[Type, Status], error) {
+type (
+	runCollector[Type any, Status StatusType] func() *Run[Type, Status]
+	runReleaser[Type any, Status StatusType]  func(*Run[Type, Status])
+)
+
+// newRunPool creates a new sync.Pool for Run objects with 10 pre-allocated instances
+func newRunPool[Type any, Status StatusType]() *sync.Pool {
+	pool := sync.Pool{
+		New: func() interface{} {
+			return &Run[Type, Status]{}
+		},
+	}
+
+	// Pre-allocate 10 Run objects in the pool for better performance
+	for i := 0; i < 10; i++ {
+		pool.Put(&Run[Type, Status]{})
+	}
+
+	return &pool
+}
+
+func buildRun[Type any, Status StatusType](collector runCollector[Type, Status], store storeFunc, wr *Record) (*Run[Type, Status], error) {
 	var t Type
 	err := Unmarshal(wr.Object, &t)
 	if err != nil {
@@ -62,15 +84,31 @@ func buildRun[Type any, Status StatusType](store storeFunc, wr *Record) (*Run[Ty
 		wr.RunState = RunStateRunning
 	}
 
-	controller := NewRunStateController(store, wr)
-	record := Run[Type, Status]{
-		TypedRecord: TypedRecord[Type, Status]{
-			Record: *wr,
-			Status: Status(wr.Status),
-			Object: &t,
-		},
-		controller: controller,
-	}
+	// Get Run from pool and initialize
+	run := collector()
 
-	return &record, nil
+	// Reset/initialize the run object
+	controller := NewRunStateController(store, wr)
+	run.TypedRecord = TypedRecord[Type, Status]{
+		Record: *wr,
+		Status: Status(wr.Status),
+		Object: &t,
+	}
+	run.controller = controller
+
+	return run, nil
+}
+
+// newRunObj returns a function that gets a Run from the pool
+func (w *Workflow[Type, Status]) newRunObj() runCollector[Type, Status] {
+	return func() *Run[Type, Status] {
+		return w.runPool.Get().(*Run[Type, Status])
+	}
+}
+
+// releaseRun returns a Run object back to the workflow's pool for reuse
+func (w *Workflow[Type, Status]) releaseRun(run *Run[Type, Status]) {
+	run.TypedRecord = TypedRecord[Type, Status]{}
+	run.controller = nil
+	w.runPool.Put(run)
 }

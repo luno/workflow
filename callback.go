@@ -63,10 +63,13 @@ func processCallback[Type any, Status StatusType](
 		return nil
 	}
 
-	run, err := buildRun[Type, Status](store, wr)
+	run, err := buildRun[Type, Status](w.newRunObj(), store, wr)
 	if err != nil {
 		return err
 	}
+
+	// Ensure the run is returned to the pool when we're done
+	defer w.releaseRun(run)
 
 	if payload == nil {
 		// Ensure that an empty value implementation of io.Reader is passed in instead of nil to avoid panic and

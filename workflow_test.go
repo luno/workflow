@@ -218,14 +218,14 @@ func acceptanceTestWorkflow() *workflow.Builder[MyType, status] {
 }
 
 func BenchmarkWorkflow(b *testing.B) {
-	b.Run("1", func(b *testing.B) {
-		benchmarkWorkflow(b, 1)
-	})
 	b.Run("5", func(b *testing.B) {
 		benchmarkWorkflow(b, 5)
 	})
 	b.Run("10", func(b *testing.B) {
 		benchmarkWorkflow(b, 10)
+	})
+	b.Run("100", func(b *testing.B) {
+		benchmarkWorkflow(b, 100)
 	})
 }
 
@@ -236,9 +236,11 @@ func benchmarkWorkflow(b *testing.B, numberOfSteps int) {
 	bldr := workflow.NewBuilder[MyType, status]("benchmark")
 
 	for i := range numberOfSteps {
-		bldr.AddStep(status(i), func(ctx context.Context, r *workflow.Run[MyType, status]) (status, error) {
-			return status(i + 1), nil
-		}, status(i+1))
+		from := i + 1
+		to := i + 2
+		bldr.AddStep(status(from), func(ctx context.Context, r *workflow.Run[MyType, status]) (status, error) {
+			return status(to), nil
+		}, status(to))
 	}
 
 	recordStore := memrecordstore.New()
@@ -266,7 +268,7 @@ func benchmarkWorkflow(b *testing.B, numberOfSteps int) {
 			b.Fatal(err)
 		}
 
-		workflow.Require(b, wf, fid, status(numberOfSteps), MyType{
+		workflow.Require(b, wf, fid, status(numberOfSteps+1), MyType{
 			UserID: expectedUserID,
 		})
 	}
