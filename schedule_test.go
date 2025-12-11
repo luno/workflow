@@ -228,7 +228,7 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	clock.SetTime(expectedTimestamp)
 
 	// Allow scheduling to take place
-	time.Sleep(5 * time.Second)
+	time.Sleep(10 * time.Millisecond)
 
 	latest, err = recordStore.Latest(ctx, workflowName, "andrew")
 	require.NoError(t, err)

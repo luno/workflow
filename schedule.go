@@ -33,21 +33,21 @@ func (w *Workflow[Type, Status]) Schedule(
 	role := makeRole(w.Name(), foreignID, "scheduler", spec)
 	processName := makeRole(foreignID, "scheduler", spec)
 
+	var lastRun time.Time
+
 	w.launching.Add(1)
 	w.run(role, processName, func(ctx context.Context) error {
-		latestEntry, err := w.recordStore.Latest(ctx, w.Name(), foreignID)
-		if errors.Is(err, ErrRecordNotFound) {
-			// NoReturnErr: Rather use zero value for lastRunID and use current clock for first run.
-			latestEntry = &Record{}
-		} else if err != nil {
-			return err
-		}
-
-		lastRun := latestEntry.CreatedAt
-
-		// If there is no previous executions of this workflow then schedule the very next from now.
 		if lastRun.IsZero() {
-			lastRun = w.clock.Now()
+			latestEntry, err := w.recordStore.Latest(ctx, w.Name(), foreignID)
+			if errors.Is(err, ErrRecordNotFound) {
+				// NoReturnErr: Rather set the last run to now if there are no previous runs.
+				lastRun = w.clock.Now()
+			} else if err != nil {
+				return err
+			} else {
+				// Assign the last run timestamp so that we can use that to determine when it should run next.
+				lastRun = latestEntry.CreatedAt
+			}
 		}
 
 		nextRun, ok := schedule.Next(lastRun)
@@ -81,14 +81,11 @@ func (w *Workflow[Type, Status]) Schedule(
 			shouldTrigger = true
 		}
 
+		// Filter excludes this run. Wait till the next scheduled time to attempt to trigger again.
 		if !shouldTrigger {
-			// Get the next scheduled time from now as this run is being skipped.
-			sleepTill, ok := schedule.Next(w.clock.Now())
-			if !ok {
-				sleepTill = w.clock.Now().Add(w.defaultOpts.pollingFrequency)
-			}
-			// Filter excludes this run. Wait till the next scheduled time to attempt to trigger again.
-			return waitUntil(ctx, w.clock, sleepTill)
+			// Update the last run in order to skip this scheduled slot as it was filtered out.
+			lastRun = w.clock.Now()
+			return nil
 		}
 
 		_, err = w.Trigger(ctx, foreignID, tOpts...)
