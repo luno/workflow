@@ -5,6 +5,7 @@
 .idea
 *.iml
 .vscode
+.claude
 
 # Output of go coverage
 *.out
