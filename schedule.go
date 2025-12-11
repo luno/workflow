@@ -108,6 +108,9 @@ func (w *Workflow[Type, Status]) Schedule(
 
 func waitUntil(ctx context.Context, clock clock.Clock, until time.Time) error {
 	timeDiffAsDuration := until.Sub(clock.Now())
+	if timeDiffAsDuration <= 0 {
+		return nil
+	}
 
 	t := clock.NewTimer(timeDiffAsDuration)
 	defer t.Stop()
