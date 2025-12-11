@@ -81,20 +81,19 @@ func (w *Workflow[Type, Status]) Schedule(
 			shouldTrigger = true
 		}
 
-		// Filter excludes this run. Wait till the next scheduled time to attempt to trigger again.
-		if !shouldTrigger {
-			// Update the last run in order to skip this scheduled slot as it was filtered out.
-			lastRun = w.clock.Now()
-			return nil
-		}
+		// Update the last run in order to skip this scheduled slot as it was filtered out.
+		lastRun = w.clock.Now()
 
-		_, err = w.Trigger(ctx, foreignID, tOpts...)
-		if errors.Is(err, ErrWorkflowInProgress) {
-			// NoReturnErr: Fallthrough to schedule next workflow as there is already one in progress. If this
-			// happens it is likely that we scheduled a workflow and were unable to schedule the next.
-			return nil
-		} else if err != nil {
-			return err
+		// Filter excludes this run. Wait till the next scheduled time to attempt to trigger again.
+		if shouldTrigger {
+			_, err = w.Trigger(ctx, foreignID, tOpts...)
+			if errors.Is(err, ErrWorkflowInProgress) {
+				// NoReturnErr: Fallthrough to schedule next workflow as there is already one in progress. If this
+				// happens it is likely that we scheduled a workflow and were unable to schedule the next.
+				return nil
+			} else if err != nil {
+				return err
+			}
 		}
 
 		return nil
