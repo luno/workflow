@@ -82,7 +82,13 @@ func (w *Workflow[Type, Status]) Schedule(
 		}
 
 		if !shouldTrigger {
-			return nil
+			// Get the next scheduled time from now as this run is being skipped.
+			sleepTill, ok := schedule.Next(w.clock.Now())
+			if !ok {
+				sleepTill = w.clock.Now().Add(w.defaultOpts.pollingFrequency)
+			}
+			// Filter excludes this run. Wait till the next scheduled time to attempt to trigger again.
+			return waitUntil(ctx, w.clock, sleepTill)
 		}
 
 		_, err = w.Trigger(ctx, foreignID, tOpts...)
