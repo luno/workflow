@@ -118,10 +118,13 @@ func processTimeout[Type any, Status StatusType](
 	processName string,
 	pauseAfterErrCount int,
 ) error {
-	run, err := buildRun[Type, Status](store, record)
+	run, err := buildRun[Type, Status](w.newRunObj(), store, record)
 	if err != nil {
 		return err
 	}
+
+	// Ensure the run is returned to the pool when we're done
+	defer w.releaseRun(run)
 
 	next, err := config.TimeoutFunc(ctx, run, w.clock.Now())
 	if err != nil {
@@ -287,6 +290,8 @@ func timeoutAutoInserterConsumer[Type any, Status StatusType](
 				updater,
 				pauseAfterErrCount,
 				w.errorCounter,
+				w.newRunObj(),
+				w.releaseRun,
 			),
 			w.clock,
 			0,

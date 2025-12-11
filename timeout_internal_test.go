@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -23,6 +24,11 @@ func TestProcessTimeout(t *testing.T) {
 		clock:        clock_testing.NewFakeClock(time.Date(2024, time.April, 19, 0, 0, 0, 0, time.UTC)),
 		errorCounter: counter,
 		logger:       &logger{},
+		runPool: sync.Pool{
+			New: func() interface{} {
+				return &Run[string, testStatus]{}
+			},
+		},
 	}
 
 	value := "data"

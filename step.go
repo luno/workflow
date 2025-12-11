@@ -91,6 +91,8 @@ func consumeStepEvents[Type any, Status StatusType](
 				updater,
 				pauseAfterErrCount,
 				w.errorCounter,
+				w.newRunObj(),
+				w.releaseRun,
 			),
 			w.clock,
 			lag,
@@ -111,6 +113,8 @@ func stepConsumer[Type any, Status StatusType](
 	updater updater[Type, Status],
 	pauseAfterErrCount int,
 	errorCounter ErrorCounter,
+	runCollector runCollector[Type, Status],
+	runReleaser runReleaser[Type, Status],
 ) func(ctx context.Context, e *Event) error {
 	return func(ctx context.Context, e *Event) error {
 		record, err := lookupFn(ctx, e.ForeignID)
@@ -160,10 +164,13 @@ func stepConsumer[Type any, Status StatusType](
 			return nil
 		}
 
-		run, err := buildRun[Type, Status](store, record)
+		run, err := buildRun[Type, Status](runCollector, store, record)
 		if err != nil {
 			return err
 		}
+
+		// Ensure the run is returned to the pool when we're done
+		defer runReleaser(run)
 
 		next, err := stepLogic(ctx, run)
 		if err != nil {

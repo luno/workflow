@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"sync"
 	"testing"
 	"time"
 
@@ -21,6 +22,11 @@ func TestProcessCallback(t *testing.T) {
 		clock:       clock_testing.NewFakeClock(time.Date(2024, time.April, 19, 0, 0, 0, 0, time.UTC)),
 		statusGraph: graph.New(),
 		logger:      &logger{},
+		runPool: sync.Pool{
+			New: func() interface{} {
+				return &Run[string, testStatus]{}
+			},
+		},
 	}
 
 	w.statusGraph.AddTransition(int(statusStart), int(statusEnd))

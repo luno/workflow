@@ -92,6 +92,9 @@ type Workflow[Type any, Status StatusType] struct {
 	// and block until this transition is complete.
 	launching sync.WaitGroup
 
+	// runPool pools Run objects to reduce allocations
+	runPool sync.Pool
+
 	// defaultStartingPoint defines that status that the workflow run will start on when Trigger is called.
 	defaultStartingPoint Status
 	statusGraph          *graph.Graph
