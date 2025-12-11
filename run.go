@@ -108,10 +108,7 @@ func (w *Workflow[Type, Status]) newRunObj() runCollector[Type, Status] {
 
 // releaseRun returns a Run object back to the workflow's pool for reuse
 func (w *Workflow[Type, Status]) releaseRun(run *Run[Type, Status]) {
-	// Clear references to prevent memory leaks
-	run.Object = nil
+	run.TypedRecord = TypedRecord[Type, Status]{}
 	run.controller = nil
-	// Note: We don't clear the Record as it's a value type
-
 	w.runPool.Put(run)
 }
