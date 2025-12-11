@@ -1,6 +1,6 @@
 module github.com/luno/workflow/_examples/connector
 
-go 1.24.2
+go 1.25.3
 
 replace github.com/luno/workflow => ../..
 
