@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -208,24 +209,56 @@ func (r *Receiver) Close() error {
 // parseStreamID converts Redis Stream ID (timestamp-sequence) to int64
 func parseStreamID(streamID string) (int64, error) {
 	// Redis Stream ID format: "timestamp-sequence"
-	// We'll use just the timestamp part as the event ID
+	// Combine both parts to ensure uniqueness: id = timestamp*1_000_000 + sequence
 	if streamID == "" {
 		return 0, fmt.Errorf("empty stream ID")
 	}
 
-	// Find the dash separator
-	dashIndex := -1
-	for i, char := range streamID {
-		if char == '-' {
-			dashIndex = i
-			break
-		}
-	}
-
-	if dashIndex == -1 {
+	// Split on the dash separator
+	parts := strings.Split(streamID, "-")
+	if len(parts) != 2 {
 		return 0, fmt.Errorf("invalid stream ID format: %s", streamID)
 	}
 
-	timestamp := streamID[:dashIndex]
-	return strconv.ParseInt(timestamp, 10, 64)
+	timestampStr := parts[0]
+	sequenceStr := parts[1]
+
+	// Validate parts are not empty
+	if timestampStr == "" {
+		return 0, fmt.Errorf("empty timestamp in stream ID: %s", streamID)
+	}
+	if sequenceStr == "" {
+		return 0, fmt.Errorf("empty sequence in stream ID: %s", streamID)
+	}
+
+	// Parse timestamp
+	timestamp, err := strconv.ParseInt(timestampStr, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid timestamp in stream ID %s: %w", streamID, err)
+	}
+
+	// Parse sequence
+	sequence, err := strconv.ParseInt(sequenceStr, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid sequence in stream ID %s: %w", streamID, err)
+	}
+
+	// Check for potential overflow before combining
+	// We need timestamp*1_000_000 + sequence to fit in int64
+	// Max int64 is 9,223,372,036,854,775,807
+	// So timestamp should not exceed 9,223,372,036,854
+	const maxTimestamp = 9223372036854
+	if timestamp > maxTimestamp {
+		return 0, fmt.Errorf("timestamp too large in stream ID %s: would cause overflow", streamID)
+	}
+	if sequence >= 1000000 {
+		return 0, fmt.Errorf("sequence too large in stream ID %s: must be less than 1,000,000", streamID)
+	}
+	if sequence < 0 {
+		return 0, fmt.Errorf("sequence cannot be negative in stream ID %s", streamID)
+	}
+
+	// Combine timestamp and sequence to create unique ID
+	combinedID := timestamp*1000000 + sequence
+	return combinedID, nil
 }

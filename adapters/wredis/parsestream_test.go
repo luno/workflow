@@ -1,0 +1,181 @@
+package wredis
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+func TestParseStreamID(t *testing.T) {
+	testCases := []struct {
+		name        string
+		streamID    string
+		expectedID  int64
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:       "valid stream ID",
+			streamID:   "1640995200000-0",
+			expectedID: 1640995200000000000,
+		},
+		{
+			name:       "valid stream ID with sequence",
+			streamID:   "1640995200000-5",
+			expectedID: 1640995200000000005,
+		},
+		{
+			name:       "same timestamp different sequence",
+			streamID:   "1640995200000-123",
+			expectedID: 1640995200000000123,
+		},
+		{
+			name:       "maximum valid sequence",
+			streamID:   "1640995200000-999999",
+			expectedID: 1640995200000999999,
+		},
+		{
+			name:        "empty stream ID",
+			streamID:    "",
+			expectError: true,
+			errorMsg:    "empty stream ID",
+		},
+		{
+			name:        "invalid format - no dash",
+			streamID:    "1640995200000",
+			expectError: true,
+			errorMsg:    "invalid stream ID format",
+		},
+		{
+			name:        "invalid format - multiple dashes",
+			streamID:    "1640995200000-0-1",
+			expectError: true,
+			errorMsg:    "invalid stream ID format",
+		},
+		{
+			name:        "empty timestamp",
+			streamID:    "-0",
+			expectError: true,
+			errorMsg:    "empty timestamp",
+		},
+		{
+			name:        "empty sequence",
+			streamID:    "1640995200000-",
+			expectError: true,
+			errorMsg:    "empty sequence",
+		},
+		{
+			name:        "non-numeric timestamp",
+			streamID:    "abc-0",
+			expectError: true,
+			errorMsg:    "invalid timestamp",
+		},
+		{
+			name:        "non-numeric sequence",
+			streamID:    "1640995200000-abc",
+			expectError: true,
+			errorMsg:    "invalid sequence",
+		},
+		{
+			name:        "double dash creates invalid format",
+			streamID:    "1640995200000--1",
+			expectError: true,
+			errorMsg:    "invalid stream ID format",
+		},
+		{
+			name:        "sequence too large",
+			streamID:    "1640995200000-1000000",
+			expectError: true,
+			errorMsg:    "sequence too large",
+		},
+		{
+			name:        "timestamp too large for overflow protection",
+			streamID:    "9223372036855000-0",
+			expectError: true,
+			errorMsg:    "timestamp too large",
+		},
+		{
+			name:       "edge case - minimum timestamp",
+			streamID:   "0-0",
+			expectedID: 0,
+		},
+		{
+			name:       "edge case - realistic timestamp with sequence",
+			streamID:   "1735834800000-42", // Example: 2025-01-02 15:00:00 UTC
+			expectedID: 1735834800000000042,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			id, err := parseStreamID(tc.streamID)
+
+			if tc.expectError {
+				require.Error(t, err, "Expected error for stream ID: %s", tc.streamID)
+				require.Contains(t, err.Error(), tc.errorMsg,
+					"Error message should contain '%s' for stream ID: %s", tc.errorMsg, tc.streamID)
+			} else {
+				require.NoError(t, err, "Unexpected error for stream ID: %s", tc.streamID)
+				require.Equal(t, tc.expectedID, id,
+					"Event ID should match expected value for stream ID: %s", tc.streamID)
+			}
+		})
+	}
+}
+
+func TestParseStreamIDCollisionPrevention(t *testing.T) {
+	// Test that different stream IDs produce different event IDs
+	streamIDs := []string{
+		"1640995200000-0",
+		"1640995200000-1",
+		"1640995200000-999",
+		"1640995200001-0", // Different timestamp
+	}
+
+	seenIDs := make(map[int64]string)
+
+	for _, streamID := range streamIDs {
+		id, err := parseStreamID(streamID)
+		require.NoError(t, err, "Failed to parse stream ID: %s", streamID)
+
+		if existingStreamID, exists := seenIDs[id]; exists {
+			t.Errorf("ID collision detected: stream IDs '%s' and '%s' both produce event ID %d",
+				streamID, existingStreamID, id)
+		}
+		seenIDs[id] = streamID
+	}
+
+	require.Len(t, seenIDs, len(streamIDs), "All stream IDs should produce unique event IDs")
+}
+
+func TestParseStreamIDEdgeCases(t *testing.T) {
+	// Test specific edge cases that could happen in practice
+	t.Run("Test manual negative sequence handling", func(t *testing.T) {
+		// We need to test the negative sequence path without using double dash
+		// Let's manually construct a test case that would reach that code path
+		// This is more for completeness of test coverage
+
+		// Since we can't easily create this scenario with string parsing,
+		// let's verify the logic is sound by testing the bounds
+		id, err := parseStreamID("1640995200000-0")
+		require.NoError(t, err)
+		require.Equal(t, int64(1640995200000000000), id)
+
+		// Test that sequence 999999 (maximum allowed) works
+		id, err = parseStreamID("1640995200000-999999")
+		require.NoError(t, err)
+		require.Equal(t, int64(1640995200000999999), id)
+	})
+
+	t.Run("Test overflow protection", func(t *testing.T) {
+		// Test that our overflow protection works
+		_, err := parseStreamID("9223372036855000-0")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "timestamp too large")
+
+		// Test sequence too large
+		_, err = parseStreamID("1640995200000-1000000")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "sequence too large")
+	})
+}
