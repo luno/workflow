@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/luno/workflow"
+	"github.com/redis/go-redis/v9"
 )
 
 const (
@@ -176,11 +176,11 @@ func (s *Store) List(ctx context.Context, workflowName string, offset int64, lim
 
 	// If we have filters, we might need to fetch more records
 	if filter.ByForeignID().Enabled || filter.ByStatus().Enabled || filter.ByRunState().Enabled ||
-	   filter.ByCreatedAtAfter().Enabled || filter.ByCreatedAtBefore().Enabled {
+		filter.ByCreatedAtAfter().Enabled || filter.ByCreatedAtBefore().Enabled {
 		// Increase fetch limit to account for filtering
 		// This is a heuristic - in production, you'd want more sophisticated logic
 		fetchLimit = int64(limit * 3) // Fetch 3x more records
-		fetchOffset = 0 // Start from beginning when filtering
+		fetchOffset = 0               // Start from beginning when filtering
 	}
 
 	// Determine Redis command based on order
@@ -204,7 +204,10 @@ func (s *Store) List(ctx context.Context, workflowName string, offset int64, lim
 	for _, runID := range runIDs {
 		record, err := s.Lookup(ctx, runID)
 		if err != nil {
-			continue // Skip missing records
+			if err == workflow.ErrRecordNotFound {
+				continue // Skip missing records (index inconsistency)
+			}
+			return nil, err // Propagate actual errors
 		}
 
 		// Apply filters
@@ -238,7 +241,7 @@ func (s *Store) List(ctx context.Context, workflowName string, offset int64, lim
 
 	// Apply offset and limit after filtering when filters are present
 	if filter.ByForeignID().Enabled || filter.ByStatus().Enabled || filter.ByRunState().Enabled ||
-	   filter.ByCreatedAtAfter().Enabled || filter.ByCreatedAtBefore().Enabled {
+		filter.ByCreatedAtAfter().Enabled || filter.ByCreatedAtBefore().Enabled {
 
 		start := int(offset)
 		if start > len(allRecords) {
