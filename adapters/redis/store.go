@@ -285,25 +285,44 @@ func (s *Store) ListOutboxEvents(ctx context.Context, workflowName string, limit
 func (s *Store) DeleteOutboxEvent(ctx context.Context, id string) error {
 	// We need to check all workflow outbox lists to find the event with this ID
 	// Since we don't know which workflow this event belongs to, we'll need to check all of them
-	// For production use, you might want to maintain a reverse index or store workflow name with the event ID
+	// For production use, you should maintain a reverse index (outboxEventID → workflowName)
+	// or include workflowName in the event ID to target the single outbox key directly
 
-	// Get all outbox keys (this is not ideal for production - would be better to maintain an index)
+	// Use SCAN instead of KEYS to avoid blocking Redis
 	pattern := outboxKeyPrefix + "*"
-	keys, err := s.client.Keys(ctx, pattern).Result()
-	if err != nil {
-		return err
+	var cursor uint64
+	var luaErrors []error
+
+	for {
+		keys, nextCursor, err := s.client.Scan(ctx, cursor, pattern, 10).Result()
+		if err != nil {
+			return err
+		}
+
+		// Try to delete from each outbox list using the Lua script
+		for _, outboxKey := range keys {
+			result, err := deleteOutboxScript.Run(ctx, s.client, []string{outboxKey}, id).Int()
+			if err != nil {
+				// Log Lua script execution errors instead of silently ignoring them
+				luaErrors = append(luaErrors, err)
+				continue
+			}
+			if result == 1 {
+				// Successfully found and deleted the event
+				return nil
+			}
+		}
+
+		cursor = nextCursor
+		if cursor == 0 {
+			break
+		}
 	}
 
-	// Try to delete from each outbox list using the Lua script
-	for _, outboxKey := range keys {
-		result, err := deleteOutboxScript.Run(ctx, s.client, []string{outboxKey}, id).Int()
-		if err != nil {
-			continue // Try next outbox
-		}
-		if result == 1 {
-			// Successfully found and deleted the event
-			return nil
-		}
+	// If we had Lua script errors but didn't find the event, report the errors
+	if len(luaErrors) > 0 {
+		// Return the first Lua error to make failures visible
+		return luaErrors[0]
 	}
 
 	// Event not found in any outbox - this is not necessarily an error
