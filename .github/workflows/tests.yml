@@ -50,3 +50,32 @@ jobs:
             echo "Running go vet in $dir"
             (cd "$dir" && go vet ./...)
           done
+
+  integration_tests:
+    name: Integration Tests (Testcontainers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Check Docker availability
+        run: |
+          docker --version
+          docker info
+
+      - name: Test Kafka Adapter with Testcontainers
+        run: |
+          cd ./adapters/kafkastreamer
+          echo "🚀 Testing Kafka adapter with testcontainers..."
+          go test -v -timeout=10m ./...
+
+      - name: Test Redis Adapter with Testcontainers
+        run: |
+          cd ./adapters/wredis
+          echo "🚀 Testing Redis adapter with testcontainers..."
+          go test -v -timeout=10m ./...

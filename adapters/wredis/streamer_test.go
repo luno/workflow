@@ -13,7 +13,7 @@ import (
 	"github.com/luno/workflow/adapters/wredis"
 )
 
-func TestRedisRecordStore(t *testing.T) {
+func TestRedisEventStreamer(t *testing.T) {
 	ctx := t.Context()
 
 	redisInstance, err := rediscontainer.Run(ctx, "redis:7-alpine")
@@ -30,13 +30,13 @@ func TestRedisRecordStore(t *testing.T) {
 		Addr: host + ":" + port.Port(),
 	})
 
-	factory := func() workflow.RecordStore {
+	factory := func() workflow.EventStreamer {
 		// Clean the database before each test
 		err := client.FlushDB(ctx).Err()
 		require.NoError(t, err)
 
-		return wredis.New(client)
+		return wredis.NewStreamer(client)
 	}
 
-	adaptertest.RunRecordStoreTest(t, factory)
+	adaptertest.RunEventStreamerTest(t, factory)
 }
