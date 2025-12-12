@@ -153,18 +153,18 @@ func TestParseStreamIDCollisionPrevention(t *testing.T) {
 
 func TestParseStreamIDEdgeCases(t *testing.T) {
 	// Test specific edge cases that could happen in practice
-	t.Run("Test manual negative sequence handling", func(t *testing.T) {
-		// We need to test the negative sequence path without using double dash
-		// Let's manually construct a test case that would reach that code path
-		// This is more for completeness of test coverage
+	t.Run("Test sequence bounds validation", func(t *testing.T) {
+		// Test normal positive sequence handling at the boundaries:
+		// - sequence 0 (minimum valid sequence)
+		// - sequence 999999 (maximum allowed sequence)
+		// This ensures our parsing correctly handles the full valid range
 
-		// Since we can't easily create this scenario with string parsing,
-		// let's verify the logic is sound by testing the bounds
+		// Test minimum valid sequence (0)
 		id, err := parseStreamID("1640995200000-0")
 		require.NoError(t, err)
 		require.Equal(t, int64(1640995200000000000), id)
 
-		// Test that sequence 999999 (maximum allowed) works
+		// Test maximum allowed sequence (999999)
 		id, err = parseStreamID("1640995200000-999999")
 		require.NoError(t, err)
 		require.Equal(t, int64(1640995200000999999), id)
