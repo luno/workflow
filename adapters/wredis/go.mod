@@ -1,4 +1,4 @@
-module github.com/luno/workflow/adapters/redis
+module github.com/luno/workflow/adapters/wredis
 
 go 1.25.3
 
