@@ -31,7 +31,9 @@ func TestRedisRecordStore(t *testing.T) {
 
 	factory := func() workflow.RecordStore {
 		// Clean the database before each test
-		client.FlushDB(ctx)
+		err := client.FlushDB(ctx).Err()
+		require.NoError(t, err)
+
 		return New(client)
 	}
 
