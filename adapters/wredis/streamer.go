@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"sync"
@@ -137,11 +138,44 @@ func (r *Receiver) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, err
 	}
 
 	for ctx.Err() == nil {
-		// Try to read pending messages first
+		// First, try to read pending messages that were delivered but not acknowledged
 		pendingMsgs, err := r.client.XReadGroup(ctx, &redis.XReadGroupArgs{
 			Group:    consumerGroup,
 			Consumer: r.name,
-			Streams:  []string{streamKey, ">"},
+			Streams:  []string{streamKey, "0"}, // "0" reads pending messages
+			Count:    1,
+			Block:    0, // Don't block for pending messages
+		}).Result()
+
+		if err != nil && err != redis.Nil {
+			return nil, nil, err
+		}
+
+		// Process pending message if found
+		if len(pendingMsgs) > 0 && len(pendingMsgs[0].Messages) > 0 {
+			msg := pendingMsgs[0].Messages[0]
+			event, err := r.parseEvent(msg)
+			if err != nil {
+				// Log parse error with detailed information for debugging
+				log.Printf("wredis: failed to parse pending message ID %s in stream %s: %v, payload: %+v",
+					msg.ID, streamKey, err, msg.Values)
+				// TODO: Move to dead letter stream instead of acknowledging
+				// For now, return error to bubble up rather than silent ack
+				return nil, nil, fmt.Errorf("failed to parse pending message %s: %w", msg.ID, err)
+			}
+
+			ack := func() error {
+				return r.client.XAck(ctx, streamKey, consumerGroup, msg.ID).Err()
+			}
+
+			return event, ack, nil
+		}
+
+		// No pending messages, try to read new messages
+		newMsgs, err := r.client.XReadGroup(ctx, &redis.XReadGroupArgs{
+			Group:    consumerGroup,
+			Consumer: r.name,
+			Streams:  []string{streamKey, ">"}, // ">" reads new messages only
 			Count:    1,
 			Block:    100 * time.Millisecond,
 		}).Result()
@@ -150,13 +184,17 @@ func (r *Receiver) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, err
 			return nil, nil, err
 		}
 
-		if len(pendingMsgs) > 0 && len(pendingMsgs[0].Messages) > 0 {
-			msg := pendingMsgs[0].Messages[0]
+		// Process new message if found
+		if len(newMsgs) > 0 && len(newMsgs[0].Messages) > 0 {
+			msg := newMsgs[0].Messages[0]
 			event, err := r.parseEvent(msg)
 			if err != nil {
-				// Acknowledge bad message and continue
-				r.client.XAck(ctx, streamKey, consumerGroup, msg.ID)
-				continue
+				// Log parse error with detailed information for debugging
+				log.Printf("wredis: failed to parse new message ID %s in stream %s: %v, payload: %+v",
+					msg.ID, streamKey, err, msg.Values)
+				// TODO: Move to dead letter stream instead of acknowledging
+				// For now, return error to bubble up rather than silent ack
+				return nil, nil, fmt.Errorf("failed to parse new message %s: %w", msg.ID, err)
 			}
 
 			ack := func() error {

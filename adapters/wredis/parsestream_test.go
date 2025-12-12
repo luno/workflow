@@ -3,7 +3,10 @@ package wredis
 import (
 	"testing"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
 )
 
 func TestParseStreamID(t *testing.T) {
@@ -178,4 +181,64 @@ func TestParseStreamIDEdgeCases(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "sequence too large")
 	})
+}
+
+func TestReceiverErrorHandling(t *testing.T) {
+	// This test verifies that malformed messages are handled properly
+	// and not silently acknowledged
+	ctx := t.Context()
+
+	redisInstance, err := rediscontainer.Run(ctx, "redis:7-alpine")
+	testcontainers.CleanupContainer(t, redisInstance)
+	require.NoError(t, err)
+
+	host, err := redisInstance.Host(ctx)
+	require.NoError(t, err)
+
+	port, err := redisInstance.MappedPort(ctx, "6379/tcp")
+	require.NoError(t, err)
+
+	client := redis.NewClient(&redis.Options{
+		Addr: host + ":" + port.Port(),
+	})
+
+	streamer := NewStreamer(client)
+	topic := "test-malformed"
+
+	// Create sender and receiver
+	sender, err := streamer.NewSender(ctx, topic)
+	require.NoError(t, err)
+	defer sender.Close()
+
+	receiver, err := streamer.NewReceiver(ctx, topic, "test-receiver")
+	require.NoError(t, err)
+	defer receiver.Close()
+
+	// Manually inject malformed data directly to Redis stream
+	streamKey := streamKeyPrefix + topic
+	_, err = client.XAdd(ctx, &redis.XAddArgs{
+		Stream: streamKey,
+		Values: map[string]interface{}{
+			"event": "invalid-json-data{",
+		},
+	}).Result()
+	require.NoError(t, err)
+
+	// Try to receive - should get an error, not silent acknowledgment
+	_, _, err = receiver.Recv(ctx)
+	require.Error(t, err, "Should return error for malformed message")
+	require.Contains(t, err.Error(), "failed to parse", "Error should mention parse failure")
+
+	// Verify the malformed message is still in the stream (not acknowledged)
+	// by checking pending messages for the consumer group
+	consumerGroup := consumerGroupPrefix + "test-receiver"
+	pending, err := client.XPendingExt(ctx, &redis.XPendingExtArgs{
+		Stream: streamKey,
+		Group:  consumerGroup,
+		Start:  "-",
+		End:    "+",
+		Count:  10,
+	}).Result()
+	require.NoError(t, err)
+	require.Len(t, pending, 1, "Malformed message should still be pending (not acknowledged)")
 }
