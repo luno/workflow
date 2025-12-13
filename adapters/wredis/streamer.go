@@ -4,10 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/luno/workflow"
@@ -15,15 +13,12 @@ import (
 )
 
 const (
-	streamKeyPrefix = "workflow:stream:"
-	cursorKeyPrefix = "workflow:cursor:"
-
-	consumerGroupPrefix = "workflow-"
+	streamKeyPrefix     = "workflow:stream:"
+	consumerGroupPrefix = "workflow:consumer:"
 )
 
 type Streamer struct {
 	client redis.UniversalClient
-	mu     sync.RWMutex
 }
 
 func NewStreamer(client redis.UniversalClient) *Streamer {
@@ -156,11 +151,7 @@ func (r *Receiver) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, err
 			msg := pendingMsgs[0].Messages[0]
 			event, err := r.parseEvent(msg)
 			if err != nil {
-				// Log parse error with detailed information for debugging
-				log.Printf("wredis: failed to parse pending message ID %s in stream %s: %v, payload: %+v",
-					msg.ID, streamKey, err, msg.Values)
-				// TODO: Move to dead letter stream instead of acknowledging
-				// For now, return error to bubble up rather than silent ack
+				// Return error to bubble up rather than silent ack
 				return nil, nil, fmt.Errorf("failed to parse pending message %s: %w", msg.ID, err)
 			}
 
@@ -234,8 +225,7 @@ func (r *Receiver) getBlockDuration() time.Duration {
 	}
 
 	// Default: use a reasonable block time for real-time streaming
-	// 1 second is a good balance between responsiveness and efficiency
-	return 1 * time.Second
+	return 250 * time.Millisecond
 }
 
 func (r *Receiver) Close() error {
