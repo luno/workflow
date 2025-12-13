@@ -1,6 +1,7 @@
 package wredis
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -204,6 +205,7 @@ func TestReceiverErrorHandling(t *testing.T) {
 	client := redis.NewClient(&redis.Options{
 		Addr: host + ":" + port.Port(),
 	})
+	t.Cleanup(func() { _ = client.Close() })
 
 	streamer := NewStreamer(client)
 	topic := "test-malformed"
@@ -228,7 +230,11 @@ func TestReceiverErrorHandling(t *testing.T) {
 	require.NoError(t, err)
 
 	// Try to receive - should get an error, not silent acknowledgment
-	_, _, err = receiver.Recv(ctx)
+	// Use a timeout context to prevent hanging
+	recvCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	_, _, err = receiver.Recv(recvCtx)
 	require.Error(t, err, "Should return error for malformed message")
 	require.Contains(t, err.Error(), "failed to parse", "Error should mention parse failure")
 
@@ -263,6 +269,7 @@ func TestPollingFrequencyImplementation(t *testing.T) {
 	client := redis.NewClient(&redis.Options{
 		Addr: host + ":" + port.Port(),
 	})
+	t.Cleanup(func() { _ = client.Close() })
 
 	streamer := NewStreamer(client)
 	topic := "test-polling"
