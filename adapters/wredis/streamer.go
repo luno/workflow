@@ -172,12 +172,15 @@ func (r *Receiver) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, err
 		}
 
 		// No pending messages, try to read new messages
+		// Use Redis native blocking based on polling frequency
+		blockDuration := r.getBlockDuration()
+
 		newMsgs, err := r.client.XReadGroup(ctx, &redis.XReadGroupArgs{
 			Group:    consumerGroup,
 			Consumer: r.name,
 			Streams:  []string{streamKey, ">"}, // ">" reads new messages only
 			Count:    1,
-			Block:    100 * time.Millisecond,
+			Block:    blockDuration,
 		}).Result()
 
 		if err != nil && err != redis.Nil {
@@ -189,11 +192,6 @@ func (r *Receiver) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, err
 			msg := newMsgs[0].Messages[0]
 			event, err := r.parseEvent(msg)
 			if err != nil {
-				// Log parse error with detailed information for debugging
-				log.Printf("wredis: failed to parse new message ID %s in stream %s: %v, payload: %+v",
-					msg.ID, streamKey, err, msg.Values)
-				// TODO: Move to dead letter stream instead of acknowledging
-				// For now, return error to bubble up rather than silent ack
 				return nil, nil, fmt.Errorf("failed to parse new message %s: %w", msg.ID, err)
 			}
 
@@ -202,16 +200,6 @@ func (r *Receiver) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, err
 			}
 
 			return event, ack, nil
-		}
-
-		// If no messages and using polling frequency, wait
-		if r.options.PollFrequency > 0 {
-			select {
-			case <-ctx.Done():
-				return nil, nil, ctx.Err()
-			case <-time.After(r.options.PollFrequency):
-				continue
-			}
 		}
 	}
 
@@ -239,6 +227,16 @@ func (r *Receiver) parseEvent(msg redis.XMessage) (*workflow.Event, error) {
 	return &event, nil
 }
 
+func (r *Receiver) getBlockDuration() time.Duration {
+	// If PollFrequency is set, use it for blocking
+	if r.options.PollFrequency > 0 {
+		return r.options.PollFrequency
+	}
+
+	// Default: use a reasonable block time for real-time streaming
+	// 1 second is a good balance between responsiveness and efficiency
+	return 1 * time.Second
+}
 
 func (r *Receiver) Close() error {
 	return nil

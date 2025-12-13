@@ -2,11 +2,14 @@ package wredis
 
 import (
 	"testing"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
+
+	"github.com/luno/workflow"
 )
 
 func TestParseStreamID(t *testing.T) {
@@ -241,4 +244,49 @@ func TestReceiverErrorHandling(t *testing.T) {
 	}).Result()
 	require.NoError(t, err)
 	require.Len(t, pending, 1, "Malformed message should still be pending (not acknowledged)")
+}
+
+func TestPollingFrequencyImplementation(t *testing.T) {
+	// Test that polling frequency is correctly used for Redis blocking
+	ctx := t.Context()
+
+	redisInstance, err := rediscontainer.Run(ctx, "redis:7-alpine")
+	testcontainers.CleanupContainer(t, redisInstance)
+	require.NoError(t, err)
+
+	host, err := redisInstance.Host(ctx)
+	require.NoError(t, err)
+
+	port, err := redisInstance.MappedPort(ctx, "6379/tcp")
+	require.NoError(t, err)
+
+	client := redis.NewClient(&redis.Options{
+		Addr: host + ":" + port.Port(),
+	})
+
+	streamer := NewStreamer(client)
+	topic := "test-polling"
+
+	// Test with custom polling frequency
+	customPollFreq := 500 * time.Millisecond
+	receiver, err := streamer.NewReceiver(ctx, topic, "test-receiver",
+		workflow.WithReceiverPollFrequency(customPollFreq))
+	require.NoError(t, err)
+	defer receiver.Close()
+
+	// Verify the receiver uses the correct block duration
+	recv := receiver.(*Receiver)
+	blockDuration := recv.getBlockDuration()
+	require.Equal(t, customPollFreq, blockDuration,
+		"Block duration should match custom polling frequency")
+
+	// Test default polling frequency (when not specified)
+	defaultReceiver, err := streamer.NewReceiver(ctx, topic, "default-receiver")
+	require.NoError(t, err)
+	defer defaultReceiver.Close()
+
+	defaultRecv := defaultReceiver.(*Receiver)
+	defaultBlockDuration := defaultRecv.getBlockDuration()
+	require.Equal(t, 1*time.Second, defaultBlockDuration,
+		"Default block duration should be 1 second")
 }
