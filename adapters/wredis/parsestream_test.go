@@ -294,6 +294,77 @@ func TestPollingFrequencyImplementation(t *testing.T) {
 
 	defaultRecv := defaultReceiver.(*Receiver)
 	defaultBlockDuration := defaultRecv.getBlockDuration()
-	require.Equal(t, 1*time.Second, defaultBlockDuration,
-		"Default block duration should be 1 second")
+	require.Equal(t, 250*time.Millisecond, defaultBlockDuration,
+		"Default block duration should be 250 milliseconds")
+}
+
+func TestAckWithCancelledContext(t *testing.T) {
+	// Test that ack works even after Recv context is cancelled
+	ctx := t.Context()
+
+	redisInstance, err := rediscontainer.Run(ctx, "redis:7-alpine")
+	testcontainers.CleanupContainer(t, redisInstance)
+	require.NoError(t, err)
+
+	host, err := redisInstance.Host(ctx)
+	require.NoError(t, err)
+
+	port, err := redisInstance.MappedPort(ctx, "6379/tcp")
+	require.NoError(t, err)
+
+	client := redis.NewClient(&redis.Options{
+		Addr: host + ":" + port.Port(),
+	})
+	t.Cleanup(func() { _ = client.Close() })
+
+	streamer := NewStreamer(client)
+	topic := "test-ack-context"
+
+	// Create sender and send a message
+	sender, err := streamer.NewSender(ctx, topic)
+	require.NoError(t, err)
+	defer sender.Close()
+
+	err = sender.Send(ctx, "test-message", 1, map[workflow.Header]string{
+		workflow.HeaderTopic: topic,
+	})
+	require.NoError(t, err)
+
+	// Create receiver with a context that we'll cancel
+	recvCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	receiver, err := streamer.NewReceiver(recvCtx, topic, "test-receiver")
+	require.NoError(t, err)
+	defer receiver.Close()
+
+	// Receive the message
+	event, ack, err := receiver.Recv(recvCtx)
+	require.NoError(t, err)
+	require.NotNil(t, event)
+	require.NotNil(t, ack)
+	require.Equal(t, "test-message", event.ForeignID)
+
+	// Cancel the Recv context to simulate timeout/cancellation
+	cancel()
+
+	// Wait a bit to ensure context is cancelled
+	time.Sleep(10 * time.Millisecond)
+
+	// Ack should still work because it uses a fresh background context
+	err = ack()
+	require.NoError(t, err, "Ack should succeed even after Recv context is cancelled")
+
+	// Verify the message was actually acknowledged by checking pending count
+	streamKey := streamKeyPrefix + topic
+	consumerGroup := consumerGroupPrefix + "test-receiver"
+	pending, err := client.XPendingExt(ctx, &redis.XPendingExtArgs{
+		Stream: streamKey,
+		Group:  consumerGroup,
+		Start:  "-",
+		End:    "+",
+		Count:  10,
+	}).Result()
+	require.NoError(t, err)
+	require.Len(t, pending, 0, "Message should be acknowledged and not pending")
 }

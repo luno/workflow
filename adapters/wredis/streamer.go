@@ -156,7 +156,11 @@ func (r *Receiver) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, err
 			}
 
 			ack := func() error {
-				return r.client.XAck(ctx, streamKey, consumerGroup, msg.ID).Err()
+				// Use fresh background context with short timeout for acknowledgment
+				// This allows ack to succeed even if Recv context was cancelled
+				ackCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				return r.client.XAck(ackCtx, streamKey, consumerGroup, msg.ID).Err()
 			}
 
 			return event, ack, nil
@@ -187,7 +191,11 @@ func (r *Receiver) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, err
 			}
 
 			ack := func() error {
-				return r.client.XAck(ctx, streamKey, consumerGroup, msg.ID).Err()
+				// Use fresh background context with short timeout for acknowledgment
+				// This allows ack to succeed even if Recv context was cancelled
+				ackCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				return r.client.XAck(ackCtx, streamKey, consumerGroup, msg.ID).Err()
 			}
 
 			return event, ack, nil
