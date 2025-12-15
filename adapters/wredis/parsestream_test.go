@@ -2,15 +2,16 @@ package wredis
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/luno/workflow"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
-
-	"github.com/luno/workflow"
 )
 
 func TestParseStreamID(t *testing.T) {
@@ -367,4 +368,70 @@ func TestAckWithCancelledContext(t *testing.T) {
 	}).Result()
 	require.NoError(t, err)
 	require.Len(t, pending, 0, "Message should be acknowledged and not pending")
+}
+
+func TestConcurrentStreamFromLatestReceivers(t *testing.T) {
+	// Test that multiple receivers with StreamFromLatest don't fail with BUSYGROUP
+	ctx := t.Context()
+
+	redisInstance, err := rediscontainer.Run(ctx, "redis:7-alpine")
+	testcontainers.CleanupContainer(t, redisInstance)
+	require.NoError(t, err)
+
+	host, err := redisInstance.Host(ctx)
+	require.NoError(t, err)
+
+	port, err := redisInstance.MappedPort(ctx, "6379/tcp")
+	require.NoError(t, err)
+
+	client := redis.NewClient(&redis.Options{
+		Addr: host + ":" + port.Port(),
+	})
+	t.Cleanup(func() { _ = client.Close() })
+
+	streamer := NewStreamer(client)
+	topic := "test-concurrent-latest"
+
+	// Create multiple receivers concurrently with StreamFromLatest
+	const numReceivers = 5
+	receivers := make([]workflow.EventReceiver, numReceivers)
+
+	// Use a sync.WaitGroup to start all receivers at roughly the same time
+	var startWg sync.WaitGroup
+	errorsChan := make(chan error, numReceivers)
+
+	startWg.Add(numReceivers)
+
+	for i := 0; i < numReceivers; i++ {
+		go func(i int) {
+			defer startWg.Done()
+			receiverName := fmt.Sprintf("concurrent-receiver-%d", i)
+			receiver, err := streamer.NewReceiver(ctx, topic, receiverName, workflow.StreamFromLatest())
+			if err != nil {
+				errorsChan <- fmt.Errorf("receiver %d failed: %w", i, err)
+				return
+			}
+			receivers[i] = receiver
+		}(i)
+	}
+
+	// Wait for all receivers to be created
+	startWg.Wait()
+	close(errorsChan)
+
+	// Check for any errors
+	var errors []error
+	for err := range errorsChan {
+		errors = append(errors, err)
+	}
+
+	require.Empty(t, errors, "No receivers should fail with BUSYGROUP error: %v", errors)
+
+	// Clean up receivers
+	for i, receiver := range receivers {
+		if receiver != nil {
+			err := receiver.Close()
+			require.NoError(t, err, "Failed to close receiver %d", i)
+		}
+	}
 }

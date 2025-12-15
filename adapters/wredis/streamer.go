@@ -120,7 +120,7 @@ func (r *Receiver) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, err
 			// Consumer group doesn't exist, create it starting from the latest message
 			// Use "$" to start from the end of the stream
 			_, err := r.client.XGroupCreateMkStream(ctx, streamKey, consumerGroup, "$").Result()
-			if err != nil {
+			if err != nil && err.Error() != "BUSYGROUP Consumer Group name already exists" {
 				return nil, nil, err
 			}
 		}
