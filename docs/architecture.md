@@ -190,17 +190,17 @@ Adapters provide infrastructure abstraction:
 
 ```go
 type EventStreamer interface {
-    NewProducer() (Producer, error)
-    NewConsumer(name string) (Consumer, error)
+    NewSender(ctx context.Context, topic string) (EventSender, error)
+    NewReceiver(ctx context.Context, topic string, name string, opts ...ReceiverOption) (EventReceiver, error)
 }
 
-type Producer interface {
-    Produce(ctx context.Context, event OutboxEvent) error
+type EventSender interface {
+    Send(ctx context.Context, foreignID string, statusType int, headers map[Header]string) error
     Close() error
 }
 
-type Consumer interface {
-    Consume(ctx context.Context, fn func(*Event, Ack) error) error
+type EventReceiver interface {
+    Recv(ctx context.Context) (*Event, Ack, error)
     Close() error
 }
 ```
