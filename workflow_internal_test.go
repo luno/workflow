@@ -213,9 +213,14 @@ func TestWorkflow_RunStopRace(t *testing.T) {
 		// Immediately call Stop - this reads w.cancel
 		// Without the mutex protection, this would race with the write in Run()
 		wf.Stop()
-		
+
 		// Wait for Run to complete
 		<-done
+
+		// Call Stop again to ensure cleanup of any goroutines that were started.
+		// This handles the case where the first Stop() call happened before Run()
+		// had set the cancel function (so it returned early without stopping anything).
+		wf.Stop()
 	}
 }
 
