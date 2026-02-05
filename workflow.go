@@ -114,11 +114,13 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 	w.once.Do(func() {
 		ctx, cancel := context.WithCancel(ctx)
 		
-		w.mu.Lock()
-		w.ctx = ctx
-		w.cancel = cancel
-		w.calledRun = true
-		w.mu.Unlock()
+		func() {
+			w.mu.Lock()
+			defer w.mu.Unlock()
+			w.ctx = ctx
+			w.cancel = cancel
+			w.calledRun = true
+		}()
 
 		if !w.outboxConfig.disabled {
 			// Start the outbox consumer
