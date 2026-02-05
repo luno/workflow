@@ -57,7 +57,7 @@ func TestSchedule(t *testing.T) {
 	wg.Wait()
 
 	// Allow scheduling to take place
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	_, err := recordStore.Latest(ctx, workflowName, "andrew")
 	// Expect there to be no entries yet
@@ -68,7 +68,7 @@ func TestSchedule(t *testing.T) {
 	clock.SetTime(expectedTimestamp)
 
 	// Allow scheduling to take place
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	firstScheduled, err := recordStore.Latest(ctx, workflowName, "andrew")
 	require.NoError(t, err)
@@ -80,7 +80,7 @@ func TestSchedule(t *testing.T) {
 	clock.SetTime(expectedTimestamp)
 
 	// Allow scheduling to take place
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	secondScheduled, err := recordStore.Latest(ctx, workflowName, "andrew")
 	require.NoError(t, err)
@@ -197,7 +197,7 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	clock.SetTime(expectedTimestamp)
 
 	// Allow scheduling to take place
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	firstRun, err := recordStore.Latest(ctx, workflowName, "andrew")
 	require.NoError(t, err)
@@ -229,7 +229,7 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	clock.SetTime(expectedTimestamp)
 
 	// Allow scheduling to take place
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	secondRun, err := recordStore.Latest(ctx, workflowName, "andrew")
 	require.NoError(t, err)
@@ -277,12 +277,15 @@ func TestWorkflow_ScheduleWithInitialValue(t *testing.T) {
 	}()
 	wg.Wait()
 
+	// Allow scheduler goroutine to register before advancing clock
+	time.Sleep(200 * time.Millisecond)
+
 	// Move to May 1st - first scheduled time
 	expectedTimestamp := time.Date(2023, time.May, 1, 0, 0, 0, 0, time.UTC)
 	clock.SetTime(expectedTimestamp)
 
 	// Allow scheduling to take place
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	run, err := recordStore.Latest(ctx, workflowName, "test")
 	require.NoError(t, err)
@@ -397,7 +400,7 @@ func TestWorkflow_ScheduleExistingRun(t *testing.T) {
 	clock.SetTime(expectedTimestamp)
 
 	// Allow scheduling to take place
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	secondRun, err := recordStore.Latest(ctx, workflowName, "existing-test")
 	require.NoError(t, err)
