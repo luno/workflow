@@ -2,8 +2,8 @@ module orderprocessor
 
 go 1.25.3
 
-
 replace github.com/luno/workflow => ../..
+
 require github.com/luno/workflow v0.3.6
 
 require (
