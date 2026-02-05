@@ -13,6 +13,7 @@ jobs:
       matrix:
         go: [ '1.24', '1' ]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -25,7 +26,7 @@ jobs:
         run: go vet -v ./...
 
       - name: Test
-        run: go test -v ./...
+        run: go test -v -race -timeout=5m ./...
 
   adapters_and_examples:
     runs-on: ubuntu-latest
