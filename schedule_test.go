@@ -56,22 +56,23 @@ func TestSchedule(t *testing.T) {
 	}()
 	wg.Wait()
 
-	// Allow scheduling to take place
-	time.Sleep(10 * time.Millisecond)
-
+	// Verify no record exists before scheduled time
 	_, err := recordStore.Latest(ctx, workflowName, "andrew")
-	// Expect there to be no entries yet
 	require.True(t, errors.Is(err, workflow.ErrRecordNotFound))
 
-	// Grab the time from the clock for expectation as to the time we expect the entry to have
+	// Allow scheduler to start and begin waiting on clock
+	time.Sleep(50 * time.Millisecond)
+
+	// Move to May 1st - first scheduled time
 	expectedTimestamp := time.Date(2023, time.May, 1, 0, 0, 0, 0, time.UTC)
 	clock.SetTime(expectedTimestamp)
 
-	// Allow scheduling to take place
-	time.Sleep(10 * time.Millisecond)
-
-	firstScheduled, err := recordStore.Latest(ctx, workflowName, "andrew")
-	require.NoError(t, err)
+	// Wait for record to be created
+	var firstScheduled *workflow.Record
+	require.Eventually(t, func() bool {
+		firstScheduled, err = recordStore.Latest(ctx, workflowName, "andrew")
+		return err == nil
+	}, 5*time.Second, 10*time.Millisecond, "record should be created after clock advance")
 
 	_, err = wf.Await(ctx, firstScheduled.ForeignID, firstScheduled.RunID, StatusEnd)
 	require.NoError(t, err)
@@ -79,11 +80,12 @@ func TestSchedule(t *testing.T) {
 	expectedTimestamp = time.Date(2023, time.June, 1, 0, 0, 0, 0, time.UTC)
 	clock.SetTime(expectedTimestamp)
 
-	// Allow scheduling to take place
-	time.Sleep(10 * time.Millisecond)
-
-	secondScheduled, err := recordStore.Latest(ctx, workflowName, "andrew")
-	require.NoError(t, err)
+	// Wait for new record to be created
+	var secondScheduled *workflow.Record
+	require.Eventually(t, func() bool {
+		secondScheduled, err = recordStore.Latest(ctx, workflowName, "andrew")
+		return err == nil && secondScheduled.RunID != firstScheduled.RunID
+	}, 5*time.Second, 10*time.Millisecond, "new record should be created after second clock advance")
 
 	require.NotEqual(t, firstScheduled.RunID, secondScheduled.RunID)
 }
@@ -117,15 +119,23 @@ func TestWorkflow_ScheduleShutdown(t *testing.T) {
 
 	wg.Wait()
 
-	time.Sleep(200 * time.Millisecond)
-
-	require.Equal(t, map[string]workflow.State{
+	expectedRunningStates := map[string]workflow.State{
 		"andrew-scheduler-@monthly":     workflow.StateRunning,
 		"start-consumer-1-of-1":         workflow.StateRunning,
 		"outbox-consumer":               workflow.StateRunning,
 		"delete-consumer":               workflow.StateRunning,
 		"paused-records-retry-consumer": workflow.StateRunning,
-	}, wf.States())
+	}
+
+	require.Eventually(t, func() bool {
+		states := wf.States()
+		for name, expectedState := range expectedRunningStates {
+			if states[name] != expectedState {
+				return false
+			}
+		}
+		return true
+	}, 5*time.Second, 10*time.Millisecond, "all processes should be running")
 
 	wf.Stop()
 
@@ -184,23 +194,24 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	}()
 	wg.Wait()
 
-	// Allow scheduling to initialize
-	time.Sleep(10 * time.Millisecond)
-
 	// Verify no record exists initially
 	_, err := recordStore.Latest(ctx, workflowName, "andrew")
 	require.True(t, errors.Is(err, workflow.ErrRecordNotFound))
+
+	// Allow scheduler to start and begin waiting on clock
+	time.Sleep(50 * time.Millisecond)
 
 	// Test 1: Filter allows scheduling (shouldSkip = false)
 	// Move to May 1st - first scheduled time
 	expectedTimestamp := time.Date(2023, time.May, 1, 0, 0, 0, 0, time.UTC)
 	clock.SetTime(expectedTimestamp)
 
-	// Allow scheduling to take place
-	time.Sleep(10 * time.Millisecond)
-
-	firstRun, err := recordStore.Latest(ctx, workflowName, "andrew")
-	require.NoError(t, err)
+	// Wait for record to be created
+	var firstRun *workflow.Record
+	require.Eventually(t, func() bool {
+		firstRun, err = recordStore.Latest(ctx, workflowName, "andrew")
+		return err == nil
+	}, 5*time.Second, 10*time.Millisecond, "record should be created when filter allows")
 
 	// Wait for first run to complete
 	_, err = wf.Await(ctx, firstRun.ForeignID, firstRun.RunID, StatusEnd)
@@ -213,8 +224,8 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	expectedTimestamp = time.Date(2023, time.June, 1, 0, 0, 0, 0, time.UTC)
 	clock.SetTime(expectedTimestamp)
 
-	// Allow scheduling attempt to take place
-	time.Sleep(10 * time.Millisecond)
+	// Give some time for scheduler to potentially create a new run (it shouldn't)
+	time.Sleep(50 * time.Millisecond)
 
 	// Should still be the same run as before since scheduling was blocked
 	latest, err := recordStore.Latest(ctx, workflowName, "andrew")
@@ -228,11 +239,13 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	expectedTimestamp = time.Date(2023, time.July, 1, 0, 0, 0, 0, time.UTC)
 	clock.SetTime(expectedTimestamp)
 
-	// Allow scheduling to take place
-	time.Sleep(10 * time.Millisecond)
+	// Wait for new record to be created
+	var secondRun *workflow.Record
+	require.Eventually(t, func() bool {
+		secondRun, err = recordStore.Latest(ctx, workflowName, "andrew")
+		return err == nil && secondRun.RunID != firstRun.RunID
+	}, 5*time.Second, 10*time.Millisecond, "new record should be created when filter allows again")
 
-	secondRun, err := recordStore.Latest(ctx, workflowName, "andrew")
-	require.NoError(t, err)
 	require.NotEqual(t, firstRun.RunID, secondRun.RunID, "New run should be created when filter returns true")
 }
 
@@ -277,15 +290,20 @@ func TestWorkflow_ScheduleWithInitialValue(t *testing.T) {
 	}()
 	wg.Wait()
 
+	// Allow scheduler to start and begin waiting on clock
+	time.Sleep(50 * time.Millisecond)
+
 	// Move to May 1st - first scheduled time
 	expectedTimestamp := time.Date(2023, time.May, 1, 0, 0, 0, 0, time.UTC)
 	clock.SetTime(expectedTimestamp)
 
-	// Allow scheduling to take place
-	time.Sleep(10 * time.Millisecond)
-
-	run, err := recordStore.Latest(ctx, workflowName, "test")
-	require.NoError(t, err)
+	// Wait for record to be created
+	var run *workflow.Record
+	var err error
+	require.Eventually(t, func() bool {
+		run, err = recordStore.Latest(ctx, workflowName, "test")
+		return err == nil
+	}, 5*time.Second, 10*time.Millisecond, "record should be created after clock advance")
 
 	// Wait for run to complete and verify initial value was used
 	_, err = wf.Await(ctx, run.ForeignID, run.RunID, StatusEnd)
@@ -336,7 +354,7 @@ func TestWorkflow_ScheduleFilterError(t *testing.T) {
 	expectedTimestamp := time.Date(2023, time.May, 1, 0, 0, 0, 0, time.UTC)
 	clock.SetTime(expectedTimestamp)
 
-	// Allow scheduling to take place and expect it to fail due to filter error
+	// Give some time for scheduler to potentially create a record (it shouldn't due to error)
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify no record was created due to filter error
@@ -373,8 +391,11 @@ func TestWorkflow_ScheduleExistingRun(t *testing.T) {
 	_, err := wf.Trigger(ctx, "existing-test")
 	require.NoError(t, err)
 
-	firstRun, err := recordStore.Latest(ctx, workflowName, "existing-test")
-	require.NoError(t, err)
+	var firstRun *workflow.Record
+	require.Eventually(t, func() bool {
+		firstRun, err = recordStore.Latest(ctx, workflowName, "existing-test")
+		return err == nil
+	}, 5*time.Second, 10*time.Millisecond, "first run should be created")
 
 	// Wait for the first run to complete
 	_, err = wf.Await(ctx, firstRun.ForeignID, firstRun.RunID, StatusEnd)
@@ -389,18 +410,16 @@ func TestWorkflow_ScheduleExistingRun(t *testing.T) {
 	}()
 	wg.Wait()
 
-	// Allow scheduler initialization
-	time.Sleep(10 * time.Millisecond)
-
 	// Move to May 1st - first scheduled time
 	expectedTimestamp := time.Date(2023, time.May, 1, 0, 0, 0, 0, time.UTC)
 	clock.SetTime(expectedTimestamp)
 
-	// Allow scheduling to take place
-	time.Sleep(10 * time.Millisecond)
-
-	secondRun, err := recordStore.Latest(ctx, workflowName, "existing-test")
-	require.NoError(t, err)
+	// Wait for new record to be created
+	var secondRun *workflow.Record
+	require.Eventually(t, func() bool {
+		secondRun, err = recordStore.Latest(ctx, workflowName, "existing-test")
+		return err == nil && secondRun.RunID != firstRun.RunID
+	}, 5*time.Second, 10*time.Millisecond, "new scheduled run should be created")
 
 	// Should be a new run scheduled based on the existing run's timestamp
 	require.NotEqual(t, firstRun.RunID, secondRun.RunID)

@@ -179,3 +179,118 @@ func Test_runOnce(t *testing.T) {
 		require.Equal(t, expected, stateChanges)
 	})
 }
+
+func TestWorkflow_RunStopRace(t *testing.T) {
+	// This test verifies that calling Run() and Stop() concurrently doesn't cause a data race.
+	// It specifically tests that w.cancel is properly protected by a mutex during concurrent
+	// access from Run() (write) and Stop() (read).
+	// Run with: go test -race
+	
+	ctx := context.Background()
+	
+	// Run multiple iterations to increase the chance of detecting the race condition
+	for i := 0; i < 100; i++ {
+		// Build a minimal workflow using the Builder
+		b := NewBuilder[string, testStatus]("race-test")
+		b.AddStep(statusStart, func(ctx context.Context, r *Run[string, testStatus]) (testStatus, error) {
+			return statusEnd, nil
+		}, statusEnd)
+		
+		wf := b.Build(
+			&noopEventStreamer{},
+			&noopRecordStore{},
+			&noopScheduler{},
+			WithoutOutbox(),
+		)
+		
+		// Start Run in a goroutine - this will write to w.cancel inside once.Do
+		done := make(chan struct{})
+		go func() {
+			wf.Run(ctx)
+			close(done)
+		}()
+		
+		// Immediately call Stop - this reads w.cancel
+		// Without the mutex protection, this would race with the write in Run()
+		wf.Stop()
+
+		// Wait for Run to complete
+		<-done
+
+		// Call Stop again to ensure cleanup of any goroutines that were started.
+		// This handles the case where the first Stop() call happened before Run()
+		// had set the cancel function (so it returned early without stopping anything).
+		wf.Stop()
+	}
+}
+
+// noopScheduler implements RoleScheduler for testing
+type noopScheduler struct{}
+
+func (n *noopScheduler) Await(ctx context.Context, role string) (context.Context, context.CancelFunc, error) {
+	return ctx, func() {}, nil
+}
+
+// noopEventStreamer implements EventStreamer for testing
+type noopEventStreamer struct{}
+
+func (n *noopEventStreamer) NewSender(ctx context.Context, topic string) (EventSender, error) {
+	return &noopEventSender{}, nil
+}
+
+func (n *noopEventStreamer) NewReceiver(ctx context.Context, topic string, consumerName string, opts ...ReceiverOption) (EventReceiver, error) {
+	// Return a receiver that blocks until context is cancelled
+	return &noopEventReceiver{ctx: ctx}, nil
+}
+
+// noopEventSender implements EventSender for testing
+type noopEventSender struct{}
+
+func (n *noopEventSender) Send(ctx context.Context, foreignID string, statusType int, headers map[Header]string) error {
+	return nil
+}
+
+func (n *noopEventSender) Close() error {
+	return nil
+}
+
+// noopEventReceiver implements EventReceiver for testing
+type noopEventReceiver struct {
+	ctx context.Context
+}
+
+func (n *noopEventReceiver) Recv(ctx context.Context) (*Event, Ack, error) {
+	<-ctx.Done()
+	return nil, nil, ctx.Err()
+}
+
+func (n *noopEventReceiver) Close() error {
+	return nil
+}
+
+// noopRecordStore implements RecordStore for testing
+type noopRecordStore struct{}
+
+func (n *noopRecordStore) Store(ctx context.Context, record *Record) error {
+	return nil
+}
+
+func (n *noopRecordStore) Latest(ctx context.Context, workflowName, foreignID string) (*Record, error) {
+	return nil, errors.New("not found")
+}
+
+func (n *noopRecordStore) Lookup(ctx context.Context, id string) (*Record, error) {
+	return nil, errors.New("not found")
+}
+
+func (n *noopRecordStore) List(ctx context.Context, workflowName string, offsetID int64, limit int, order OrderType, filters ...RecordFilter) ([]Record, error) {
+	return nil, nil
+}
+
+func (n *noopRecordStore) ListOutboxEvents(ctx context.Context, workflowName string, limit int64) ([]OutboxEvent, error) {
+	return nil, nil
+}
+
+func (n *noopRecordStore) DeleteOutboxEvent(ctx context.Context, id string) error {
+	return nil
+}

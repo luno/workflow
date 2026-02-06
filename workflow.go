@@ -59,6 +59,7 @@ type API[Type any, Status StatusType] interface {
 type Workflow[Type any, Status StatusType] struct {
 	name      string
 	ctx       context.Context
+	mu        sync.Mutex
 	cancel    context.CancelFunc
 	clock     clock.Clock
 	calledRun bool
@@ -112,9 +113,14 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 	// Ensure that the background consumers are only initialized once
 	w.once.Do(func() {
 		ctx, cancel := context.WithCancel(ctx)
-		w.ctx = ctx
-		w.cancel = cancel
-		w.calledRun = true
+		
+		func() {
+			w.mu.Lock()
+			defer w.mu.Unlock()
+			w.ctx = ctx
+			w.cancel = cancel
+			w.calledRun = true
+		}()
 
 		if !w.outboxConfig.disabled {
 			// Start the outbox consumer
@@ -315,12 +321,16 @@ func runOnce(
 // Stop cancels the context provided to all the background processes that the workflow launched and waits for all of
 // them to shut down gracefully.
 func (w *Workflow[Type, Status]) Stop() {
-	if w.cancel == nil {
+	w.mu.Lock()
+	cancel := w.cancel
+	w.mu.Unlock()
+	
+	if cancel == nil {
 		return
 	}
 
 	// Cancel the parent context of the workflow to gracefully shutdown.
-	w.cancel()
+	cancel()
 
 	for {
 		var runningProcesses int
