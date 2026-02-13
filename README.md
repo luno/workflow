@@ -167,19 +167,25 @@ func main() {
 | **[Core Concepts](docs/concepts.md)** | Understand Runs, Events, and State Machines |
 | **[Architecture](docs/architecture.md)** | Deep dive into system design and components |
 | **[Steps](docs/steps.md)** | Build workflow logic with step functions |
+| **[Adapters](docs/adapters.md)** | Infrastructure integration guide |
+| **[Database Setup](docs/database-setup.md)** | Complete MariaDB/MySQL & PostgreSQL setup guide |
 | **[Callbacks](docs/callbacks.md)** | Handle external events and webhooks |
 | **[Timeouts](docs/timeouts.md)** | Add time-based operations |
 | **[Connectors](docs/connectors.md)** | Integrate with external event streams |
 | **[Hooks](docs/hooks.md)** | React to workflow lifecycle changes |
-| **[Configuration](docs/configuration.md)** | Tune performance and behavior |
+| **[Configuration](docs/configuration.md)** | Tune performance and behaviour |
 | **[Monitoring](docs/monitoring.md)** | Observability and debugging |
-| **[Adapters](docs/adapters.md)** | Infrastructure integration guide |
 
 ### Examples & Tutorials
 
 | Example | Description |
 |---------|-------------|
-| **[Order Processing](docs/examples/order-processing.go)** | Complete e-commerce workflow with payments & fulfillment |
+| **[Getting Started](docs/getting-started.md)** | Your first workflow in 5 minutes |
+| **[SQL Example](_examples/sqlexample)** | Complete MariaDB/MySQL integration with Docker |
+| **[Order Processing](_examples/orderprocessor)** | Complex e-commerce workflow with payments & fulfilment |
+| **[Callbacks](_examples/callback)** | Handle external webhooks and events |
+| **[Timeouts](_examples/timeout)** | Schedule and timeout operations |
+| **[Connectors](_examples/connector)** | Integrate with external event streams |
 
 
 ## Community & Support
