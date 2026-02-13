@@ -93,7 +93,7 @@ func MakeOutboxEventData(record Record) (OutboxEventData, error) {
 		topic = RunStateChangeTopic(record.WorkflowName)
 	}
 
-	headers := make(map[string]string)
+	headers := make(map[string]string, 6)
 	headers[string(HeaderForeignID)] = record.ForeignID
 	headers[string(HeaderWorkflowName)] = record.WorkflowName
 	headers[string(HeaderTopic)] = topic

@@ -127,7 +127,7 @@ func purgeOutbox(
 			return err
 		}
 
-		headers := make(map[Header]string)
+		headers := make(map[Header]string, len(outboxRecord.Headers))
 		for k, v := range outboxRecord.Headers {
 			headers[Header(k)] = v
 		}
