@@ -107,8 +107,8 @@ func main() {
 	fmt.Println("✅ Schema verified")
 	fmt.Println()
 
-	// 5. Create SQL store adapter
-	store := sqlstore.New(db, "workflow_records", "workflow_outbox")
+	// 5. Create SQL store adapter (writer and reader can be the same DB)
+	store := sqlstore.New(db, db, "workflow_records", "workflow_outbox")
 
 	// 6. Build workflow with SQL persistence
 	wf := buildOrderWorkflow(store)
@@ -131,7 +131,7 @@ func main() {
 			i+1, len(orders), order.ID, order.CustomerName, order.Total)
 
 		// Trigger workflow
-		runID, err := wf.Trigger(ctx, order.ID, workflow.WithInitialValue(&order))
+		runID, err := wf.Trigger(ctx, order.ID, workflow.WithInitialValue[Order, OrderStatus](&order))
 		if err != nil {
 			fmt.Printf("   ❌ Failed to trigger workflow: %v\n\n", err)
 			continue
@@ -141,7 +141,7 @@ func main() {
 
 		// Wait for completion with timeout
 		ctxTimeout, cancel := context.WithTimeout(ctx, 10*time.Second)
-		run, err := wf.Await(ctxTimeout, order.ID, runID, OrderCompleted, OrderRejected, OrderPaymentFailed, OrderFulfillmentFailed)
+		run, err := wf.Await(ctxTimeout, order.ID, runID, OrderCompleted)
 		cancel()
 
 		if err != nil {
@@ -149,7 +149,7 @@ func main() {
 			continue
 		}
 
-		// Display result
+		// Display result based on final status
 		switch run.Status {
 		case OrderCompleted:
 			fmt.Printf("   ✅ Order completed! (Tracking: %s)\n", run.Object.TrackingID)
@@ -159,6 +159,8 @@ func main() {
 			fmt.Printf("   💳 Payment failed\n")
 		case OrderFulfillmentFailed:
 			fmt.Printf("   📦 Fulfillment failed\n")
+		default:
+			fmt.Printf("   ℹ️  Order in status: %s\n", run.Status)
 		}
 
 		fmt.Println()

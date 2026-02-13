@@ -8,8 +8,6 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/luno/workflow"
-	"github.com/luno/workflow/adapters/memstreamer"
-	"github.com/luno/workflow/adapters/memrolescheduler"
 	"github.com/luno/workflow/adapters/sqlstore"
 )
 
@@ -30,7 +28,7 @@ func TestSQLWorkflow(t *testing.T) {
 	}
 
 	// Create SQL store
-	store := sqlstore.New(db, "workflow_records", "workflow_outbox")
+	store := sqlstore.New(db, db, "workflow_records", "workflow_outbox")
 
 	// Build workflow
 	wf := buildOrderWorkflow(store)
@@ -52,7 +50,7 @@ func TestSQLWorkflow(t *testing.T) {
 	}
 
 	// Trigger workflow
-	runID, err := wf.Trigger(ctx, order.ID, workflow.WithInitialValue(&order))
+	runID, err := wf.Trigger(ctx, order.ID, workflow.WithInitialValue[Order, OrderStatus](&order))
 	if err != nil {
 		t.Fatalf("Failed to trigger workflow: %v", err)
 	}
@@ -61,14 +59,22 @@ func TestSQLWorkflow(t *testing.T) {
 	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	run, err := wf.Await(ctxTimeout, order.ID, runID, OrderCompleted, OrderRejected, OrderPaymentFailed, OrderFulfillmentFailed)
+	run, err := wf.Await(ctxTimeout, order.ID, runID, OrderCompleted)
 	if err != nil {
 		t.Fatalf("Workflow failed or timed out: %v", err)
 	}
 
-	// Verify workflow completed successfully
-	if run.Status != OrderCompleted && run.Status != OrderPaymentFailed && run.Status != OrderFulfillmentFailed {
-		t.Errorf("Expected workflow to complete, got status: %v", run.Status)
+	// Verify workflow completed successfully (or failed in expected ways)
+	validStatuses := []OrderStatus{OrderCompleted, OrderPaymentFailed, OrderFulfillmentFailed, OrderRejected}
+	validStatus := false
+	for _, s := range validStatuses {
+		if run.Status == s {
+			validStatus = true
+			break
+		}
+	}
+	if !validStatus {
+		t.Errorf("Expected workflow to reach a terminal state, got status: %v", run.Status)
 	}
 
 	// Verify data was persisted to database

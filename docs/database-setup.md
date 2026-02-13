@@ -163,8 +163,8 @@ func main() {
         log.Fatalf("Database ping failed: %v", err)
     }
 
-    // 4. Create sqlstore adapter
-    store := sqlstore.New(db, "workflow_records", "workflow_outbox")
+    // 4. Create sqlstore adapter (writer and reader DB can be the same)
+    store := sqlstore.New(db, db, "workflow_records", "workflow_outbox")
 
     // 5. Build workflow with SQL record store
     b := workflow.NewBuilder[Task, TaskStatus]("task-processor")
@@ -191,7 +191,7 @@ func main() {
     defer wf.Stop()
 
     // 7. Trigger a workflow - data is now persisted in MariaDB!
-    runID, err := wf.Trigger(ctx, "task-1", workflow.WithInitialValue(&Task{
+    runID, err := wf.Trigger(ctx, "task-1", workflow.WithInitialValue[Task, TaskStatus](&Task{
         ID:   "task-1",
         Name: "Process Invoice",
     }))
@@ -461,7 +461,8 @@ func main() {
     }
     defer db.Close()
 
-    store := sqlstore.New(db, "workflow_records", "workflow_outbox")
+    // Create SQL store (writer and reader can be the same DB)
+    store := sqlstore.New(db, db, "workflow_records", "workflow_outbox")
 
     // ... rest of workflow setup
 }
@@ -604,7 +605,7 @@ func TestDatabaseSetup(t *testing.T) {
     }
 
     // Test workflow can write to database
-    store := sqlstore.New(db, "workflow_records", "workflow_outbox")
+    store := sqlstore.New(db, db, "workflow_records", "workflow_outbox")
     
     b := workflow.NewBuilder[string, int]("test-workflow")
     b.AddStep(1, func(ctx context.Context, r *workflow.Run[string, int]) (int, error) {
@@ -617,7 +618,7 @@ func TestDatabaseSetup(t *testing.T) {
     wf.Run(ctx)
     defer wf.Stop()
 
-    runID, err := wf.Trigger(ctx, "test-1", workflow.WithInitialValue("test data"))
+    runID, err := wf.Trigger(ctx, "test-1", workflow.WithInitialValue[string, int]("test data"))
     if err != nil {
         t.Fatalf("Trigger failed: %v", err)
     }

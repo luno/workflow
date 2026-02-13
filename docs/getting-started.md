@@ -262,7 +262,7 @@ db.SetMaxIdleConns(5)
 db.SetConnMaxLifetime(5 * time.Minute)
 
 // Create SQL store adapter
-store := sqlstore.New(db, "workflow_records", "workflow_outbox")
+store := sqlstore.New(db, db, "workflow_records", "workflow_outbox")
 
 // Build workflow with SQL persistence (instead of memrecordstore)
 wf := b.Build(

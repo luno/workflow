@@ -98,11 +98,11 @@ type RecordStore interface {
 ```go
 // PostgreSQL for production
 db, err := sql.Open("postgres", "postgres://user:pass@host/db")
-store := sqlstore.New(db, "workflow_records", "workflow_outbox")
+store := sqlstore.New(db, db, "workflow_records", "workflow_outbox")
 
 // MariaDB/MySQL for production
 db, err := sql.Open("mysql", "user:pass@tcp(localhost:3306)/workflow_db?parseTime=true")
-store := sqlstore.New(db, "workflow_records", "workflow_outbox")
+store := sqlstore.New(db, db, "workflow_records", "workflow_outbox")
 
 // Memory for development
 store := memrecordstore.New()
