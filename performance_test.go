@@ -123,9 +123,9 @@ func BenchmarkPushLagMetric(b *testing.B) {
 	}
 }
 
-// BenchmarkStringOperations benchmarks common string operations
+// BenchmarkStringOperations benchmarks common string conversion approaches
 func BenchmarkStringOperations(b *testing.B) {
-	b.Run("Sprintf", func(b *testing.B) {
+	b.Run("FormatInt", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			_ = strconv.FormatInt(int64(i), 10)
 		}
