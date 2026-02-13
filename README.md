@@ -142,8 +142,8 @@ func main() {
         Name: "Process Invoice",
     }))
 
-    // Wait for completion
-    wf.Await(ctx, "task-1", runID, TaskStatusCompleted)
+    // Wait for completion (any terminal status)
+    wf.WaitForComplete(ctx, "task-1", runID)
     fmt.Println("✅ Workflow completed!")
 }
 ```
