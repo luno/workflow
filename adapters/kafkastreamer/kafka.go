@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/IBM/sarama"
@@ -204,15 +205,16 @@ func newMessageProcessor(ctx context.Context) *msgProcessor {
 	return &msgProcessor{
 		ctx:      ctx,
 		ready:    make(chan bool, 1),
-		iterator: make(chan func() (*workflow.Event, workflow.Ack, error)),
+		iterator: make(chan func() (*workflow.Event, workflow.Ack, error), 100),
 	}
 }
 
 // msgProcessor implements the sarama.ConsumerGroupHandler interface
 type msgProcessor struct {
-	ctx      context.Context
-	ready    chan bool
-	iterator chan func() (*workflow.Event, workflow.Ack, error)
+	ctx       context.Context
+	ready     chan bool
+	readyOnce sync.Once
+	iterator  chan func() (*workflow.Event, workflow.Ack, error)
 }
 
 func (mp *msgProcessor) Setup(_ sarama.ConsumerGroupSession) error   { return nil }
@@ -220,7 +222,9 @@ func (mp *msgProcessor) Cleanup(_ sarama.ConsumerGroupSession) error { return ni
 
 // ConsumeClaim processes messages from Kafka
 func (mp *msgProcessor) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
-	mp.ready <- true
+	mp.readyOnce.Do(func() {
+		mp.ready <- true
+	})
 
 	for {
 		select {
@@ -254,7 +258,7 @@ func consume(
 		}
 
 		event := &workflow.Event{
-			ID:        m.Offset + 1,
+			ID:        m.Offset,
 			ForeignID: string(m.Key),
 			Type:      int(statusType),
 			Headers:   headers,
