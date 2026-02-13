@@ -88,12 +88,13 @@ func pollTimeouts[Type any, Status StatusType](
 					processName,
 					pauseAfterErrCount,
 				)
+				
+				// Record latency regardless of success or failure
+				metrics.ProcessLatency.WithLabelValues(w.Name(), processName).Observe(w.clock.Since(t0).Seconds())
+				
 				if err != nil {
-					metrics.ProcessLatency.WithLabelValues(w.Name(), processName).Observe(w.clock.Since(t0).Seconds())
 					return err
 				}
-
-				metrics.ProcessLatency.WithLabelValues(w.Name(), processName).Observe(w.clock.Since(t0).Seconds())
 			}
 		}
 
