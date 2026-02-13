@@ -19,6 +19,27 @@ func BenchmarkMakeRole(b *testing.B) {
 	}
 }
 
+// BenchmarkTopicFunctions benchmarks topic name generation
+func BenchmarkTopicFunctions(b *testing.B) {
+	b.Run("Topic", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_ = Topic("my-workflow-name", 123)
+		}
+	})
+	
+	b.Run("DeleteTopic", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_ = DeleteTopic("my-workflow-name")
+		}
+	})
+	
+	b.Run("RunStateChangeTopic", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_ = RunStateChangeTopic("my-workflow-name")
+		}
+	})
+}
+
 // BenchmarkMetricLabels benchmarks metric label creation
 func BenchmarkMetricLabels(b *testing.B) {
 	counter := prometheus.NewCounterVec(
@@ -113,6 +134,33 @@ func BenchmarkStringOperations(b *testing.B) {
 	b.Run("Itoa", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			_ = strconv.Itoa(i)
+		}
+	})
+}
+
+// BenchmarkMapAllocation benchmarks map allocation patterns
+func BenchmarkMapAllocation(b *testing.B) {
+	b.Run("NoCapacity", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			m := make(map[string]string)
+			m["a"] = "1"
+			m["b"] = "2"
+			m["c"] = "3"
+			m["d"] = "4"
+			m["e"] = "5"
+			m["f"] = "6"
+		}
+	})
+	
+	b.Run("WithCapacity", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			m := make(map[string]string, 6)
+			m["a"] = "1"
+			m["b"] = "2"
+			m["c"] = "3"
+			m["d"] = "4"
+			m["e"] = "5"
+			m["f"] = "6"
 		}
 	})
 }
