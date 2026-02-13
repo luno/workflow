@@ -230,6 +230,10 @@ func TestEventIDUsesOffset(t *testing.T) {
 		{"offset 100", 100},
 		{"offset 999", 999},
 		{"large offset", 123456789},
+		// Note: Kafka offsets are typically non-negative in production, but we test
+		// negative offsets to ensure the code doesn't transform or validate the value.
+		// The Event.ID should exactly match whatever offset Kafka provides.
+		{"negative offset", -1},
 	}
 
 	for _, tc := range testCases {
