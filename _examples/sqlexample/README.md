@@ -49,7 +49,7 @@ Connect to MariaDB and query the workflow data:
 
 ```bash
 # Connect to MariaDB
-docker exec -it sqlexample-mariadb-1 mysql -uworkflow_user -pworkflow_pass workflow_db
+docker exec -it sqlexample-mariadb mysql -uworkflow_user -pworkflow_pass workflow_db
 
 # Query workflow records
 SELECT workflow_name, foreign_id, run_id, run_state, status, created_at 
@@ -214,16 +214,16 @@ If events are accumulating:
 
 ```bash
 # Backup all workflow data
-docker exec sqlexample-mariadb-1 mysqldump -uworkflow_user -pworkflow_pass workflow_db > backup.sql
+docker exec sqlexample-mariadb mysqldump -uworkflow_user -pworkflow_pass workflow_db > backup.sql
 
 # Backup just workflow tables
-docker exec sqlexample-mariadb-1 mysqldump -uworkflow_user -pworkflow_pass workflow_db workflow_records workflow_outbox > backup.sql
+docker exec sqlexample-mariadb mysqldump -uworkflow_user -pworkflow_pass workflow_db workflow_records workflow_outbox > backup.sql
 ```
 
 **Restore:**
 
 ```bash
-docker exec -i sqlexample-mariadb-1 mysql -uworkflow_user -pworkflow_pass workflow_db < backup.sql
+docker exec -i sqlexample-mariadb mysql -uworkflow_user -pworkflow_pass workflow_db < backup.sql
 ```
 
 ## Troubleshooting
@@ -240,7 +240,7 @@ docker-compose logs mariadb
 
 Run schema creation:
 ```bash
-docker exec -i sqlexample-mariadb-1 mysql -uworkflow_user -pworkflow_pass workflow_db < schema.sql
+docker exec -i sqlexample-mariadb mysql -uworkflow_user -pworkflow_pass workflow_db < schema.sql
 ```
 
 ### "Too many connections"
