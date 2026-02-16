@@ -1,6 +1,8 @@
 # Adapters
 
-Adapters make Workflow infrastructure-agnostic by providing standardized interfaces for different technology stacks. This guide explains how adapters work, which ones are available, and how to choose the right combination for your needs.
+Adapters make Workflow infrastructure-agnostic by providing standardised interfaces for different technology stacks. This guide explains how adapters work, which ones are available, and how to choose the right combination for your needs.
+
+> **💡 Getting Started with SQL?** Check out the **[Database Setup Guide](database-setup.md)** for complete MariaDB/MySQL and PostgreSQL setup instructions with connection strings, schema creation, and performance tuning.
 
 ## Adapter Architecture
 
@@ -96,7 +98,11 @@ type RecordStore interface {
 ```go
 // PostgreSQL for production
 db, err := sql.Open("postgres", "postgres://user:pass@host/db")
-store := sqlstore.New(db, "workflow_records", "workflow_outbox")
+store := sqlstore.New(db, db, "workflow_records", "workflow_outbox")
+
+// MariaDB/MySQL for production
+db, err := sql.Open("mysql", "user:pass@tcp(localhost:3306)/workflow_db?parseTime=true")
+store := sqlstore.New(db, db, "workflow_records", "workflow_outbox")
 
 // Memory for development
 store := memrecordstore.New()

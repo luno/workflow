@@ -205,10 +205,97 @@ You'll see output like:
 Now that you have a basic workflow running, explore these topics:
 
 - **[Core Concepts](concepts.md)** - Understand Runs, Events, and State Machines
+- **[Moving to Production](#moving-to-production)** - Use SQL databases and production adapters
 - **[Callbacks](callbacks.md)** - Handle external events and webhooks
 - **[Timeouts](timeouts.md)** - Add time-based operations
-- **[Production Deployment](deployment.md)** - Move beyond in-memory adapters
-- **[Examples](examples/)** - See real-world workflow patterns
+- **[Examples](../_examples/)** - See real-world workflow patterns
+
+## Moving to Production
+
+The example above uses in-memory adapters, which are great for learning but don't persist data. For production, you'll want to use SQL databases and production-grade adapters.
+
+### Quick Migration: Memory → SQL
+
+**1. Set up your database** (MariaDB, MySQL, or PostgreSQL):
+
+```bash
+# See the Database Setup Guide for detailed instructions
+# Quick start with Docker:
+docker run -d \
+  --name workflow-db \
+  -p 3306:3306 \
+  -e MYSQL_ROOT_PASSWORD=password \
+  -e MYSQL_DATABASE=workflow_db \
+  -e MYSQL_USER=workflow_user \
+  -e MYSQL_PASSWORD=workflow_pass \
+  mariadb:11
+```
+
+**2. Create the schema:**
+
+```sql
+-- See adapters/sqlstore/schema.sql for the complete schema
+CREATE TABLE workflow_records (...);
+CREATE TABLE workflow_outbox (...);
+```
+
+**3. Update your code** - just swap the adapters:
+
+```go
+import (
+    "database/sql"
+    _ "github.com/go-sql-driver/mysql"
+    "github.com/luno/workflow/adapters/sqlstore"
+)
+
+// Connect to database
+db, err := sql.Open("mysql", 
+    "workflow_user:workflow_pass@tcp(localhost:3306)/workflow_db?parseTime=true")
+if err != nil {
+    log.Fatal(err)
+}
+defer db.Close()
+
+// Configure connection pool
+db.SetMaxOpenConns(25)
+db.SetMaxIdleConns(5)
+db.SetConnMaxLifetime(5 * time.Minute)
+
+// Create SQL store adapter
+store := sqlstore.New(db, db, "workflow_records", "workflow_outbox")
+
+// Build workflow with SQL persistence (instead of memrecordstore)
+wf := b.Build(
+    memstreamer.New(),     // Still using memory for events (or use kafkastreamer)
+    store,                 // Now using SQL! ✅
+    memrolescheduler.New(),
+)
+```
+
+That's it! Your workflows are now persisted to SQL. See the **[Database Setup Guide](database-setup.md)** for:
+- Complete MariaDB/MySQL and PostgreSQL setup
+- Connection string examples
+- Performance tuning
+- Production best practices
+- Troubleshooting
+
+### Complete Production Example
+
+See the **[SQL Example](../_examples/sqlexample)** for a full working example with:
+- Docker Compose setup for MariaDB
+- Complete order processing workflow
+- Database queries and monitoring
+- Performance tuning
+
+### Production Adapter Combinations
+
+| Environment | EventStreamer | RecordStore | RoleScheduler |
+|-------------|---------------|-------------|---------------|
+| **Development** | memstreamer | memrecordstore | memrolescheduler |
+| **Single Instance** | kafkastreamer | sqlstore | memrolescheduler |
+| **Distributed** | kafkastreamer | sqlstore | rinkrolescheduler |
+
+Learn more about adapters in the **[Adapters Guide](adapters.md)**.
 
 ## Common Patterns
 
