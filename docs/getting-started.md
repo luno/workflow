@@ -147,7 +147,7 @@ func main() {
 
         // Wait for completion (with timeout)
         ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-        run, err := wf.Await(ctx, task.ID, runID, TaskStatusCompleted)
+        run, err := wf.WaitForComplete(ctx, task.ID, runID)
         cancel()
 
         if err != nil {

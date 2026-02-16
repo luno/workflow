@@ -16,11 +16,27 @@ A **Workflow** is a definition of how data should flow through a series of steps
 type Workflow[Order, OrderStatus] interface {
     Trigger(ctx context.Context, foreignID string, opts ...TriggerOption) (string, error)
     Await(ctx context.Context, foreignID, runID string, status OrderStatus) (*Run[Order, OrderStatus], error)
+    WaitForComplete(ctx context.Context, foreignID, runID string, opts ...AwaitOption) (*Run[Order, OrderStatus], error)
     Callback(ctx context.Context, foreignID string, status OrderStatus, payload io.Reader) error
     Run(ctx context.Context)
     Stop()
 }
 ```
+
+### Await vs WaitForComplete
+
+The Workflow interface provides two methods for waiting for workflow completion:
+
+- **`Await()`**: Waits for a specific status to be reached. Useful when you need to wait for intermediate steps or when you have multiple terminal statuses and care which one is reached.
+  ```go
+  run, err := wf.Await(ctx, foreignID, runID, OrderStatusCompleted)
+  ```
+
+- **`WaitForComplete()`**: Waits for any terminal status to be reached. Simpler to use when you just want to know when the workflow finishes, regardless of which terminal status is reached.
+  ```go
+  run, err := wf.WaitForComplete(ctx, foreignID, runID)
+  // run.Status contains whichever terminal status was reached
+  ```
 
 ## Runs
 
