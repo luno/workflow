@@ -326,7 +326,9 @@ func displayDatabaseStats(db *sql.DB) {
 		FROM workflow_outbox 
 		WHERE workflow_name = 'order-processor'
 	`).Scan(&outboxCount)
-	if err == nil {
+	if err != nil {
+		fmt.Printf("\nFailed to query outbox count: %v\n", err)
+	} else {
 		fmt.Printf("\nPending Outbox Events: %d\n", outboxCount)
 	}
 
@@ -337,7 +339,9 @@ func displayDatabaseStats(db *sql.DB) {
 		FROM workflow_records 
 		WHERE workflow_name = 'order-processor'
 	`).Scan(&totalRecords)
-	if err == nil {
+	if err != nil {
+		fmt.Printf("Failed to query total records: %v\n", err)
+	} else {
 		fmt.Printf("Total Records: %d\n", totalRecords)
 	}
 }
