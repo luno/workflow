@@ -9,3 +9,6 @@
 
 # Output of go coverage
 *.out
+
+# Test binaries
+*.test
