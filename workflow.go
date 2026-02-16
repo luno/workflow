@@ -113,7 +113,7 @@ func (w *Workflow[Type, Status]) Run(ctx context.Context) {
 	// Ensure that the background consumers are only initialized once
 	w.once.Do(func() {
 		ctx, cancel := context.WithCancel(ctx)
-		
+
 		func() {
 			w.mu.Lock()
 			defer w.mu.Unlock()
@@ -324,7 +324,7 @@ func (w *Workflow[Type, Status]) Stop() {
 	w.mu.Lock()
 	cancel := w.cancel
 	w.mu.Unlock()
-	
+
 	if cancel == nil {
 		return
 	}

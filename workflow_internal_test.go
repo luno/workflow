@@ -185,9 +185,9 @@ func TestWorkflow_RunStopRace(t *testing.T) {
 	// It specifically tests that w.cancel is properly protected by a mutex during concurrent
 	// access from Run() (write) and Stop() (read).
 	// Run with: go test -race
-	
+
 	ctx := context.Background()
-	
+
 	// Run multiple iterations to increase the chance of detecting the race condition
 	for i := 0; i < 100; i++ {
 		// Build a minimal workflow using the Builder
@@ -195,21 +195,21 @@ func TestWorkflow_RunStopRace(t *testing.T) {
 		b.AddStep(statusStart, func(ctx context.Context, r *Run[string, testStatus]) (testStatus, error) {
 			return statusEnd, nil
 		}, statusEnd)
-		
+
 		wf := b.Build(
 			&noopEventStreamer{},
 			&noopRecordStore{},
 			&noopScheduler{},
 			WithoutOutbox(),
 		)
-		
+
 		// Start Run in a goroutine - this will write to w.cancel inside once.Do
 		done := make(chan struct{})
 		go func() {
 			wf.Run(ctx)
 			close(done)
 		}()
-		
+
 		// Immediately call Stop - this reads w.cancel
 		// Without the mutex protection, this would race with the write in Run()
 		wf.Stop()
