@@ -124,7 +124,7 @@ stateDiagram-v2
     {{$value.From}} --> {{$value.From}}_branching
 	{{- range $index, $to := $value.To }}
     {{$value.From}}_branching --> {{$to}}
-	{{- end}} 
+	{{- end}}
 	{{ else }}
 	{{$value.From}}-->{{index $value.To 0}}
 	{{- end}}
