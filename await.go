@@ -27,6 +27,28 @@ func (w *Workflow[Type, Status]) Await(
 	return awaitWorkflowStatusByForeignID[Type, Status](ctx, w, status, foreignID, runID, role, pollFrequency)
 }
 
+// WaitForComplete waits for the workflow to reach any completed (terminal) status.
+// Unlike Await, it does not require the user to specify a particular step/status.
+// It waits for the workflow to reach any status that is terminal based on the underlying graph.
+func (w *Workflow[Type, Status]) WaitForComplete(
+	ctx context.Context,
+	foreignID, runID string,
+	opts ...AwaitOption,
+) (*Run[Type, Status], error) {
+	var opt awaitOpts
+	for _, option := range opts {
+		option(&opt)
+	}
+
+	pollFrequency := w.defaultOpts.pollingFrequency
+	if opt.pollFrequency > 0 {
+		pollFrequency = opt.pollFrequency
+	}
+
+	role := makeRole("wait-for-complete", w.Name(), foreignID)
+	return awaitWorkflowCompletion[Type, Status](ctx, w, foreignID, runID, role, pollFrequency)
+}
+
 func awaitWorkflowStatusByForeignID[Type any, Status StatusType](
 	ctx context.Context,
 	w *Workflow[Type, Status],
@@ -87,6 +109,90 @@ func awaitWorkflowStatusByForeignID[Type any, Status StatusType](
 			continue
 		} else if err != nil {
 			return nil, err
+		}
+
+		var t Type
+		err = Unmarshal(r.Object, &t)
+		if err != nil {
+			return nil, err
+		}
+
+		return &Run[Type, Status]{
+			TypedRecord: TypedRecord[Type, Status]{
+				Record: *r,
+				Status: Status(r.Status),
+				Object: &t,
+			},
+			controller: NewRunStateController(w.recordStore.Store, r),
+		}, ack()
+	}
+}
+
+func awaitWorkflowCompletion[Type any, Status StatusType](
+	ctx context.Context,
+	w *Workflow[Type, Status],
+	foreignID, runID string,
+	role string,
+	pollFrequency time.Duration,
+) (*Run[Type, Status], error) {
+	// Wait on RunStateChangeTopic as terminal statuses result in RunState changing to Completed
+	topic := RunStateChangeTopic(w.Name())
+
+	stream, err := w.eventStreamer.NewReceiver(
+		ctx,
+		topic,
+		role,
+		WithReceiverPollFrequency(pollFrequency),
+		StreamFromLatest(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer stream.Close()
+
+	for {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+
+		e, ack, err := stream.Recv(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		shouldFilter := FilterUsing(e,
+			filterByForeignID(foreignID),
+			filterByRunID(runID),
+		)
+		if shouldFilter {
+			err = ack()
+			if err != nil {
+				return nil, err
+			}
+
+			continue
+		}
+
+		r, err := w.recordStore.Lookup(ctx, e.ForeignID)
+		if errors.Is(err, ErrRecordNotFound) {
+			err = ack()
+			if err != nil {
+				return nil, err
+			}
+
+			continue
+		} else if err != nil {
+			return nil, err
+		}
+
+		// Check if the workflow has reached a completed state
+		if r.RunState != RunStateCompleted {
+			err = ack()
+			if err != nil {
+				return nil, err
+			}
+
+			continue
 		}
 
 		var t Type

@@ -395,7 +395,7 @@ func TestWorkflowEndToEnd(t *testing.T) {
     wf.Run(ctx)
 
     runID, _ := wf.Trigger(ctx, "order-123", workflow.WithInitialValue(order))
-    run, err := wf.Await(ctx, "order-123", runID, OrderCompleted)
+    run, err := wf.WaitForComplete(ctx, "order-123", runID)
 
     assert.NoError(t, err)
     assert.Equal(t, OrderCompleted, run.Status)

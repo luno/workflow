@@ -488,6 +488,100 @@ func TestOrderProcessingIntegration(t *testing.T) {
 }
 ```
 
+### Waiting for Workflow Completion
+
+Workflow provides two methods for waiting for workflows to reach a specific state:
+
+#### WaitForComplete - Simple Completion Waiting
+
+Use `WaitForComplete()` when you just want to wait for the workflow to finish, regardless of which terminal status it reaches:
+
+```go
+func TestOrderProcessing(t *testing.T) {
+    wf := NewOrderWorkflow()
+    defer wf.Stop()
+
+    ctx := context.Background()
+    wf.Run(ctx)
+
+    runID, err := wf.Trigger(ctx, "order-123")
+    require.NoError(t, err)
+
+    // Wait for any terminal status
+    run, err := wf.WaitForComplete(ctx, "order-123", runID)
+    require.NoError(t, err)
+    
+    // Check which terminal status was reached
+    switch run.Status {
+    case OrderCompleted:
+        assert.NotNil(t, run.Object.CompletedAt)
+    case OrderCancelled:
+        assert.NotNil(t, run.Object.CancelledReason)
+    }
+}
+```
+
+**Benefits:**
+- Simpler API - no need to specify the expected status
+- Works with workflows that have multiple terminal statuses
+- Ideal for most testing scenarios
+
+#### Await - Specific Status Waiting
+
+Use `Await()` when you need to:
+- Wait for a specific intermediate status
+- Assert that a particular terminal status is reached
+- Validate workflow state at specific points
+
+```go
+func TestOrderSteps(t *testing.T) {
+    wf := NewOrderWorkflow()
+    defer wf.Stop()
+
+    ctx := context.Background()
+    wf.Run(ctx)
+
+    runID, err := wf.Trigger(ctx, "order-123")
+    require.NoError(t, err)
+
+    // Wait for intermediate step
+    run, err := wf.Await(ctx, "order-123", runID, PaymentProcessed)
+    require.NoError(t, err)
+    assert.NotNil(t, run.Object.ChargedAt)
+    
+    // Verify payment was charged before continuing
+    assert.Greater(t, run.Object.ChargedAt, time.Now().Add(-time.Minute))
+
+    // Wait for specific terminal status
+    run, err = wf.Await(ctx, "order-123", runID, OrderCompleted)
+    require.NoError(t, err)
+    assert.Equal(t, OrderCompleted, run.Status)
+}
+```
+
+**Use Await when:**
+- Testing multi-step workflows and need to validate intermediate states
+- Ensuring a specific terminal status is reached (not just any completion)
+- Debugging workflows by checking state at each step
+
+**Common patterns:**
+
+```go
+// Pattern 1: Wait for completion with timeout
+ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+defer cancel()
+run, err := wf.WaitForComplete(ctx, foreignID, runID)
+
+// Pattern 2: Validate intermediate steps
+run, err := wf.Await(ctx, foreignID, runID, IntermediateStatus)
+require.NoError(t, err)
+// Assert something about run.Object at this intermediate state
+
+// Pattern 3: Poll frequency control
+run, err := wf.WaitForComplete(ctx, foreignID, runID, 
+    workflow.WithAwaitPollingFrequency(100*time.Millisecond))
+```
+
 ## Best Practices
 
 ### 1. Keep Steps Small and Focused

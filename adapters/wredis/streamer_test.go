@@ -40,4 +40,3 @@ func TestRedisEventStreamer(t *testing.T) {
 
 	adaptertest.RunEventStreamerTest(t, factory)
 }
-
