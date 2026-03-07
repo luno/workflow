@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/IBM/sarama"
@@ -102,7 +103,7 @@ func newConnectorProcessor(ctx context.Context, translator Translator) *connecto
 		ctx:        ctx,
 		ready:      make(chan bool, 1),
 		translator: translator,
-		iterator:   make(chan func() (*workflow.ConnectorEvent, workflow.Ack, error)),
+		iterator:   make(chan func() (*workflow.ConnectorEvent, workflow.Ack, error), 100),
 	}
 }
 
@@ -110,6 +111,7 @@ func newConnectorProcessor(ctx context.Context, translator Translator) *connecto
 type connectorProcessor struct {
 	ctx        context.Context
 	ready      chan bool
+	readyOnce  sync.Once
 	translator Translator
 	iterator   chan func() (*workflow.ConnectorEvent, workflow.Ack, error)
 }
@@ -119,7 +121,9 @@ func (cp *connectorProcessor) Cleanup(_ sarama.ConsumerGroupSession) error { ret
 
 // ConsumeClaim processes messages from Kafka
 func (cp *connectorProcessor) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
-	cp.ready <- true
+	cp.readyOnce.Do(func() {
+		cp.ready <- true
+	})
 
 	for {
 		select {
@@ -128,18 +132,6 @@ func (cp *connectorProcessor) ConsumeClaim(session sarama.ConsumerGroupSession, 
 			case cp.iterator <- consumeConnectorEvent(session, m, cp.translator):
 			case <-cp.ctx.Done():
 				return cp.ctx.Err()
-			}
-		case <-cp.ctx.Done():
-			return nil
-		case <-session.Context().Done():
-			return nil
-
-		case m := <-claim.Messages():
-			cp.iterator <- func() (*workflow.ConnectorEvent, workflow.Ack, error) {
-				return cp.translator(m), func() error {
-					session.MarkMessage(m, "")
-					return nil
-				}, nil
 			}
 		case <-cp.ctx.Done():
 			return nil
