@@ -10,84 +10,67 @@ import (
 )
 
 func TestErrorCounter(t *testing.T) {
-	testCases := []struct {
-		name           string
-		inputErr       error
-		labels         []string
-		iterationCount int
-		expectedCount  int
-	}{
-		{
-			name:           "Add 3 and get 3",
-			inputErr:       errors.New("test error"),
-			labels:         []string{"label 1", "label 2"},
-			iterationCount: 3,
-			expectedCount:  3,
-		},
-		{
-			name:           "Add 1 and get 1 - no labels",
-			inputErr:       errors.New("test error"),
-			labels:         []string{},
-			iterationCount: 3,
-			expectedCount:  3,
-		},
-		{
-			name:           "Add 0 and get 0",
-			inputErr:       errors.New("test error"),
-			labels:         []string{"label 1"},
-			iterationCount: 0,
-			expectedCount:  0,
-		},
-	}
+	t.Run("Add 3 and get 3", func(t *testing.T) {
+		c := errorcounter.New()
+		err := errors.New("test error")
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			c := errorcounter.New()
+		c.Add(err, "label 1", "label 2")
+		c.Add(err, "label 1", "label 2")
+		count := c.Add(err, "label 1", "label 2")
+		require.Equal(t, 3, count)
 
-			var currentCount int
-			for i := 0; i < tc.iterationCount; i++ {
-				currentCount = c.Add(tc.inputErr, tc.labels...)
-			}
-			require.Equal(t, tc.expectedCount, currentCount)
+		require.Equal(t, 3, c.Count(err, "label 1", "label 2"))
 
-			count := c.Count(tc.inputErr, tc.labels...)
-			require.Equal(t, tc.expectedCount, count)
+		c.Clear(err, "label 1", "label 2")
+		require.Equal(t, 0, c.Count(err, "label 1", "label 2"))
+	})
 
-			c.Clear(tc.inputErr, tc.labels...)
-			count = c.Count(tc.inputErr, tc.labels...)
-			require.Equal(t, 0, count)
-		})
-	}
+	t.Run("Single label", func(t *testing.T) {
+		c := errorcounter.New()
+		err := errors.New("test error")
+
+		c.Add(err, "only-label")
+		count := c.Add(err, "only-label")
+		require.Equal(t, 2, count)
+
+		require.Equal(t, 2, c.Count(err, "only-label"))
+
+		c.Clear(err, "only-label")
+		require.Equal(t, 0, c.Count(err, "only-label"))
+	})
+
+	t.Run("Add 0 and get 0", func(t *testing.T) {
+		c := errorcounter.New()
+		require.Equal(t, 0, c.Count(errors.New("test error"), "label 1"))
+	})
 }
 
 func TestErrorCounter_DifferentErrorsSameLabels(t *testing.T) {
 	c := errorcounter.New()
-	labels := []string{"processName", "run-123"}
 
 	// Different error messages with the same labels should share a counter.
-	c.Add(errors.New("connection refused at 10:00:01"), labels...)
-	c.Add(errors.New("connection refused at 10:00:02"), labels...)
-	count := c.Add(errors.New("timeout after 30s"), labels...)
+	c.Add(errors.New("connection refused at 10:00:01"), "processName", "run-123")
+	c.Add(errors.New("connection refused at 10:00:02"), "processName", "run-123")
+	count := c.Add(errors.New("timeout after 30s"), "processName", "run-123")
 
 	require.Equal(t, 3, count)
 
 	// Count should work regardless of which error is passed.
-	require.Equal(t, 3, c.Count(errors.New("completely different error"), labels...))
+	require.Equal(t, 3, c.Count(errors.New("completely different error"), "processName", "run-123"))
 }
 
 func TestErrorCounter_ClearRemovesKey(t *testing.T) {
 	c := errorcounter.New()
-	labels := []string{"process", "run-1"}
 
-	c.Add(errors.New("err"), labels...)
-	c.Add(errors.New("err"), labels...)
-	require.Equal(t, 2, c.Count(errors.New("err"), labels...))
+	c.Add(errors.New("err"), "process", "run-1")
+	c.Add(errors.New("err"), "process", "run-1")
+	require.Equal(t, 2, c.Count(errors.New("err"), "process", "run-1"))
 
-	c.Clear(errors.New("err"), labels...)
+	c.Clear(errors.New("err"), "process", "run-1")
 
 	// After clear, count should be 0 and next Add should return 1.
-	require.Equal(t, 0, c.Count(errors.New("err"), labels...))
-	require.Equal(t, 1, c.Add(errors.New("err"), labels...))
+	require.Equal(t, 0, c.Count(errors.New("err"), "process", "run-1"))
+	require.Equal(t, 1, c.Add(errors.New("err"), "process", "run-1"))
 }
 
 func TestErrorCounter_DifferentLabelsSeparateCounters(t *testing.T) {
