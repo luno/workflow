@@ -13,9 +13,10 @@ import (
 const (
 	defaultListLimit = 25
 	// Key prefixes
-	recordKeyPrefix = "workflow:record:"
-	indexKeyPrefix  = "workflow:index:"
-	outboxKeyPrefix = "workflow:outbox:"
+	recordKeyPrefix        = "workflow:record:"
+	indexKeyPrefix         = "workflow:index:"
+	outboxKeyPrefix        = "workflow:outbox:"
+	outboxReverseKeyPrefix = "workflow:outbox-reverse:"
 )
 
 type Store struct {
@@ -38,11 +39,13 @@ var (
 		local list_key = KEYS[3]
 		local global_list_key = KEYS[4]
 		local outbox_key = KEYS[5]
+		local reverse_index_key = KEYS[6]
 
 		local record_data = ARGV[1]
 		local run_id = ARGV[2]
 		local score = ARGV[3]
 		local outbox_data = ARGV[4]
+		local outbox_event_id = ARGV[5]
 
 		-- Store record
 		redis.call('SET', record_key, record_data)
@@ -56,6 +59,9 @@ var (
 
 		-- Add to outbox
 		redis.call('LPUSH', outbox_key, outbox_data)
+
+		-- Store reverse index: outbox event ID -> workflow outbox key
+		redis.call('SET', reverse_index_key, outbox_key)
 
 		return 'OK'
 	`)
@@ -114,13 +120,14 @@ func (s *Store) Store(ctx context.Context, record *workflow.Record) error {
 	listKey := "workflow:list:" + record.WorkflowName
 	globalListKey := "workflow:list:all"
 	outboxKey := outboxKeyPrefix + record.WorkflowName
+	reverseIndexKey := outboxReverseKeyPrefix + eventData.ID
 
 	score := strconv.FormatFloat(float64(record.CreatedAt.Unix()), 'f', -1, 64)
 
 	// Execute Lua script atomically
 	return storeScript.Run(ctx, s.client,
-		[]string{recordKey, indexKey, listKey, globalListKey, outboxKey},
-		string(recordData), record.RunID, score, string(outboxData)).Err()
+		[]string{recordKey, indexKey, listKey, globalListKey, outboxKey, reverseIndexKey},
+		string(recordData), record.RunID, score, string(outboxData), eventData.ID).Err()
 }
 
 // Lookup implements the RecordStore interface
@@ -283,48 +290,30 @@ func (s *Store) ListOutboxEvents(ctx context.Context, workflowName string, limit
 
 // DeleteOutboxEvent implements the RecordStore interface
 func (s *Store) DeleteOutboxEvent(ctx context.Context, id string) error {
-	// We need to check all workflow outbox lists to find the event with this ID
-	// Since we don't know which workflow this event belongs to, we'll need to check all of them
-	// For production use, you should maintain a reverse index (outboxEventID → workflowName)
-	// or include workflowName in the event ID to target the single outbox key directly
+	reverseKey := outboxReverseKeyPrefix + id
 
-	// Use SCAN instead of KEYS to avoid blocking Redis
-	pattern := outboxKeyPrefix + "*"
-	var cursor uint64
-	var luaErrors []error
-
-	for {
-		keys, nextCursor, err := s.client.Scan(ctx, cursor, pattern, 10).Result()
-		if err != nil {
-			return err
-		}
-
-		// Try to delete from each outbox list using the Lua script
-		for _, outboxKey := range keys {
-			result, err := deleteOutboxScript.Run(ctx, s.client, []string{outboxKey}, id).Int()
-			if err != nil {
-				// Log Lua script execution errors instead of silently ignoring them
-				luaErrors = append(luaErrors, err)
-				continue
-			}
-			if result == 1 {
-				// Successfully found and deleted the event
-				return nil
-			}
-		}
-
-		cursor = nextCursor
-		if cursor == 0 {
-			break
-		}
+	// Look up which outbox key this event belongs to via the reverse index.
+	outboxKey, err := s.client.Get(ctx, reverseKey).Result()
+	if err == redis.Nil {
+		// No reverse index found — event may have already been deleted.
+		return nil
+	} else if err != nil {
+		return err
 	}
 
-	// If we had Lua script errors but didn't find the event, report the errors
-	if len(luaErrors) > 0 {
-		// Return the first Lua error to make failures visible
-		return luaErrors[0]
+	// Delete the event from the outbox list.
+	result, err := deleteOutboxScript.Run(ctx, s.client, []string{outboxKey}, id).Int()
+	if err != nil {
+		return err
 	}
 
-	// Event not found in any outbox - this is not necessarily an error
+	// Clean up the reverse index regardless of whether the event was found.
+	s.client.Del(ctx, reverseKey)
+
+	if result == 0 {
+		// Event was not found in the outbox — already deleted.
+		return nil
+	}
+
 	return nil
 }
