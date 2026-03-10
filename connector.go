@@ -121,7 +121,7 @@ func (c connectorStreamer) Recv(ctx context.Context) (*Event, Ack, error) {
 }
 
 func (c connectorStreamer) Close() error {
-	return c.Close()
+	return c.consumer.Close()
 }
 
 var _ EventReceiver = (*connectorStreamer)(nil)
