@@ -92,7 +92,9 @@ func (p *Sender) Send(ctx context.Context, foreignID string, statusType int, hea
 			},
 		)
 		if err != nil && (errors.Is(err, sarama.ErrLeaderNotAvailable) || errors.Is(err, context.DeadlineExceeded)) {
-			time.Sleep(time.Millisecond * 100)
+			if waitErr := wait(ctx, time.Millisecond*100); waitErr != nil {
+				return waitErr
+			}
 			continue
 		} else if err != nil {
 			return err
