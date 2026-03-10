@@ -63,6 +63,11 @@ func processCallback[Type any, Status StatusType](
 		return nil
 	}
 
+	if wr.RunState.Stopped() {
+		// Skip processing of stopped workflow records to match step consumer behaviour.
+		return nil
+	}
+
 	run, err := buildRun[Type, Status](w.newRunObj(), store, wr)
 	if err != nil {
 		return err
