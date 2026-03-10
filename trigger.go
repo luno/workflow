@@ -79,7 +79,7 @@ func trigger[Type any, Status StatusType](
 		TraceOrigin:       stack.Trace(),
 	}
 
-	uid, err := uuid.NewUUID()
+	uid, err := uuid.NewRandom()
 	if err != nil {
 		return "", err
 	}

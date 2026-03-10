@@ -112,7 +112,7 @@ func MakeOutboxEventData(record Record) (OutboxEventData, error) {
 		return OutboxEventData{}, err
 	}
 
-	uid, err := uuid.NewUUID()
+	uid, err := uuid.NewRandom()
 	if err != nil {
 		return OutboxEventData{}, err
 	}
