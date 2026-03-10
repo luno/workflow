@@ -53,7 +53,7 @@ func runDelete(
 			return err
 		}
 
-		replacementData := []byte("{'result': 'deleted'}")
+		replacementData := []byte(`{"result":"deleted"}`)
 		// If a custom delete has been configured then use the custom delete
 		if customDeleteFn != nil {
 			bytes, err := customDeleteFn(record)
