@@ -1,7 +1,9 @@
 package kafkastreamer
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/stretchr/testify/require"
@@ -55,4 +57,41 @@ func TestPanicIfConfigNil(t *testing.T) {
 		func() {
 			_ = New([]string{""}, WithConfig(nil))
 		}, "")
+}
+
+func TestWait_ZeroDuration(t *testing.T) {
+	err := wait(context.Background(), 0)
+	require.NoError(t, err)
+}
+
+func TestWait_ContextCancelled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	err := wait(ctx, time.Hour)
+	require.ErrorIs(t, err, context.Canceled)
+}
+
+func TestWait_CompletesAfterDuration(t *testing.T) {
+	ctx := context.Background()
+	start := time.Now()
+
+	err := wait(ctx, 10*time.Millisecond)
+
+	require.NoError(t, err)
+	require.True(t, time.Since(start) >= 10*time.Millisecond)
+}
+
+func TestSend_CancelledContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	sender := &Sender{
+		Topic:         "test-topic",
+		Writer:        nil, // Won't be reached since ctx is already cancelled
+		WriterTimeout: time.Second,
+	}
+
+	err := sender.Send(ctx, "foreign-id", 1, nil)
+	require.ErrorIs(t, err, context.Canceled)
 }
