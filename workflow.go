@@ -347,5 +347,7 @@ func (w *Workflow[Type, Status]) Stop() {
 		if runningProcesses == 0 {
 			return
 		}
+
+		time.Sleep(10 * time.Millisecond)
 	}
 }
