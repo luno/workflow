@@ -123,7 +123,7 @@ func purgeOutbox(
 	senders := make(map[string]EventSender)
 	defer func() {
 		for _, s := range senders {
-			s.Close()
+			_ = s.Close()
 		}
 	}()
 
