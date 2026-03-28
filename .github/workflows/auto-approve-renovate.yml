@@ -1,0 +1,13 @@
+name: Auto-approve Renovate
+
+on:
+  pull_request:
+    paths:
+      - '**/go.mod'
+      - '**/go.sum'
+
+jobs:
+  auto-approve:
+    uses: luno/.github/.github/workflows/auto-approve-renovate.yml@bed3271ff217a47465df382ff478db33e79aef1f
+    permissions:
+      pull-requests: write
