@@ -24,7 +24,7 @@ func maybePause[Type any, Status StatusType](
 		return false, nil
 	}
 
-	count := counter.Add(originalErr, processName, run.RunID)
+	count := counter.Add(processName, run.RunID)
 	if count < pauseAfterErrCount {
 		return false, nil
 	}
@@ -41,7 +41,7 @@ func maybePause[Type any, Status StatusType](
 	})
 
 	// Run paused - now clear the error counter.
-	counter.Clear(originalErr, processName, run.RunID)
+	counter.Clear(processName, run.RunID)
 	return true, nil
 }
 

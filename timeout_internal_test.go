@@ -178,9 +178,9 @@ func TestProcessTimeout(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			counter.Clear(testErr, processName, tc.record.RunID)
+			counter.Clear(processName, tc.record.RunID)
 			for range tc.currentErrCount {
-				counter.Add(testErr, processName, tc.record.RunID)
+				counter.Add(processName, tc.record.RunID)
 			}
 
 			calls := map[string]int{}

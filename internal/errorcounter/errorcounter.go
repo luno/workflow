@@ -16,7 +16,7 @@ type Counter struct {
 	store map[string]int
 }
 
-func (c *Counter) Add(err error, label string, extras ...string) int {
+func (c *Counter) Add(label string, extras ...string) int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -25,7 +25,7 @@ func (c *Counter) Add(err error, label string, extras ...string) int {
 	return c.store[key]
 }
 
-func (c *Counter) Count(err error, label string, extras ...string) int {
+func (c *Counter) Count(label string, extras ...string) int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -33,7 +33,7 @@ func (c *Counter) Count(err error, label string, extras ...string) int {
 	return c.store[key]
 }
 
-func (c *Counter) Clear(err error, label string, extras ...string) {
+func (c *Counter) Clear(label string, extras ...string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -41,9 +41,6 @@ func (c *Counter) Clear(err error, label string, extras ...string) {
 	delete(c.store, key)
 }
 
-// makeKey builds a stable key from labels only. The error message is excluded
-// because it often contains dynamic data (timestamps, IDs) which would create
-// unique keys and prevent the PauseAfterErrCount threshold from ever being reached.
 func makeKey(label string, extras []string) string {
 	if len(extras) == 0 {
 		return label
