@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"io"
+	"regexp"
 	"strconv"
 	"sync"
 	"time"
@@ -15,6 +16,9 @@ import (
 	"github.com/luno/reflex/rsql"
 	"github.com/luno/workflow"
 )
+
+// validIdentifier matches safe SQL table/column names (letter or underscore start, alphanumerics/underscores only).
+var validIdentifier = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 
 func New(writer, reader *sql.DB, table *rsql.EventsTable, cursorStore reflex.CursorStore, opts ...Option) workflow.EventStreamer {
 	c := &constructor{
@@ -118,11 +122,14 @@ func (c *constructor) NewReceiver(
 	var streamOpts []reflex.StreamOption
 	if copts.StreamFromLatest && cursor == "" {
 		if c.eventsTableName != "" {
+			if !validIdentifier.MatchString(c.eventsTableName) {
+				return nil, errors.New("invalid events table name")
+			}
 			// Resolve head cursor now so events sent between NewReceiver
 			// and the first Recv call are not skipped.
 			var maxID sql.NullInt64
 			err := c.reader.QueryRowContext(ctx,
-				"select max(id) from "+c.eventsTableName,
+				"select max(id) from `"+c.eventsTableName+"`",
 			).Scan(&maxID)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to get latest event id")
