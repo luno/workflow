@@ -76,6 +76,13 @@ func (s StreamConstructor) NewReceiver(
 		opt(&options)
 	}
 
+	// Set the cursor to the current log length at receiver creation time so
+	// that events sent after NewReceiver but before the first Recv are still
+	// received.
+	if options.StreamFromLatest && s.cursorStore.Get(name) == 0 {
+		s.cursorStore.Set(name, len(*s.stream.log))
+	}
+
 	return &Stream{
 		mu:          s.stream.mu,
 		log:         s.stream.log,
@@ -122,11 +129,6 @@ func (s *Stream) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, error
 		s.mu.Unlock()
 
 		cursorOffset := s.cursorStore.Get(s.name)
-		if s.options.StreamFromLatest && cursorOffset == 0 {
-			s.cursorStore.Set(s.name, len(log))
-			continue
-		}
-
 		if len(log)-1 < cursorOffset {
 			continue
 		}

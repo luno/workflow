@@ -18,7 +18,7 @@ func TestStreamer(t *testing.T) {
 	dbc := ConnectForTesting(t)
 	cTable := rsql.NewCursorsTable("cursors")
 	adaptertest.RunEventStreamerTest(t, func() workflow.EventStreamer {
-		return reflexstreamer.New(dbc, dbc, eventsTable, cTable.ToStore(dbc))
+		return reflexstreamer.New(dbc, dbc, eventsTable, cTable.ToStore(dbc), reflexstreamer.WithEventsTableName("workflow_events"))
 	})
 }
 
