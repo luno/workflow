@@ -16,12 +16,30 @@ import (
 	"github.com/luno/workflow"
 )
 
-func New(writer, reader *sql.DB, table *rsql.EventsTable, cursorStore reflex.CursorStore) workflow.EventStreamer {
-	return &constructor{
+func New(writer, reader *sql.DB, table *rsql.EventsTable, cursorStore reflex.CursorStore, opts ...Option) workflow.EventStreamer {
+	c := &constructor{
 		writer:      writer,
 		reader:      reader,
 		eventsTable: table,
 		cursorStore: cursorStore,
+	}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
+}
+
+// Option configures a reflexstreamer constructor.
+type Option func(*constructor)
+
+// WithEventsTableName sets the events table name, enabling StreamFromLatest to
+// resolve the head cursor at NewReceiver time rather than deferring to the
+// first Recv call. Without this option, StreamFromLatest relies on
+// reflex.WithStreamFromHead which resolves the head on first Recv, creating a
+// race window where events sent between NewReceiver and Recv may be skipped.
+func WithEventsTableName(name string) Option {
+	return func(c *constructor) {
+		c.eventsTableName = name
 	}
 }
 
@@ -30,6 +48,7 @@ type constructor struct {
 	reader            *sql.DB
 	stream            reflex.StreamFunc
 	eventsTable       *rsql.EventsTable
+	eventsTableName   string
 	cursorStore       reflex.CursorStore
 	registerGapFiller sync.Once
 }
@@ -98,7 +117,23 @@ func (c *constructor) NewReceiver(
 
 	var streamOpts []reflex.StreamOption
 	if copts.StreamFromLatest && cursor == "" {
-		streamOpts = append(streamOpts, reflex.WithStreamFromHead())
+		if c.eventsTableName != "" {
+			// Resolve head cursor now so events sent between NewReceiver
+			// and the first Recv call are not skipped.
+			var maxID sql.NullInt64
+			err := c.reader.QueryRowContext(ctx,
+				"select max(id) from "+c.eventsTableName,
+			).Scan(&maxID)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to get latest event id")
+			}
+			if maxID.Valid && maxID.Int64 > 0 {
+				cursor = strconv.FormatInt(maxID.Int64, 10)
+			}
+		} else {
+			// Fallback: resolve head on first Recv (has a small race window).
+			streamOpts = append(streamOpts, reflex.WithStreamFromHead())
+		}
 	}
 
 	streamClient, err := table.ToStream(c.reader)(ctx, cursor, streamOpts...)

@@ -2,7 +2,6 @@ package adaptertest
 
 import (
 	"context"
-	"sync"
 	"testing"
 	"time"
 
@@ -63,8 +62,6 @@ func RunEventStreamerTest(t *testing.T, factory func() workflow.EventStreamer) {
 		})
 		require.NoError(t, err)
 
-		var wg sync.WaitGroup
-
 		receiver, err := streamer.NewReceiver(ctx, topic, "my-receiver", workflow.StreamFromLatest())
 		require.NoError(t, err)
 		t.Cleanup(func() {
@@ -73,26 +70,17 @@ func RunEventStreamerTest(t *testing.T, factory func() workflow.EventStreamer) {
 		})
 
 		t.Run("Should only receive events that come in after connecting", func(t *testing.T) {
-			wg.Add(1)
-			go func() {
-				go func() {
-					err := sender.Send(ctx, "789", 5, map[workflow.Header]string{
-						workflow.HeaderTopic: topic,
-					})
-					require.NoError(t, err)
-				}()
+			err := sender.Send(ctx, "789", 5, map[workflow.Header]string{
+				workflow.HeaderTopic: topic,
+			})
+			require.NoError(t, err)
 
-				e, ack, err := receiver.Recv(ctx)
-				require.NoError(t, err)
-				require.Equal(t, "789", e.ForeignID)
+			e, ack, err := receiver.Recv(ctx)
+			require.NoError(t, err)
+			require.Equal(t, "789", e.ForeignID)
 
-				err = ack()
-				require.NoError(t, err)
-
-				wg.Done()
-			}()
-
-			wg.Wait()
+			err = ack()
+			require.NoError(t, err)
 		})
 
 		err = receiver.Close()
