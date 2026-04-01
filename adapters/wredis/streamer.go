@@ -56,7 +56,7 @@ func (s *Streamer) NewReceiver(ctx context.Context, topic string, name string, o
 	}
 
 	err := s.client.XGroupCreateMkStream(ctx, streamKey, consumerGroup, startID).Err()
-	if err != nil && err.Error() != "BUSYGROUP Consumer Group name already exists" {
+	if err != nil && !strings.HasPrefix(err.Error(), "BUSYGROUP") {
 		return nil, err
 	}
 
