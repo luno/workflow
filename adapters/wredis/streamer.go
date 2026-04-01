@@ -42,6 +42,24 @@ func (s *Streamer) NewReceiver(ctx context.Context, topic string, name string, o
 		opt(&options)
 	}
 
+	streamKey := streamKeyPrefix + topic
+	consumerGroup := consumerGroupPrefix + name
+
+	// Determine the starting position for the consumer group.
+	// When StreamFromLatest is set we start from "$" (end of stream at this
+	// moment) so that only events sent AFTER NewReceiver returns are delivered.
+	// Creating the group here — rather than lazily inside Recv — eliminates the
+	// race where events arrive between NewReceiver and the first Recv call.
+	startID := "0"
+	if options.StreamFromLatest {
+		startID = "$"
+	}
+
+	err := s.client.XGroupCreateMkStream(ctx, streamKey, consumerGroup, startID).Err()
+	if err != nil && err.Error() != "BUSYGROUP Consumer Group name already exists" {
+		return nil, err
+	}
+
 	return &Receiver{
 		client:  s.client,
 		topic:   topic,
@@ -99,38 +117,6 @@ var _ workflow.EventReceiver = (*Receiver)(nil)
 func (r *Receiver) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, error) {
 	streamKey := streamKeyPrefix + r.topic
 	consumerGroup := consumerGroupPrefix + r.name
-
-	// Handle StreamFromLatest option by checking if consumer group exists
-	if r.options.StreamFromLatest {
-		// Try to get consumer group info to see if it exists
-		groups, err := r.client.XInfoGroups(ctx, streamKey).Result()
-		if err != nil && err.Error() != "ERR no such key" {
-			return nil, nil, err
-		}
-
-		groupExists := false
-		for _, group := range groups {
-			if group.Name == consumerGroup {
-				groupExists = true
-				break
-			}
-		}
-
-		if !groupExists {
-			// Consumer group doesn't exist, create it starting from the latest message
-			// Use "$" to start from the end of the stream
-			_, err := r.client.XGroupCreateMkStream(ctx, streamKey, consumerGroup, "$").Result()
-			if err != nil && err.Error() != "BUSYGROUP Consumer Group name already exists" {
-				return nil, nil, err
-			}
-		}
-	} else {
-		// Create consumer group if it doesn't exist, starting from beginning
-		_, err := r.client.XGroupCreateMkStream(ctx, streamKey, consumerGroup, "0").Result()
-		if err != nil && err.Error() != "BUSYGROUP Consumer Group name already exists" {
-			return nil, nil, err
-		}
-	}
 
 	for ctx.Err() == nil {
 		// First, try to read pending messages that were delivered but not acknowledged
