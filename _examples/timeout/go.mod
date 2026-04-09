@@ -1,6 +1,6 @@
 module github.com/luno/workflow/_examples/timeout
 
-go 1.25.3
+go 1.26.0
 
 replace github.com/luno/workflow => ../..
 
