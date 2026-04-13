@@ -56,7 +56,7 @@ func TestShardNonNumerical(t *testing.T) {
 		left, right []string
 		total       = 1000
 	)
-	for i := 0; i < total; i++ {
+	for range total {
 		uid, err := uuid.NewUUID()
 		require.NoError(t, err)
 

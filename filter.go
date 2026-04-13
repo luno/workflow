@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -63,13 +64,7 @@ func (f Filter) Matches(findValue string) bool {
 		return f.value == findValue
 	}
 
-	for _, filterValue := range f.MultiValues() {
-		if filterValue == findValue {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(f.MultiValues(), findValue)
 }
 
 func (f Filter) MultiValues() []string {
@@ -113,15 +108,15 @@ func FilterByForeignID(foreignIDs ...string) RecordFilter {
 			return
 		}
 
-		var val string
+		var val strings.Builder
 		for i, foreignID := range foreignIDs {
 			if i != 0 {
-				val += multiValueDelimiter
+				val.WriteString(multiValueDelimiter)
 			}
 
-			val += foreignID
+			val.WriteString(foreignID)
 		}
-		filters.byForeignID = makeFilterValue(val, true)
+		filters.byForeignID = makeFilterValue(val.String(), true)
 	}
 }
 
@@ -133,15 +128,15 @@ func FilterByStatus[statusType ~int | ~int8 | ~int16 | ~int32 | ~int64](statuses
 			return
 		}
 
-		var val string
+		var val strings.Builder
 		for i, status := range statuses {
 			if i != 0 {
-				val += multiValueDelimiter
+				val.WriteString(multiValueDelimiter)
 			}
 
-			val += strconv.FormatInt(int64(status), 10)
+			val.WriteString(strconv.FormatInt(int64(status), 10))
 		}
-		filters.byStatus = makeFilterValue(val, true)
+		filters.byStatus = makeFilterValue(val.String(), true)
 	}
 }
 
@@ -153,15 +148,15 @@ func FilterByRunState(runStates ...RunState) RecordFilter {
 			return
 		}
 
-		var val string
+		var val strings.Builder
 		for i, rs := range runStates {
 			if i != 0 {
-				val += multiValueDelimiter
+				val.WriteString(multiValueDelimiter)
 			}
 
-			val += strconv.FormatInt(int64(rs), 10)
+			val.WriteString(strconv.FormatInt(int64(rs), 10))
 		}
-		filters.byRunState = makeFilterValue(val, true)
+		filters.byRunState = makeFilterValue(val.String(), true)
 	}
 }
 

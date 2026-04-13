@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"maps"
 	"strconv"
 
 	"github.com/luno/workflow/internal/metrics"
@@ -45,9 +46,7 @@ func (w *Workflow[Type, Status]) States() map[string]State {
 	defer w.internalStateMu.Unlock()
 
 	states := make(map[string]State)
-	for k, v := range w.internalState {
-		states[k] = v
-	}
+	maps.Copy(states, w.internalState)
 
 	return states
 }

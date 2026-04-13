@@ -57,13 +57,13 @@ type (
 // newRunPool creates a new sync.Pool for Run objects with 10 pre-allocated instances
 func newRunPool[Type any, Status StatusType]() *sync.Pool {
 	pool := sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			return &Run[Type, Status]{}
 		},
 	}
 
 	// Pre-allocate 10 Run objects in the pool for better performance
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		pool.Put(&Run[Type, Status]{})
 	}
 
