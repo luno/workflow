@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"k8s.io/utils/clock"
 
@@ -86,11 +87,8 @@ func validateTransition[Status StatusType](current, next Status, graph *graph.Gr
 
 	var found bool
 	// Attempt to find the next status amongst the list of valid transitions
-	for _, node := range nodes {
-		if node == int(next) {
-			found = true
-			break
-		}
+	if slices.Contains(nodes, int(next)) {
+		found = true
 	}
 
 	// If no valid transition matches that of the next status then error.

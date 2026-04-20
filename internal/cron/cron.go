@@ -153,7 +153,7 @@ type cronSchedule struct {
 func (c *cronSchedule) Next(t time.Time) (time.Time, bool) {
 	next := t.Add(time.Minute).Truncate(time.Minute)
 
-	for i := 0; i < 4*365*24*60; i++ {
+	for range 4 * 365 * 24 * 60 {
 		if c.matches(next) {
 			return next, true
 		}

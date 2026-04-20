@@ -16,7 +16,7 @@ func Trace() string {
 	trace := string(stack[:n])
 	lines := strings.Split(trace, "\n")
 
-	var stackTrace string
+	var stackTrace strings.Builder
 	for _, line := range lines {
 		if strings.Contains(line, "github.com/luno/workflow") {
 			continue
@@ -30,8 +30,8 @@ func Trace() string {
 			continue
 		}
 
-		stackTrace += line + "\n"
+		stackTrace.WriteString(line + "\n")
 	}
 
-	return stackTrace
+	return stackTrace.String()
 }
