@@ -1,120 +1,2068 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <title>Workflow | Search Filters and Records</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Workflow · Runs</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  background: var(--md-sys-color-background);
+  color: var(--md-sys-color-on-background);
+  overflow: hidden;
+  transition: background-color 200ms ease, color 200ms ease;
+}
+.material-symbols-rounded {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  user-select: none;
+  font-size: 20px;
+  line-height: 1;
+}
+.material-symbols-rounded.filled { font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+
+/* SEED-BASED COLOR SYSTEMS */
+body.seed-indigo.theme-light {
+  --md-primary: #4255FF; --md-on-primary: #FFFFFF;
+  --md-primary-container: #DEE0FF; --md-on-primary-container: #000965;
+  --md-secondary: #5B5D72; --md-secondary-container: #E0E1F9;
+  --md-tertiary: #00687B; --md-tertiary-container: #B2EBFF;
+  --md-error: #BA1A1A; --md-error-container: #FFDAD6;
+  --md-success: #006D3A; --md-success-container: #B6F3C7;
+  --md-warning: #7A5800; --md-warning-container: #FFE086;
+}
+body.seed-indigo.theme-dark {
+  --md-primary: #BCC2FF; --md-on-primary: #0F1A9A;
+  --md-primary-container: #2B3AE3; --md-on-primary-container: #DEE0FF;
+  --md-secondary: #C4C5DD; --md-secondary-container: #434659;
+  --md-tertiary: #5CD5F2; --md-tertiary-container: #004E5D;
+  --md-error: #FFB4AB; --md-error-container: #93000A;
+  --md-success: #7FD79B; --md-success-container: #00522B;
+  --md-warning: #F6C246; --md-warning-container: #5B4100;
+}
+body.seed-violet.theme-light {
+  --md-primary: #7C4DFF; --md-on-primary: #FFFFFF;
+  --md-primary-container: #EADDFF; --md-on-primary-container: #22005D;
+  --md-secondary: #625B71; --md-secondary-container: #E8DEF8;
+  --md-tertiary: #7D5260; --md-tertiary-container: #FFD8E4;
+  --md-error: #BA1A1A; --md-error-container: #FFDAD6;
+  --md-success: #006D3A; --md-success-container: #B6F3C7;
+  --md-warning: #7A5800; --md-warning-container: #FFE086;
+}
+body.seed-violet.theme-dark {
+  --md-primary: #D0BCFF; --md-on-primary: #381E72;
+  --md-primary-container: #4F378B; --md-on-primary-container: #EADDFF;
+  --md-secondary: #CCC2DC; --md-secondary-container: #4A4458;
+  --md-tertiary: #EFB8C8; --md-tertiary-container: #633B48;
+  --md-error: #FFB4AB; --md-error-container: #93000A;
+  --md-success: #7FD79B; --md-success-container: #00522B;
+  --md-warning: #F6C246; --md-warning-container: #5B4100;
+}
+body.seed-teal.theme-light {
+  --md-primary: #00696D; --md-on-primary: #FFFFFF;
+  --md-primary-container: #6FF6FA; --md-on-primary-container: #002021;
+  --md-secondary: #4A6365; --md-secondary-container: #CCE8EA;
+  --md-tertiary: #4B607C; --md-tertiary-container: #D3E4FF;
+  --md-error: #BA1A1A; --md-error-container: #FFDAD6;
+  --md-success: #006D3A; --md-success-container: #B6F3C7;
+  --md-warning: #7A5800; --md-warning-container: #FFE086;
+}
+body.seed-teal.theme-dark {
+  --md-primary: #4CD9DE; --md-on-primary: #003739;
+  --md-primary-container: #004F52; --md-on-primary-container: #6FF6FA;
+  --md-secondary: #B1CCCE; --md-secondary-container: #324B4D;
+  --md-tertiary: #B3C8E8; --md-tertiary-container: #334863;
+  --md-error: #FFB4AB; --md-error-container: #93000A;
+  --md-success: #7FD79B; --md-success-container: #00522B;
+  --md-warning: #F6C246; --md-warning-container: #5B4100;
+}
+body.seed-green.theme-light {
+  --md-primary: #006E1C; --md-on-primary: #FFFFFF;
+  --md-primary-container: #9AF89E; --md-on-primary-container: #002204;
+  --md-secondary: #53634F; --md-secondary-container: #D7E8CE;
+  --md-tertiary: #38656A; --md-tertiary-container: #BCEBF0;
+  --md-error: #BA1A1A; --md-error-container: #FFDAD6;
+  --md-success: #006D3A; --md-success-container: #B6F3C7;
+  --md-warning: #7A5800; --md-warning-container: #FFE086;
+}
+body.seed-green.theme-dark {
+  --md-primary: #7EDC83; --md-on-primary: #00390A;
+  --md-primary-container: #005313; --md-on-primary-container: #9AF89E;
+  --md-secondary: #BACBB4; --md-secondary-container: #3B4B38;
+  --md-tertiary: #A0CED3; --md-tertiary-container: #1F4D51;
+  --md-error: #FFB4AB; --md-error-container: #93000A;
+  --md-success: #7FD79B; --md-success-container: #00522B;
+  --md-warning: #F6C246; --md-warning-container: #5B4100;
+}
+body.seed-orange.theme-light {
+  --md-primary: #B3430B; --md-on-primary: #FFFFFF;
+  --md-primary-container: #FFDBCB; --md-on-primary-container: #3A0B00;
+  --md-secondary: #77574A; --md-secondary-container: #FFDBCB;
+  --md-tertiary: #6C5D2F; --md-tertiary-container: #F6E1A7;
+  --md-error: #BA1A1A; --md-error-container: #FFDAD6;
+  --md-success: #006D3A; --md-success-container: #B6F3C7;
+  --md-warning: #7A5800; --md-warning-container: #FFE086;
+}
+body.seed-orange.theme-dark {
+  --md-primary: #FFB597; --md-on-primary: #5B1A00;
+  --md-primary-container: #802B00; --md-on-primary-container: #FFDBCB;
+  --md-secondary: #E7BEAD; --md-secondary-container: #5C4034;
+  --md-tertiary: #D9C58E; --md-tertiary-container: #534519;
+  --md-error: #FFB4AB; --md-error-container: #93000A;
+  --md-success: #7FD79B; --md-success-container: #00522B;
+  --md-warning: #F6C246; --md-warning-container: #5B4100;
+}
+
+/* SURFACES */
+body.theme-light {
+  --md-sys-color-background: #FBFAFE; --md-sys-color-on-background: #1B1B21;
+  --md-surface: #FBFAFE; --md-surface-dim: #DCD9E0; --md-surface-bright: #FBFAFE;
+  --md-surface-container-lowest: #FFFFFF; --md-surface-container-low: #F5F3FA;
+  --md-surface-container: #EFEDF4; --md-surface-container-high: #E9E7EE;
+  --md-surface-container-highest: #E4E1E9;
+  --md-on-surface: #1B1B21; --md-on-surface-variant: #46464F;
+  --md-outline: #767680; --md-outline-variant: #C7C5D0;
+  --md-inverse-surface: #303038; --md-inverse-on-surface: #F2EFF7;
+  --md-elev-1: 0 1px 2px 0 rgba(0,0,0,.05), 0 1px 3px 0 rgba(0,0,0,.08);
+  --md-elev-2: 0 2px 4px -1px rgba(0,0,0,.06), 0 4px 8px -2px rgba(0,0,0,.08);
+  --md-elev-3: 0 6px 12px -3px rgba(0,0,0,.08), 0 12px 24px -6px rgba(0,0,0,.10);
+  --md-on-success: #00210C; --md-on-error: #FFFFFF; --md-on-warning: #FFFFFF;
+  --md-on-error-container: #410002; --md-on-success-container: #002110;
+  --md-on-warning-container: #261900;
+}
+body.theme-dark {
+  --md-sys-color-background: #0E0E14; --md-sys-color-on-background: #E4E1E9;
+  --md-surface: #0E0E14; --md-surface-dim: #0E0E14; --md-surface-bright: #35343B;
+  --md-surface-container-lowest: #09090D; --md-surface-container-low: #17171E;
+  --md-surface-container: #1B1B23; --md-surface-container-high: #26262F;
+  --md-surface-container-highest: #30303A;
+  --md-on-surface: #E4E1E9; --md-on-surface-variant: #C7C5D0;
+  --md-outline: #908F9A; --md-outline-variant: #46464F;
+  --md-inverse-surface: #E4E1E9; --md-inverse-on-surface: #303038;
+  --md-elev-1: 0 1px 2px 0 rgba(0,0,0,.4), 0 1px 3px 0 rgba(0,0,0,.3);
+  --md-elev-2: 0 4px 8px -2px rgba(0,0,0,.5);
+  --md-elev-3: 0 12px 28px -6px rgba(0,0,0,.55);
+  --md-on-success: #E7FFE9; --md-on-error: #690005; --md-on-warning: #261900;
+  --md-on-error-container: #FFDAD6; --md-on-success-container: #B6F3C7;
+  --md-on-warning-container: #FFE086;
+}
+
+/* SHAPE TOKENS */
+body { --radius-scale: 1; }
+:root {
+  --r-xs: calc(4px  * var(--radius-scale));
+  --r-sm: calc(8px  * var(--radius-scale));
+  --r-md: calc(12px * var(--radius-scale));
+  --r-lg: calc(16px * var(--radius-scale));
+  --r-xl: calc(24px * var(--radius-scale));
+  --r-full: 9999px;
+}
+
+/* DENSITY */
+body.density-compact    { --row-h: 40px; --cell-py: 8px;  --base-fs: 13px; }
+body.density-comfortable{ --row-h: 56px; --cell-py: 14px; --base-fs: 14px; }
+body.density-spacious   { --row-h: 68px; --cell-py: 20px; --base-fs: 15px; }
+
+/* LAYOUT */
+.app { display: grid; grid-template-columns: 260px 1fr; grid-template-rows: 64px 1fr;
+  grid-template-areas: "sidebar topbar" "sidebar main"; height: 100vh; }
+.sidebar { grid-area: sidebar; }
+.topbar  { grid-area: topbar; }
+.main    { grid-area: main; overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; }
+
+/* SIDEBAR */
+.sidebar { background: var(--md-surface-container-low); border-right: 1px solid var(--md-outline-variant);
+  display: flex; flex-direction: column; padding: 16px 12px; gap: 4px; position: relative; z-index: 2; }
+.brand { display: flex; align-items: center; padding: 4px 12px 20px; }
+.brand-logo { display: flex; align-items: center; }
+.brand-logo svg { height: 40px; width: auto; }
+body.theme-dark .brand-logo-light { display: none; }
+body:not(.theme-dark) .brand-logo-dark { display: none; }
+.nav-section { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--md-on-surface-variant); padding: 16px 16px 8px; font-weight: 600; }
+.nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+  border-radius: var(--r-full); color: var(--md-on-surface-variant); font-size: 14px; font-weight: 500;
+  cursor: pointer; transition: background-color 120ms ease, color 120ms ease; position: relative; }
+.nav-item .material-symbols-rounded { font-size: 20px; }
+.nav-item:hover { background: var(--md-surface-container); color: var(--md-on-surface); }
+.nav-item.active { background: var(--md-primary-container); color: var(--md-on-primary-container); font-weight: 600; }
+.nav-item.active .material-symbols-rounded { font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+.nav-item .badge { margin-left: auto; background: var(--md-surface-container-high); color: var(--md-on-surface-variant);
+  font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: var(--r-full); font-family: 'Google Sans Code', monospace; }
+.nav-item.active .badge { background: color-mix(in oklch, var(--md-on-primary-container) 12%, transparent); color: var(--md-on-primary-container); }
+.sidebar-footer { margin-top: auto; padding: 12px; border-top: 1px solid var(--md-outline-variant);
+  display: flex; align-items: center; gap: 12px; }
+.avatar { width: 36px; height: 36px; border-radius: var(--r-full);
+  background: linear-gradient(135deg, var(--md-tertiary-container), var(--md-secondary-container));
+  color: var(--md-on-surface); display: grid; place-items: center; font-weight: 700; font-size: 13px;
+  border: 1px solid var(--md-outline-variant); }
+.user-meta { line-height: 1.2; font-size: 12px; }
+.user-meta .name { font-weight: 600; color: var(--md-on-surface); }
+.user-meta .role { color: var(--md-on-surface-variant); font-size: 11px; }
+
+/* TOPBAR */
+.topbar { display: flex; align-items: center; padding: 0 28px; background: var(--md-surface);
+  border-bottom: 1px solid var(--md-outline-variant); gap: 16px; position: relative; z-index: 1; }
+.crumbs { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--md-on-surface-variant); }
+.crumbs .sep { opacity: 0.5; }
+.crumbs .current { color: var(--md-on-surface); font-weight: 600; }
+.topbar-search { margin-left: 32px; flex: 1; max-width: 460px; display: flex; align-items: center; gap: 8px;
+  background: var(--md-surface-container); border-radius: var(--r-full); padding: 8px 14px;
+  border: 1px solid transparent; transition: border-color 120ms ease, background-color 120ms ease; }
+.topbar-search:focus-within { border-color: var(--md-primary); background: var(--md-surface-container-low); }
+.topbar-search input { background: transparent; border: 0; outline: 0; color: var(--md-on-surface);
+  font-size: 13px; flex: 1; font-family: inherit; }
+.topbar-search input::placeholder { color: var(--md-on-surface-variant); }
+.topbar-search .kbd { font-family: 'Google Sans Code', monospace; font-size: 11px; padding: 2px 6px;
+  border-radius: var(--r-xs); background: var(--md-surface-container-high); color: var(--md-on-surface-variant); }
+.topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.icon-btn { width: 40px; height: 40px; border-radius: var(--r-full); background: transparent;
+  color: var(--md-on-surface-variant); border: 0; display: grid; place-items: center; cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease; position: relative; }
+.icon-btn:hover { background: var(--md-surface-container); color: var(--md-on-surface); }
+.icon-btn .dot { position: absolute; top: 8px; right: 8px; width: 8px; height: 8px;
+  background: var(--md-error); border: 2px solid var(--md-surface); border-radius: 50%; }
+
+/* MAIN CONTENT */
+.main { padding: 28px 32px 80px; }
+.page-header { display: flex; align-items: flex-end; justify-content: space-between;
+  margin-bottom: 24px; gap: 24px; flex-wrap: wrap; }
+.page-title { font-size: 32px; font-weight: 800; letter-spacing: -0.025em; line-height: 1.1; margin: 0; }
+.page-subtitle { color: var(--md-on-surface-variant); font-size: 14px; margin-top: 6px; }
+.pulse-dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--md-success); }
+.pulse-dot::after { content: ""; position: absolute; inset: -4px; border-radius: 50%;
+  border: 2px solid var(--md-success); opacity: 0; animation: pulse 1.6s ease-out infinite; }
+@keyframes pulse {
+  0%   { opacity: 1; transform: scale(0.6); }
+  70%  { opacity: 0; transform: scale(1.6); }
+  100% { opacity: 0; transform: scale(1.6); }
+}
+
+/* BUTTONS */
+.btn { display: inline-flex; align-items: center; gap: 8px; font-family: inherit;
+  font-size: 13px; font-weight: 600; padding: 10px 20px; border-radius: var(--r-full); border: 0;
+  cursor: pointer; transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease, transform 120ms ease; white-space: nowrap; }
+.btn:active { transform: scale(0.98); }
+.btn-filled { background: var(--md-primary); color: var(--md-on-primary); box-shadow: var(--md-elev-1); }
+.btn-filled:hover { box-shadow: var(--md-elev-2); background: color-mix(in oklch, var(--md-primary) 92%, var(--md-on-surface)); }
+.btn-tonal { background: var(--md-secondary-container); color: var(--md-on-surface); }
+.btn-tonal:hover { background: color-mix(in oklch, var(--md-secondary-container) 82%, var(--md-on-surface)); }
+.btn-outlined { background: transparent; color: var(--md-on-surface); border: 1px solid var(--md-outline); }
+.btn-outlined:hover { background: var(--md-surface-container); }
+.btn-text { background: transparent; color: var(--md-primary); padding: 8px 12px; }
+.btn-text:hover { background: color-mix(in oklch, var(--md-primary) 10%, transparent); }
+.btn-sm { padding: 6px 14px; font-size: 12px; }
+
+/* KPI CARDS */
+.kpi-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; margin-bottom: 20px; }
+.card { background: var(--md-surface-container-low); border: 1px solid var(--md-outline-variant);
+  border-radius: var(--r-xl); padding: 20px;
+  transition: background-color 200ms ease, border-color 200ms ease; }
+.kpi { display: flex; flex-direction: column; gap: 8px; position: relative; overflow: hidden; min-height: 132px; }
+.kpi .label { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600;
+  color: var(--md-on-surface-variant); text-transform: uppercase; letter-spacing: 0.05em; }
+.kpi .label .material-symbols-rounded { font-size: 16px; }
+.kpi .value { font-size: 40px; font-weight: 800; letter-spacing: -0.03em; color: var(--md-on-surface);
+  line-height: 1.05; font-variant-numeric: tabular-nums; }
+.kpi-hero { background: linear-gradient(140deg,
+    color-mix(in oklch, var(--md-primary-container) 95%, transparent),
+    color-mix(in oklch, var(--md-tertiary-container) 70%, var(--md-primary-container)));
+  border-color: transparent; color: var(--md-on-primary-container); min-height: 132px; }
+.kpi-hero .label { color: color-mix(in oklch, var(--md-on-primary-container) 80%, transparent); }
+.kpi-hero .value { color: var(--md-on-primary-container); font-size: 44px; }
+.kpi-hero .blob { position: absolute; right: -30px; bottom: -30px; width: 160px; height: 160px;
+  background: radial-gradient(circle, color-mix(in oklch, var(--md-primary) 25%, transparent) 0%, transparent 70%);
+  pointer-events: none; }
+.state-split { display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+.state-mini { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+  border-radius: var(--r-full); font-size: 11px; font-weight: 600;
+  background: color-mix(in oklch, var(--md-on-primary-container) 10%, transparent);
+  color: var(--md-on-primary-container); font-family: 'Google Sans Code', monospace; font-variant-numeric: tabular-nums; }
+.state-mini .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+/* RING CHART */
+.ring-card { display: flex; flex-direction: column; gap: 16px; padding: 20px; }
+.ring-wrap { display: flex; align-items: center; gap: 20px; }
+.ring-svg { flex-shrink: 0; }
+.ring-legend { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.ring-legend-item { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.ring-legend-item .sw { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.ring-legend-item .lbl { flex: 1; color: var(--md-on-surface-variant); }
+.ring-legend-item .val { font-weight: 700; color: var(--md-on-surface); font-variant-numeric: tabular-nums;
+  font-family: 'Google Sans Code', monospace; font-size: 12px; }
+
+/* FILTER BAR */
+.filters-card { padding: 16px 20px; margin-bottom: 16px; }
+.filters-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px;
+  border-radius: var(--r-full); background: transparent; border: 1px solid var(--md-outline-variant);
+  color: var(--md-on-surface); font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease; white-space: nowrap; }
+.chip:hover { background: var(--md-surface-container); }
+.chip.active { background: var(--md-secondary-container); border-color: transparent; color: var(--md-on-surface); }
+.chip .count { font-family: 'Google Sans Code', monospace; font-variant-numeric: tabular-nums;
+  font-size: 11px; color: var(--md-on-surface-variant); padding-left: 4px; }
+.chip.active .count { color: var(--md-on-surface); }
+.chip .dot { width: 6px; height: 6px; border-radius: 50%; }
+.filter-divider { width: 1px; height: 24px; background: var(--md-outline-variant); margin: 0 4px; }
+.text-field { display: flex; align-items: center; gap: 8px; background: var(--md-surface-container);
+  border: 1px solid transparent; padding: 8px 14px; border-radius: var(--r-full);
+  transition: border-color 120ms ease, background-color 120ms ease; }
+.text-field:focus-within { border-color: var(--md-primary); }
+.text-field input, .text-field select { background: transparent; border: 0; outline: 0;
+  font-size: 12px; color: var(--md-on-surface); font-family: inherit; min-width: 0; }
+.text-field input::placeholder { color: var(--md-on-surface-variant); }
+.text-field .material-symbols-rounded { font-size: 16px; color: var(--md-on-surface-variant); }
+.text-field select { appearance: none; padding-right: 20px; cursor: pointer; }
+
+/* TABLE */
+.table-card { padding: 0; overflow: hidden; }
+.table-header-row { display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 1px solid var(--md-outline-variant); }
+.table-header-row .title { font-size: 15px; font-weight: 700; letter-spacing: -0.005em;
+  display: flex; align-items: center; gap: 10px; }
+.table-header-row .count-pill { font-family: 'Google Sans Code', monospace; font-size: 11px;
+  padding: 3px 10px; background: var(--md-surface-container); color: var(--md-on-surface-variant);
+  border-radius: var(--r-full); font-weight: 600; }
+.table-tools { display: flex; align-items: center; gap: 8px; }
+.table-scroll { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: var(--base-fs); }
+.table thead th { text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.05em; text-transform: uppercase; color: var(--md-on-surface-variant);
+  background: var(--md-surface-container-low); border-bottom: 1px solid var(--md-outline-variant);
+  white-space: nowrap; position: sticky; top: 0; z-index: 1; }
+.table thead th.sortable { cursor: pointer; user-select: none; }
+.table thead th.sortable:hover { color: var(--md-on-surface); }
+.table thead th .sort-ind { opacity: 0.4; font-size: 14px; vertical-align: middle; margin-left: 2px; }
+.table thead th.sort-asc .sort-ind, .table thead th.sort-desc .sort-ind { opacity: 1; color: var(--md-primary); }
+.table tbody tr { border-bottom: 1px solid var(--md-outline-variant); cursor: pointer; transition: background-color 120ms ease; }
+.table tbody tr:hover { background: var(--md-surface-container-low); }
+.table tbody tr.selected { background: color-mix(in oklch, var(--md-primary) 7%, transparent); }
+.table td { padding: var(--cell-py) 16px; color: var(--md-on-surface); vertical-align: middle; white-space: nowrap; }
+.table td.mono { font-family: 'Google Sans Code', monospace; font-size: 12px; color: var(--md-on-surface-variant); }
+.table td.workflow-name { font-weight: 600; }
+.table td.duration { font-family: 'Google Sans Code', monospace; font-size: 12px; color: var(--md-on-surface-variant); font-variant-numeric: tabular-nums; }
+.checkbox { appearance: none; width: 16px; height: 16px; border: 2px solid var(--md-outline);
+  border-radius: var(--r-xs); cursor: pointer; display: grid; place-items: center;
+  transition: background-color 120ms ease, border-color 120ms ease; background: transparent; }
+.checkbox:checked { background: var(--md-primary); border-color: var(--md-primary); }
+.checkbox:checked::after { content: ""; width: 9px; height: 5px;
+  border-left: 2px solid var(--md-on-primary); border-bottom: 2px solid var(--md-on-primary);
+  transform: rotate(-45deg) translate(1px, -1px); }
+
+/* STATE PILLS */
+.state-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+  border-radius: var(--r-full); font-size: 11px; font-weight: 600; font-family: 'Google Sans Code', monospace; }
+.state-pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+.state-running   { background: color-mix(in oklch, var(--md-success) 18%, var(--md-surface-container-low)); color: var(--md-success); }
+.state-running .dot { background: var(--md-success); box-shadow: 0 0 0 3px color-mix(in oklch, var(--md-success) 25%, transparent); animation: softPulse 1.6s infinite; }
+.state-initiated { background: var(--md-surface-container); color: var(--md-on-surface-variant); }
+.state-initiated .dot { background: var(--md-on-surface-variant); }
+.state-paused    { background: color-mix(in oklch, var(--md-warning) 18%, var(--md-surface-container-low)); color: var(--md-warning); }
+.state-paused .dot { background: var(--md-warning); }
+.state-completed { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.state-completed .dot { background: var(--md-primary); }
+.state-cancelled { background: color-mix(in oklch, var(--md-error) 18%, var(--md-surface-container-low)); color: var(--md-error); }
+.state-cancelled .dot { background: var(--md-error); }
+.state-data-deleted, .state-requested-data-deleted { background: var(--md-surface-container); color: var(--md-on-surface-variant); }
+.state-data-deleted .dot, .state-requested-data-deleted .dot { background: var(--md-on-surface-variant); }
+@keyframes softPulse {
+  0%,100% { box-shadow: 0 0 0 3px color-mix(in oklch, var(--md-success) 25%, transparent); }
+  50%     { box-shadow: 0 0 0 5px color-mix(in oklch, var(--md-success) 8%, transparent); }
+}
+
+/* ROW ACTIONS */
+.row-actions { display: flex; gap: 4px; justify-content: flex-end; align-items: center; }
+.row-action-btn { width: 32px; height: 32px; border-radius: var(--r-full); border: 0; background: transparent;
+  color: var(--md-on-surface-variant); display: grid; place-items: center; cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease; }
+.row-action-btn:hover { background: var(--md-surface-container); color: var(--md-on-surface); }
+.row-action-btn.danger:hover { background: color-mix(in oklch, var(--md-error) 15%, transparent); color: var(--md-error); }
+.row-action-btn.success:hover { background: color-mix(in oklch, var(--md-success) 15%, transparent); color: var(--md-success); }
+.row-action-btn .material-symbols-rounded { font-size: 18px; }
+.table-footer { display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px; border-top: 1px solid var(--md-outline-variant);
+  background: var(--md-surface-container-low); font-size: 12px; color: var(--md-on-surface-variant); }
+
+/* DRAWER */
+.scrim { position: fixed; inset: 0; background: rgba(0,0,0,0.45); backdrop-filter: blur(2px);
+  z-index: 50; opacity: 0; pointer-events: none; transition: opacity 200ms ease; }
+.scrim.open { opacity: 1; pointer-events: auto; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 560px; max-width: calc(100vw - 40px);
+  background: var(--md-surface-container-low); border-left: 1px solid var(--md-outline-variant);
+  z-index: 51; transform: translateX(110%); transition: transform 280ms cubic-bezier(.2,.8,.2,1);
+  display: flex; flex-direction: column; box-shadow: var(--md-elev-3); }
+.drawer.open { transform: translateX(0); }
+.drawer-head { padding: 20px 24px 16px; border-bottom: 1px solid var(--md-outline-variant);
+  display: flex; flex-direction: column; gap: 12px; }
+.drawer-head .top-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.drawer-head h2 { margin: 0; font-size: 22px; letter-spacing: -0.02em; font-weight: 700; }
+.drawer-head .sub { font-family: 'Google Sans Code', monospace; font-size: 12px;
+  color: var(--md-on-surface-variant); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.drawer-head .sub .id-pill { background: var(--md-surface-container); padding: 3px 10px;
+  border-radius: var(--r-xs); border: 1px solid var(--md-outline-variant); }
+.drawer-body { flex: 1; overflow-y: auto; }
+.drawer-tabs { display: flex; gap: 2px; padding: 4px; background: var(--md-surface-container);
+  margin: 0 24px; border-radius: var(--r-full); }
+.drawer-tab { flex: 1; padding: 8px 12px; font-size: 12px; font-weight: 600; text-align: center;
+  background: transparent; border: 0; color: var(--md-on-surface-variant); border-radius: var(--r-full);
+  cursor: pointer; font-family: inherit; }
+.drawer-tab.active { background: var(--md-surface); color: var(--md-on-surface); box-shadow: var(--md-elev-1); }
+.drawer-section { padding: 20px 24px; }
+.drawer-actions { padding: 16px 24px; border-top: 1px solid var(--md-outline-variant);
+  display: flex; gap: 8px; flex-wrap: wrap; background: var(--md-surface-container-low); }
+.drawer-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.drawer-metric { background: var(--md-surface-container); border-radius: var(--r-md); padding: 10px 12px; }
+.drawer-metric .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--md-on-surface-variant); font-weight: 600; }
+.drawer-metric .val { font-size: 16px; font-weight: 700; margin-top: 4px;
+  font-family: 'Google Sans Code', monospace; letter-spacing: -0.01em; }
+
+/* TIMELINE */
+.timeline { display: flex; flex-direction: column; gap: 0; position: relative; }
+.timeline-item { display: grid; grid-template-columns: 40px 1fr; gap: 16px; padding: 0 0 20px; position: relative; }
+.timeline-item:last-child { padding-bottom: 0; }
+.timeline-item::before { content: ''; position: absolute; left: 19px; top: 28px; bottom: 0;
+  width: 2px; background: var(--md-outline-variant); }
+.timeline-item:last-child::before { display: none; }
+.timeline-dot { width: 40px; height: 40px; border-radius: 50%; background: var(--md-surface-container);
+  border: 2px solid var(--md-outline-variant); display: grid; place-items: center;
+  color: var(--md-on-surface-variant); position: relative; z-index: 1; }
+.timeline-dot.done   { background: var(--md-primary-container); border-color: var(--md-primary); color: var(--md-on-primary-container); }
+.timeline-dot.active { background: var(--md-success); border-color: var(--md-success); color: var(--md-on-primary); box-shadow: 0 0 0 4px color-mix(in oklch, var(--md-success) 20%, transparent); }
+.timeline-dot.paused { background: var(--md-warning-container); border-color: var(--md-warning); color: var(--md-on-warning-container); }
+.timeline-dot.failed { background: var(--md-error-container); border-color: var(--md-error); color: var(--md-on-error-container); }
+.timeline-content .label { font-weight: 600; font-size: 13px; }
+.timeline-content .meta  { color: var(--md-on-surface-variant); font-size: 12px; font-family: 'Google Sans Code', monospace; margin-top: 2px; }
+.timeline-content .note  { color: var(--md-on-surface-variant); font-size: 12px; margin-top: 4px; }
+
+/* JSON VIEWER */
+.json-viewer { background: var(--md-surface-container); border-radius: var(--r-md); padding: 16px;
+  font-family: 'JetBrains Mono', 'Google Sans Code', monospace; font-size: 12px; line-height: 1.6;
+  max-height: 420px; overflow: auto; border: 1px solid var(--md-outline-variant); }
+.json-key { color: var(--md-primary); font-weight: 600; }
+.json-string { color: color-mix(in oklch, var(--md-success) 70%, var(--md-on-surface)); }
+.json-number { color: color-mix(in oklch, var(--md-tertiary) 80%, var(--md-on-surface)); }
+.json-bool, .json-null { color: color-mix(in oklch, var(--md-warning) 70%, var(--md-on-surface)); font-style: italic; }
+.json-toggle { cursor: pointer; user-select: none; color: var(--md-on-surface-variant); display: inline-block; width: 14px; }
+.json-indent { padding-left: 16px; border-left: 1px dashed var(--md-outline-variant); margin-left: 4px; }
+.trace-viewer { background: var(--md-surface-container); border-radius: var(--r-md); padding: 16px;
+  font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.6; max-height: 420px;
+  overflow: auto; border: 1px solid var(--md-outline-variant); color: var(--md-on-surface);
+  white-space: pre-wrap; word-break: break-all; }
+
+/* TOASTS */
+.toast-rail { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; gap: 8px; z-index: 100; pointer-events: none; }
+.toast { background: var(--md-inverse-surface); color: var(--md-inverse-on-surface);
+  padding: 12px 16px 12px 14px; border-radius: var(--r-sm); font-size: 13px; font-weight: 500;
+  display: flex; align-items: center; gap: 10px; box-shadow: var(--md-elev-3);
+  min-width: 280px; max-width: 420px; pointer-events: auto; animation: toastIn 260ms cubic-bezier(.2,.8,.2,1); }
+.toast .btn-text { color: var(--md-primary); padding: 4px 8px; font-size: 12px; }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* BULK BAR */
+.bulk-bar { position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(calc(100% + 40px));
+  background: var(--md-inverse-surface); color: var(--md-inverse-on-surface);
+  padding: 8px 8px 8px 20px; border-radius: var(--r-full); display: flex; align-items: center; gap: 16px;
+  box-shadow: var(--md-elev-3); transition: transform 280ms cubic-bezier(.2,.8,.2,1); z-index: 90; }
+.bulk-bar.visible { transform: translateX(-50%) translateY(0); }
+.bulk-bar .count { font-size: 13px; font-weight: 600; font-family: 'Google Sans Code', monospace; }
+.bulk-bar .divider { width: 1px; height: 20px; background: color-mix(in oklch, var(--md-inverse-on-surface) 20%, transparent); }
+.bulk-bar .btn-tonal { background: color-mix(in oklch, var(--md-inverse-on-surface) 10%, transparent); color: var(--md-inverse-on-surface); }
+.bulk-bar .btn-tonal:hover { background: color-mix(in oklch, var(--md-inverse-on-surface) 20%, transparent); }
+
+/* EMPTY STATE */
+.empty-state { padding: 60px 24px; text-align: center; color: var(--md-on-surface-variant); }
+.empty-state .material-symbols-rounded { font-size: 48px; color: var(--md-outline); margin-bottom: 12px; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--md-outline-variant); border-radius: 10px; border: 2px solid var(--md-surface); }
+::-webkit-scrollbar-thumb:hover { background: var(--md-outline); }
+
+/* TWEAKS OVERRIDES */
+.seed-swatches { display: flex; gap: 8px; padding: 4px 0; }
+.seed-swatch { width: 32px; height: 32px; border-radius: var(--r-full); border: 2px solid var(--md-outline-variant);
+  cursor: pointer; transition: transform 120ms ease, border-color 120ms ease; }
+.seed-swatch:hover { transform: scale(1.08); }
+.seed-swatch.active { border-color: var(--md-on-surface); transform: scale(1.08);
+  box-shadow: 0 0 0 2px var(--md-surface), 0 0 0 4px var(--md-on-surface); }
+.seg-ctrl { display: flex; background: var(--md-surface-container); border-radius: var(--r-full); padding: 3px; }
+.seg-ctrl button { flex: 1; padding: 6px 10px; font-size: 11px; font-weight: 600; background: transparent;
+  border: 0; color: var(--md-on-surface-variant); border-radius: var(--r-full); cursor: pointer;
+  font-family: inherit; transition: background-color 120ms ease, color 120ms ease; }
+.seg-ctrl button.active { background: var(--md-surface); color: var(--md-on-surface); box-shadow: var(--md-elev-1); }
+.chart-tabs { display: flex; gap: 2px; background: var(--md-surface-container); border-radius: var(--r-full); padding: 2px; }
+.chart-tab { padding: 6px 12px; font-size: 11px; font-weight: 600; border-radius: var(--r-full); cursor: pointer;
+  color: var(--md-on-surface-variant); background: transparent; border: 0; font-family: inherit;
+  transition: background-color 120ms ease, color 120ms ease; }
+.chart-tab.active { background: var(--md-surface); color: var(--md-on-surface); box-shadow: var(--md-elev-1); }
+.chart-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.chart-title { font-size: 14px; font-weight: 700; letter-spacing: -0.005em; }
+</style>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900">
+<body class="theme-dark seed-indigo density-comfortable">
 
-<div class="p-4">
-    <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-4">Search Filters</h2>
+<div id="root"></div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <!-- Workflow name Input -->
-        <div class="flex flex-col">
-            <label class="text-gray-600 dark:text-gray-400 font-medium mb-2">Workflow Name</label>
-            <input type="text" id="workflowName" placeholder="Enter Workflow Name" class="border border-gray-300 dark:border-gray-700 rounded-lg w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-gray-300">
-        </div>
-
-        <!-- Foreign ID Input -->
-        <div class="flex flex-col">
-            <label class="text-gray-600 dark:text-gray-400 font-medium mb-2">Foreign ID</label>
-            <input type="text" id="foreignID" placeholder="Enter Foreign ID" class="border border-gray-300 dark:border-gray-700 rounded-lg w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-gray-300">
-        </div>
-
-        <!-- Run State Selector -->
-        <div class="flex flex-col">
-            <label class="text-gray-600 dark:text-gray-400 font-medium mb-2">Run State</label>
-            <select id="runState" class="h-10 border border-gray-300 dark:border-gray-700 rounded-lg w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-gray-300">
-                <option value="0">Select Run State</option>
-                <option value="1">Initiated</option>
-                <option value="2">Running</option>
-                <option value="3">Paused</option>
-                <option value="4">Cancelled</option>
-                <option value="5">Completed</option>
-                <option value="7">Requested Data Deleted</option>
-                <option value="6">Data Deleted</option>
-                <!-- Add specific options for Run State here -->
-            </select>
-        </div>
-
-        <!-- Status Selector -->
-        <div class="flex flex-col">
-            <label class="text-gray-600 dark:text-gray-400 font-medium mb-2">Status</label>
-            <input type="text" id="status" placeholder="Enter Status (int value)" class="border border-gray-300 dark:border-gray-700 rounded-lg w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-gray-300">
-        </div>
-
-        <!-- Offset Input -->
-        <div class="flex flex-col">
-            <label class="text-gray-600 dark:text-gray-400 font-medium mb-2">Offset</label>
-            <input type="number" id="offset" placeholder="0" class="border border-gray-300 dark:border-gray-700 rounded-lg w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-gray-300">
-        </div>
-
-        <!-- Limit Input -->
-        <div class="flex flex-col">
-            <label class="text-gray-600 dark:text-gray-400 font-medium mb-2">Limit</label>
-            <input type="number" id="limit" placeholder="25" class="border border-gray-300 dark:border-gray-700 rounded-lg w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-gray-300">
-        </div>
-
-        <!-- Order Selector -->
-        <div class="flex flex-col">
-            <label class="text-gray-600 dark:text-gray-400 font-medium mb-2">Order</label>
-            <select id="order" class="h-10 border border-gray-300 dark:border-gray-700 rounded-lg w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-gray-300">
-                <option value="desc">DESC</option>
-                <option value="asc">ASC</option>
-            </select>
-        </div>
-
-        <!-- Search Button -->
-        <div class="flex flex-col justify-end">
-            <button onclick="collectAndUpdateTable()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150 ease-in-out">
-                <div>Search</div>
-            </button>
-        </div>
-    </div>
-
-    <div class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md mt-6">
-        <div class="flex justify-between py-5 px-4">
-            <h2 class="flex items-center text-xl font-semibold text-gray-800 dark:text-gray-200 mb-0">Workflow Records</h2>
-            <button id="pollButton" onclick="togglePolling()" class="bg-blue-500 hover:bg-blue-700 text-sm text-white py-2 px-4 rounded">
-                Enable Polling
-            </button>
-        </div>
-
-        <div class="overflow-x-auto">
-            <table class="min-w-full bg-white dark:bg-gray-900 rounded-lg shadow-sm">
-                <thead class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-600">
-                <tr>
-                    <th class="py-3 px-4 text-center font-medium text-sm">Triggered At</th>
-                    <th class="py-3 px-4 text-center font-medium text-sm">Workflow</th>
-                    <th class="py-3 px-4 text-center font-medium text-sm">Foreign ID</th>
-                    <th class="py-3 px-4 text-center font-medium text-sm">Run ID</th>
-                    <th class="py-3 px-4 text-center font-medium text-sm">Run State</th>
-                    <th class="py-3 px-4 text-center font-medium text-sm">Version</th>
-                    <th class="py-3 px-4 text-center font-medium text-sm">Status</th>
-                    <th class="py-3 px-4 text-center font-medium text-sm">Duration</th>
-                    <th class="py-3 px-4 text-center font-medium text-sm">Object</th>
-                    <th class="py-3 px-4 text-center font-medium text-sm">Actions</th>
-                </tr>
-                </thead>
-                <tbody id="tableBody" class="divide-y divide-gray-100 dark:divide-gray-700">
-                <!-- Dynamic rows will be populated here by JavaScript -->
-                </tbody>
-            </table>
-        </div>
-    </div>
-    <div id="jsonModal" class="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center hidden">
-        <div class="bg-white p-6 rounded-lg shadow-lg min-h-[50vh] min-w-[50vw] overflow-auto">
-            <div id="jsonContainer" class="bg-gray-100 p-4 rounded text-sm"></div>
-            <button onclick="closeModal()" class="bg-red-500 text-white px-4 py-2 mt-4 rounded">Close</button>
-        </div>
-    </div>
-</div>
-
+<!-- Inject API paths from Go template -->
 <script>
-    {{.Javascript}}
+window.__API_PATHS = {
+  list:       "[[.List]]",
+  update:     "[[.Update]]",
+  objectData: "[[.ObjectData]]"
+};
 </script>
+
+<script type="text/babel">
+const __TWEAKS_STYLE = `
+  .twk-panel{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:280px;
+    max-height:calc(100vh - 32px);display:flex;flex-direction:column;
+    background:rgba(250,249,247,.78);color:#29261b;
+    -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+    border:.5px solid rgba(255,255,255,.6);border-radius:14px;
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 12px 40px rgba(0,0,0,.18);
+    font:11.5px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden}
+  .twk-hd{display:flex;align-items:center;justify-content:space-between;
+    padding:10px 8px 10px 14px;cursor:move;user-select:none}
+  .twk-hd b{font-size:12px;font-weight:600;letter-spacing:.01em}
+  .twk-x{appearance:none;border:0;background:transparent;color:rgba(41,38,27,.55);
+    width:22px;height:22px;border-radius:6px;cursor:default;font-size:13px;line-height:1}
+  .twk-x:hover{background:rgba(0,0,0,.06);color:#29261b}
+  .twk-body{padding:2px 14px 14px;display:flex;flex-direction:column;gap:10px;
+    overflow-y:auto;overflow-x:hidden;min-height:0;
+    scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.15) transparent}
+  .twk-row{display:flex;flex-direction:column;gap:5px}
+  .twk-row-h{flex-direction:row;align-items:center;justify-content:space-between;gap:10px}
+  .twk-lbl{display:flex;justify-content:space-between;align-items:baseline;color:rgba(41,38,27,.72)}
+  .twk-lbl>span:first-child{font-weight:500}
+  .twk-val{color:rgba(41,38,27,.5);font-variant-numeric:tabular-nums}
+  .twk-sect{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:rgba(41,38,27,.45);padding:10px 0 0}
+  .twk-sect:first-child{padding-top:0}
+  .twk-slider{appearance:none;-webkit-appearance:none;width:100%;height:4px;margin:6px 0;
+    border-radius:999px;background:rgba(0,0,0,.12);outline:none}
+  .twk-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+    width:14px;height:14px;border-radius:50%;background:#fff;
+    border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+  .twk-seg{position:relative;display:flex;padding:2px;border-radius:8px;
+    background:rgba(0,0,0,.06);user-select:none}
+  .twk-seg-thumb{position:absolute;top:2px;bottom:2px;border-radius:6px;
+    background:rgba(255,255,255,.9);box-shadow:0 1px 2px rgba(0,0,0,.12);
+    transition:left .15s cubic-bezier(.3,.7,.4,1),width .15s}
+  .twk-seg button{appearance:none;position:relative;z-index:1;flex:1;border:0;
+    background:transparent;color:inherit;font:inherit;font-weight:500;height:22px;
+    border-radius:6px;cursor:default;padding:0}
+  .twk-toggle{position:relative;width:32px;height:18px;border:0;border-radius:999px;
+    background:rgba(0,0,0,.15);transition:background .15s;cursor:default;padding:0}
+  .twk-toggle[data-on="1"]{background:#34c759}
+  .twk-toggle i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+  .twk-toggle[data-on="1"] i{transform:translateX(14px)}
+  .twk-btn{appearance:none;height:26px;padding:0 12px;border:0;border-radius:7px;
+    background:rgba(0,0,0,.78);color:#fff;font:inherit;font-weight:500;cursor:default}
+  .twk-btn:hover{background:rgba(0,0,0,.88)}
+`;
+
+function useTweaks(defaults) {
+  const [values, setValues] = React.useState(defaults);
+  const setTweak = React.useCallback((key, val) => {
+    setValues((prev) => ({ ...prev, [key]: val }));
+  }, []);
+  return [values, setTweak];
+}
+
+function TweaksPanel({ title = 'Tweaks', children }) {
+  const [open, setOpen] = React.useState(false);
+  const dragRef = React.useRef(null);
+  const offsetRef = React.useRef({ x: 16, y: 16 });
+  const PAD = 16;
+
+  const clampToViewport = React.useCallback(() => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const w = panel.offsetWidth, h = panel.offsetHeight;
+    const maxRight = Math.max(PAD, window.innerWidth - w - PAD);
+    const maxBottom = Math.max(PAD, window.innerHeight - h - PAD);
+    offsetRef.current = {
+      x: Math.min(maxRight, Math.max(PAD, offsetRef.current.x)),
+      y: Math.min(maxBottom, Math.max(PAD, offsetRef.current.y)),
+    };
+    panel.style.right = offsetRef.current.x + 'px';
+    panel.style.bottom = offsetRef.current.y + 'px';
+  }, []);
+
+  React.useEffect(() => {
+    const onMsg = (e) => {
+      const t = e?.data?.type;
+      if (t === '__activate_edit_mode') setOpen(true);
+      else if (t === '__deactivate_edit_mode') setOpen(false);
+    };
+    window.addEventListener('message', onMsg);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  const dismiss = () => {
+    setOpen(false);
+    window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
+  };
+
+  const onDragStart = (e) => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const r = panel.getBoundingClientRect();
+    const sx = e.clientX, sy = e.clientY;
+    const startRight = window.innerWidth - r.right;
+    const startBottom = window.innerHeight - r.bottom;
+    const move = (ev) => {
+      offsetRef.current = { x: startRight - (ev.clientX - sx), y: startBottom - (ev.clientY - sy) };
+      clampToViewport();
+    };
+    const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
+  if (!open) return null;
+  return (
+    <>
+      <style>{__TWEAKS_STYLE}</style>
+      <div ref={dragRef} className="twk-panel" style={{ right: offsetRef.current.x, bottom: offsetRef.current.y }}>
+        <div className="twk-hd" onMouseDown={onDragStart}>
+          <b>{title}</b>
+          <button className="twk-x" onMouseDown={(e) => e.stopPropagation()} onClick={dismiss}>✕</button>
+        </div>
+        <div className="twk-body">{children}</div>
+      </div>
+    </>
+  );
+}
+
+function TweakSection({ label }) { return <div className="twk-sect">{label}</div>; }
+function TweakRow({ label, value, children, inline = false }) {
+  return (
+    <div className={inline ? 'twk-row twk-row-h' : 'twk-row'}>
+      <div className="twk-lbl"><span>{label}</span>{value != null && <span className="twk-val">{value}</span>}</div>
+      {children}
+    </div>
+  );
+}
+function TweakSlider({ label, value, min = 0, max = 100, step = 1, unit = '', onChange }) {
+  return (
+    <TweakRow label={label} value={`${value}${unit}`}>
+      <input type="range" className="twk-slider" min={min} max={max} step={step}
+             value={value} onChange={(e) => onChange(Number(e.target.value))} />
+    </TweakRow>
+  );
+}
+function TweakToggle({ label, value, onChange }) {
+  return (
+    <div className="twk-row twk-row-h">
+      <div className="twk-lbl"><span>{label}</span></div>
+      <button type="button" className="twk-toggle" data-on={value ? '1' : '0'}
+              onClick={() => onChange(!value)}><i /></button>
+    </div>
+  );
+}
+function TweakRadio({ label, value, options, onChange }) {
+  const trackRef = React.useRef(null);
+  const [dragging, setDragging] = React.useState(false);
+  const opts = options.map((o) => (typeof o === 'object' ? o : { value: o, label: o }));
+  const idx = Math.max(0, opts.findIndex((o) => o.value === value));
+  const n = opts.length;
+  const valueRef = React.useRef(value);
+  valueRef.current = value;
+  const segAt = (clientX) => {
+    const r = trackRef.current.getBoundingClientRect();
+    const inner = r.width - 4;
+    const i = Math.floor(((clientX - r.left - 2) / inner) * n);
+    return opts[Math.max(0, Math.min(n - 1, i))].value;
+  };
+  const onPointerDown = (e) => {
+    setDragging(true);
+    const v0 = segAt(e.clientX);
+    if (v0 !== valueRef.current) onChange(v0);
+    const move = (ev) => { if (!trackRef.current) return; const v = segAt(ev.clientX); if (v !== valueRef.current) onChange(v); };
+    const up = () => { setDragging(false); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  return (
+    <TweakRow label={label}>
+      <div ref={trackRef} role="radiogroup" onPointerDown={onPointerDown}
+           className={dragging ? 'twk-seg dragging' : 'twk-seg'}>
+        <div className="twk-seg-thumb"
+             style={{ left: `calc(2px + ${idx} * (100% - 4px) / ${n})`, width: `calc((100% - 4px) / ${n})` }} />
+        {opts.map((o) => (
+          <button key={o.value} type="button" role="radio" aria-checked={o.value === value}>{o.label}</button>
+        ))}
+      </div>
+    </TweakRow>
+  );
+}
+function TweakButton({ label, onClick }) {
+  return <button type="button" className="twk-btn" onClick={onClick}>{label}</button>;
+}
+
+Object.assign(window, { useTweaks, TweaksPanel, TweakSection, TweakRow, TweakSlider, TweakToggle, TweakRadio, TweakButton });
+</script>
+
+<script type="text/babel">
+/* Utility functions — no mock data */
+
+function rollupByState(records) {
+  const byState = {};
+  records.forEach(r => { byState[r.run_state] = (byState[r.run_state] || 0) + 1; });
+  return byState;
+}
+
+function rollupByWorkflow(records) {
+  const byName = {};
+  records.forEach(r => { byName[r.workflow_name] = (byName[r.workflow_name] || 0) + 1; });
+  return Object.entries(byName).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+}
+
+Object.assign(window, { rollupByState, rollupByWorkflow });
+</script>
+
+<script type="text/babel">
+const { useState: _cSt, useEffect: _cEff, useMemo: _cMemo, useRef: _cRef, useCallback: _cCb } = React;
+
+function Icon({ name, filled, className = "", style }) {
+  return <span className={`material-symbols-rounded ${filled ? "filled" : ""} ${className}`} style={style}>{name}</span>;
+}
+
+function formatTriggerTimestamp(date) {
+  const d = new Date(date), now = new Date();
+  const time = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+  if (d.toDateString() === now.toDateString()) return time;
+  if (d.getFullYear() === now.getFullYear())
+    return `${d.toLocaleString("en-US", { month: "short" })} ${d.getDate()} · ${time}`;
+  return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+}
+
+function relativeTime(date) {
+  const diff = Date.now() - new Date(date).getTime();
+  const s = Math.floor(diff / 1000);
+  if (s < 5) return "just now";
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function formatDuration(startDate, endDate) {
+  const diff = Math.max(0, new Date(endDate) - new Date(startDate));
+  const days = Math.floor(diff / 86400000);
+  const hours = Math.floor(diff / 3600000) % 24;
+  const mins  = Math.floor(diff / 60000) % 60;
+  const secs  = Math.floor(diff / 1000) % 60;
+  const parts = [];
+  if (days) parts.push(days + "d");
+  if (hours) parts.push(hours + "h");
+  if (mins) parts.push(mins + "m");
+  if (!days && !hours) parts.push(secs + "s");
+  return parts.slice(0, 2).join(" ") || "0s";
+}
+
+function stateClass(s) { return "state-" + s.toLowerCase().replace(/\s+/g, "-"); }
+
+/* ---- Sidebar ---- */
+function Sidebar({ stateCounts, activeNav, onNav, presetCount = 0, workflowCount }) {
+  const items = [
+    { key: "runs",      icon: "timeline",  label: "Runs",          badge: stateCounts.total },
+    { key: "workflows", icon: "schema",    label: "Workflows",     badge: workflowCount },
+    { key: "saved",     icon: "bookmark",  label: "Saved filters", badge: presetCount || null },
+  ];
+  const lower = [
+    { key: "docs",     icon: "menu_book", label: "Docs" },
+    { key: "settings", icon: "tune",      label: "Settings" },
+  ];
+  return (
+    <aside className="sidebar">
+      <div className="brand">
+        <span className="brand-logo brand-logo-light" dangerouslySetInnerHTML={{__html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" fill="none"><g transform="translate(8,8)"><line x1="14" y1="44" x2="32" y2="32" stroke="#0d0e12" stroke-width="5.5" stroke-linecap="round"/><line x1="32" y1="32" x2="50" y2="20" stroke="#0d0e12" stroke-width="5.5" stroke-linecap="round"/><circle cx="14" cy="44" r="7.5" fill="#0d0e12"/><circle cx="32" cy="32" r="7.5" fill="#0d0e12"/><circle cx="50" cy="20" r="7.5" fill="#4255FF"/></g><text x="92" y="52" font-family="-apple-system,BlinkMacSystemFont,&#39;Segoe UI&#39;,system-ui,sans-serif" font-weight="700" font-size="40" letter-spacing="-1.2" fill="#0d0e12">workflow</text></svg>`}} />
+        <span className="brand-logo brand-logo-dark" dangerouslySetInnerHTML={{__html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" fill="none"><g transform="translate(8,8)"><line x1="14" y1="44" x2="32" y2="32" stroke="#FFFFFF" stroke-width="5.5" stroke-linecap="round"/><line x1="32" y1="32" x2="50" y2="20" stroke="#FFFFFF" stroke-width="5.5" stroke-linecap="round"/><circle cx="14" cy="44" r="7.5" fill="#FFFFFF"/><circle cx="32" cy="32" r="7.5" fill="#FFFFFF"/><circle cx="50" cy="20" r="7.5" fill="#BCC2FF"/></g><text x="92" y="52" font-family="-apple-system,BlinkMacSystemFont,&#39;Segoe UI&#39;,system-ui,sans-serif" font-weight="700" font-size="40" letter-spacing="-1.2" fill="#FFFFFF">workflow</text></svg>`}} />
+      </div>
+      <div className="nav-section">Explore</div>
+      {items.map(it => (
+        <div key={it.key} className={`nav-item ${activeNav === it.key ? "active" : ""}`} onClick={() => onNav(it.key)}>
+          <Icon name={it.icon} /><span>{it.label}</span>
+          {it.badge != null && <span className="badge">{it.badge}</span>}
+        </div>
+      ))}
+      <div className="nav-section">System</div>
+      {lower.map(it => (
+        <div key={it.key} className={`nav-item ${activeNav === it.key ? "active" : ""}`} onClick={() => onNav(it.key)}>
+          <Icon name={it.icon} /><span>{it.label}</span>
+        </div>
+      ))}
+      <div className="sidebar-footer">
+        <div className="avatar">W</div>
+        <div className="user-meta">
+          <div className="name">github.com/luno</div>
+          <div className="role">/workflow</div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+/* ---- Topbar ---- */
+function Topbar({ theme, setTheme, polling, onTogglePolling, activeNav = "runs" }) {
+  const crumbMap = { runs: "Runs", workflows: "Workflows", saved: "Saved filters", docs: "Docs", settings: "Settings" };
+  return (
+    <header className="topbar">
+      <div className="crumbs">
+        <span>Workflow</span>
+        <Icon name="chevron_right" className="sep" />
+        <span className="current">{crumbMap[activeNav] || "Runs"}</span>
+      </div>
+      <div className="topbar-search">
+        <Icon name="search" />
+        <input placeholder="Search runs, workflows, foreign IDs…" />
+        <span className="kbd">⌘K</span>
+      </div>
+      <div className="topbar-actions">
+        <button className="icon-btn" title="Live polling" onClick={onTogglePolling}>
+          <Icon name={polling ? "sync" : "sync_disabled"} style={polling ? { animation: "spin 2s linear infinite" } : undefined} />
+        </button>
+        <button className="icon-btn" title="Toggle theme" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+          <Icon name={theme === "dark" ? "light_mode" : "dark_mode"} />
+        </button>
+      </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </header>
+  );
+}
+
+/* ---- KPI Hero ---- */
+function KPIHero({ total, stateCounts }) {
+  const running = stateCounts.Running || 0, paused = stateCounts.Paused || 0;
+  const completed = stateCounts.Completed || 0, cancelled = stateCounts.Cancelled || 0;
+  return (
+    <div className="card kpi kpi-hero">
+      <div className="label"><Icon name="stacks" /> Total runs</div>
+      <div className="value">{total.toLocaleString()}</div>
+      <div className="state-split">
+        <span className="state-mini"><span className="dot" style={{ background: "var(--md-success)" }} />Running {running}</span>
+        <span className="state-mini"><span className="dot" style={{ background: "var(--md-warning)" }} />Paused {paused}</span>
+        <span className="state-mini"><span className="dot" style={{ background: "var(--md-primary)" }} />Done {completed}</span>
+        <span className="state-mini"><span className="dot" style={{ background: "var(--md-error)" }} />Cancel {cancelled}</span>
+      </div>
+      <div className="blob" />
+    </div>
+  );
+}
+
+/* ---- Ring Chart ---- */
+function RingChart({ stateCounts }) {
+  const entries = [
+    { key: "Running",   color: "var(--md-success)" },
+    { key: "Completed", color: "var(--md-primary)" },
+    { key: "Paused",    color: "var(--md-warning)" },
+    { key: "Cancelled", color: "var(--md-error)" },
+    { key: "Initiated", color: "var(--md-outline)" },
+    { key: "Data Deleted", color: "var(--md-on-surface-variant)" },
+  ];
+  const total = entries.reduce((sum, e) => sum + (stateCounts[e.key] || 0), 0) || 1;
+  const size = 140, stroke = 18, radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  let offset = 0;
+  return (
+    <div className="card ring-card">
+      <div className="chart-head">
+        <div className="chart-title">By run state</div>
+        <div style={{ fontSize: 11, color: "var(--md-on-surface-variant)", fontFamily: "Google Sans Code, monospace" }}>{total} runs</div>
+      </div>
+      <div className="ring-wrap">
+        <svg className="ring-svg" width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke="var(--md-surface-container-high)" strokeWidth={stroke} />
+          {entries.map(e => {
+            const count = stateCounts[e.key] || 0;
+            if (!count) return null;
+            const len = (count / total) * circumference;
+            const el = <circle key={e.key} cx={size/2} cy={size/2} r={radius} fill="none"
+              stroke={e.color} strokeWidth={stroke}
+              strokeDasharray={`${len} ${circumference - len}`} strokeDashoffset={-offset}
+              transform={`rotate(-90 ${size/2} ${size/2})`} strokeLinecap="butt" />;
+            offset += len;
+            return el;
+          })}
+          <text x={size/2} y={size/2 - 4} textAnchor="middle" fontSize="22" fontWeight="800" fill="var(--md-on-surface)" fontFamily="Plus Jakarta Sans, sans-serif">{total}</text>
+          <text x={size/2} y={size/2 + 14} textAnchor="middle" fontSize="10" fill="var(--md-on-surface-variant)" fontFamily="Google Sans Code, monospace" letterSpacing="0.05em">TOTAL RUNS</text>
+        </svg>
+        <div className="ring-legend">
+          {entries.map(e => (
+            <div key={e.key} className="ring-legend-item">
+              <span className="sw" style={{ background: e.color }} />
+              <span className="lbl">{e.key}</span>
+              <span className="val">{stateCounts[e.key] || 0}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---- Filter Bar ---- */
+const STATE_CHIPS = [
+  { key: "all",       label: "All",       dot: null },
+  { key: "Running",   label: "Running",   dot: "var(--md-success)" },
+  { key: "Paused",    label: "Paused",    dot: "var(--md-warning)" },
+  { key: "Completed", label: "Completed", dot: "var(--md-primary)" },
+  { key: "Cancelled", label: "Cancelled", dot: "var(--md-error)" },
+  { key: "Initiated", label: "Initiated", dot: "var(--md-outline)" },
+];
+
+function FilterBar({ filters, setFilters, stateCounts, workflowNames = [], presets, onSavePreset, onLoadPreset, onDeletePreset }) {
+  const [presetName, _setPresetName] = _cSt("");
+  const [showPresets, setShowPresets] = _cSt(false);
+  return (
+    <div className="card filters-card">
+      <div className="filters-row">
+        {STATE_CHIPS.map(c => {
+          const count = c.key === "all" ? stateCounts.total : (stateCounts[c.key] || 0);
+          const active = filters.state === c.key;
+          return (
+            <button key={c.key} className={`chip ${active ? "active" : ""}`}
+                    onClick={() => setFilters(f => ({ ...f, state: c.key }))}>
+              {c.dot && <span className="dot" style={{ background: c.dot }} />}
+              <span>{c.label}</span>
+              <span className="count">{count}</span>
+            </button>
+          );
+        })}
+        <div className="filter-divider" />
+        <div className="text-field" style={{ flex: 1, minWidth: 160 }}>
+          <Icon name="account_tree" />
+          <select value={filters.workflow} onChange={e => setFilters(f => ({ ...f, workflow: e.target.value }))}>
+            <option value="">All workflows</option>
+            {workflowNames.map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
+        <div className="text-field" style={{ minWidth: 140 }}>
+          <Icon name="tag" />
+          <input placeholder="Foreign ID" value={filters.foreignId}
+                 onChange={e => setFilters(f => ({ ...f, foreignId: e.target.value }))} />
+        </div>
+        <div className="text-field" style={{ minWidth: 120 }}>
+          <Icon name="flag" />
+          <input placeholder="Status text" value={filters.status}
+                 onChange={e => setFilters(f => ({ ...f, status: e.target.value }))} />
+        </div>
+        <button className={`chip ${showPresets ? "active" : ""}`} onClick={() => setShowPresets(s => !s)} title="Saved filter presets">
+          <Icon name="bookmark" style={{ fontSize: 14 }} />
+          <span>Presets</span>
+          {presets.length > 0 && <span className="count">{presets.length}</span>}
+        </button>
+        <button className="btn btn-tonal btn-sm" onClick={() => setFilters({ state: "all", workflow: "", foreignId: "", status: "" })}>
+          <Icon name="close" style={{ fontSize: 16 }} />Clear
+        </button>
+      </div>
+      {showPresets && (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--md-outline-variant)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          {presets.length === 0 && <span style={{ fontSize: 12, color: "var(--md-on-surface-variant)" }}>No saved presets yet. Configure filters then save them.</span>}
+          {presets.map(p => (
+            <span key={p.name} className="chip" style={{ gap: 4 }}>
+              <Icon name="bookmark" style={{ fontSize: 14 }} filled />
+              <span onClick={() => onLoadPreset(p)} style={{ cursor: "pointer" }}>{p.name}</span>
+              <button className="row-action-btn" style={{ width: 18, height: 18, marginLeft: 4 }}
+                      onClick={() => onDeletePreset(p.name)}><Icon name="close" style={{ fontSize: 12 }} /></button>
+            </span>
+          ))}
+          <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+            <div className="text-field" style={{ minWidth: 160 }}>
+              <Icon name="edit" />
+              <input placeholder="Preset name" value={presetName} onChange={e => _setPresetName(e.target.value)}
+                     onKeyDown={e => { if (e.key === "Enter" && presetName) { onSavePreset(presetName); _setPresetName(""); } }} />
+            </div>
+            <button className="btn btn-filled btn-sm" disabled={!presetName} style={{ opacity: presetName ? 1 : 0.5 }}
+                    onClick={() => { if (presetName) { onSavePreset(presetName); _setPresetName(""); } }}>
+              <Icon name="save" style={{ fontSize: 16 }} />Save current
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---- State Pill ---- */
+function StatePill({ state, reason }) {
+  return (
+    <span className={`state-pill ${stateClass(state)}`}>
+      <span className="dot" />
+      {state}
+      {reason && <span style={{ opacity: 0.7 }}>· {reason}</span>}
+    </span>
+  );
+}
+
+/* ---- Records Table ---- */
+function RecordsTable({ records, filters, selectedIds, setSelectedIds, onRowClick, onAction }) {
+  const [sort, setSort] = _cSt({ col: "created_at", dir: "desc" });
+  const filtered = _cMemo(() => {
+    return records.filter(r => {
+      if (filters.state !== "all" && r.run_state !== filters.state) return false;
+      if (filters.workflow && r.workflow_name !== filters.workflow) return false;
+      if (filters.foreignId && !r.foreign_id.toLowerCase().includes(filters.foreignId.toLowerCase())) return false;
+      if (filters.status && !(r.status || "").toLowerCase().includes(filters.status.toLowerCase())) return false;
+      return true;
+    }).sort((a, b) => {
+      const x = a[sort.col], y = b[sort.col];
+      const cmp = x < y ? -1 : x > y ? 1 : 0;
+      return sort.dir === "asc" ? cmp : -cmp;
+    });
+  }, [records, filters, sort]);
+
+  const allSelected = filtered.length > 0 && filtered.every(r => selectedIds.has(r.run_id));
+  const toggleAll = () => allSelected ? setSelectedIds(new Set()) : setSelectedIds(new Set(filtered.map(r => r.run_id)));
+  const toggleOne = (id) => { const next = new Set(selectedIds); next.has(id) ? next.delete(id) : next.add(id); setSelectedIds(next); };
+
+  const sortCell = (col, label) => {
+    const dir = sort.col === col ? sort.dir : null;
+    return (
+      <th className={`sortable ${dir ? "sort-" + dir : ""}`}
+          onClick={() => setSort(s => ({ col, dir: s.col === col && s.dir === "asc" ? "desc" : "asc" }))}>
+        {label}<span className="material-symbols-rounded sort-ind">{dir === "asc" ? "arrow_upward" : dir === "desc" ? "arrow_downward" : "unfold_more"}</span>
+      </th>
+    );
+  };
+
+  const now = new Date();
+  return (
+    <div className="card table-card">
+      <div className="table-header-row">
+        <div className="title">Workflow Runs <span className="count-pill">{filtered.length}</span></div>
+        <div className="table-tools">
+          <span style={{ fontSize: 12, color: "var(--md-on-surface-variant)" }}>Showing {filtered.length} of {records.length}</span>
+        </div>
+      </div>
+      <div className="table-scroll">
+        <table className="table">
+          <thead>
+            <tr>
+              <th style={{ width: 40 }}><input type="checkbox" className="checkbox" checked={allSelected} onChange={toggleAll} /></th>
+              {sortCell("created_at", "Triggered")}
+              {sortCell("workflow_name", "Workflow")}
+              {sortCell("foreign_id", "Foreign ID")}
+              <th>Run State</th>
+              {sortCell("status", "Status")}
+              <th>Duration</th>
+              <th style={{ width: 80 }}>Version</th>
+              <th style={{ textAlign: "right", width: 160 }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 && (
+              <tr><td colSpan={9}>
+                <div className="empty-state">
+                  <Icon name="inbox" />
+                  <div style={{ fontWeight: 600, marginBottom: 4, color: "var(--md-on-surface)" }}>No runs match these filters</div>
+                  <div style={{ fontSize: 12 }}>Try clearing filters or adjusting the search.</div>
+                </div>
+              </td></tr>
+            )}
+            {filtered.map(r => {
+              const selected = selectedIds.has(r.run_id);
+              const endTs = r.run_state === "Running" ? now : new Date(r.updated_at);
+              const duration = formatDuration(r.created_at, endTs);
+              return (
+                <tr key={r.run_id} className={selected ? "selected" : ""} onClick={() => onRowClick(r)}>
+                  <td onClick={e => e.stopPropagation()}>
+                    <input type="checkbox" className="checkbox" checked={selected} onChange={() => toggleOne(r.run_id)} />
+                  </td>
+                  <td className="mono">{formatTriggerTimestamp(r.created_at)}</td>
+                  <td className="workflow-name">{r.workflow_name}</td>
+                  <td className="mono" onClick={e => e.stopPropagation()}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                      {r.foreign_id}
+                      <button className="row-action-btn" style={{ width: 22, height: 22 }} title="Copy Foreign ID"
+                              onClick={() => { navigator.clipboard?.writeText(r.foreign_id); onAction("copied", { ...r, _copied: r.foreign_id }); }}>
+                        <Icon name="content_copy" style={{ fontSize: 12 }} />
+                      </button>
+                    </span>
+                  </td>
+                  <td><StatePill state={r.run_state} reason={r.run_state_reason} /></td>
+                  <td style={{ color: "var(--md-on-surface-variant)", fontSize: 12 }}>{r.status}</td>
+                  <td className="duration">{duration}</td>
+                  <td className="mono" style={{ textAlign: "center" }}>v{r.version}</td>
+                  <td onClick={e => e.stopPropagation()}><RowActions record={r} onAction={onAction} /></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function RowActions({ record, onAction }) {
+  const s = record.run_state;
+  return (
+    <div className="row-actions">
+      {s === "Running" && <>
+        <button className="row-action-btn" title="Pause" onClick={() => onAction("pause", record)}><Icon name="pause" /></button>
+        <button className="row-action-btn danger" title="Cancel" onClick={() => onAction("cancel", record)}><Icon name="stop" /></button>
+      </>}
+      {s === "Paused" && <>
+        <button className="row-action-btn success" title="Resume" onClick={() => onAction("resume", record)}><Icon name="play_arrow" /></button>
+        <button className="row-action-btn danger" title="Cancel" onClick={() => onAction("cancel", record)}><Icon name="stop" /></button>
+      </>}
+      {s === "Initiated" && <button className="row-action-btn" title="Pause" onClick={() => onAction("pause", record)}><Icon name="pause" /></button>}
+      {(s === "Cancelled" || s === "Completed" || s === "Data Deleted") &&
+        <button className="row-action-btn" title="Delete" onClick={() => onAction("delete", record)}><Icon name="delete" /></button>}
+      <button className="row-action-btn" title="View trace" onClick={() => onAction("trace", record)}><Icon name="bug_report" /></button>
+    </div>
+  );
+}
+
+/* ---- JSON Viewer ---- */
+function JsonNode({ k, v, depth = 0 }) {
+  const [open, setOpen] = _cSt(depth < 2);
+  if (v === null) return <span><span className="json-key">{k && `"${k}": `}</span><span className="json-null">null</span></span>;
+  if (typeof v === "string") return <span><span className="json-key">{k && `"${k}": `}</span><span className="json-string">"{v}"</span></span>;
+  if (typeof v === "number") return <span><span className="json-key">{k && `"${k}": `}</span><span className="json-number">{v}</span></span>;
+  if (typeof v === "boolean") return <span><span className="json-key">{k && `"${k}": `}</span><span className="json-bool">{String(v)}</span></span>;
+  const isArray = Array.isArray(v);
+  const entries = isArray ? v.map((x, i) => [i, x]) : Object.entries(v);
+  const openBr = isArray ? "[" : "{", closeBr = isArray ? "]" : "}";
+  return (
+    <div>
+      <span className="json-toggle" onClick={() => setOpen(!open)}>{open ? "▼" : "▶"}</span>
+      <span className="json-key">{k && `"${k}": `}</span>
+      <span>{openBr}{!open && ` … ${entries.length}`}</span>
+      {open && <div className="json-indent">{entries.map(([ek, ev], i) => (
+        <div key={i}><JsonNode k={ek} v={ev} depth={depth + 1} />{i < entries.length - 1 && ","}</div>
+      ))}</div>}
+      <span>{closeBr}</span>
+    </div>
+  );
+}
+
+function JsonViewer({ data }) {
+  const [query, setQuery] = _cSt("");
+  const filtered = _cMemo(() => {
+    if (!query) return data;
+    const q = query.toLowerCase();
+    const walk = (v) => {
+      if (v === null || typeof v !== "object") return String(v).toLowerCase().includes(q) ? v : undefined;
+      if (Array.isArray(v)) { const out = v.map(walk).filter(x => x !== undefined); return out.length ? out : undefined; }
+      const out = {};
+      for (const [k, val] of Object.entries(v)) {
+        if (k.toLowerCase().includes(q)) { out[k] = val; continue; }
+        const sub = walk(val);
+        if (sub !== undefined) out[k] = sub;
+      }
+      return Object.keys(out).length ? out : undefined;
+    };
+    return walk(data) ?? {};
+  }, [data, query]);
+  return (
+    <div>
+      <div className="text-field" style={{ marginBottom: 10 }}>
+        <Icon name="search" />
+        <input placeholder="Search keys and values…" value={query} onChange={e => setQuery(e.target.value)} />
+        {query && <button className="row-action-btn" style={{ width: 22, height: 22 }} onClick={() => setQuery("")}><Icon name="close" style={{ fontSize: 14 }} /></button>}
+      </div>
+      <div className="json-viewer"><JsonNode v={filtered} depth={0} /></div>
+    </div>
+  );
+}
+
+/* ---- Drawer ---- */
+const STATE_TIMELINE = {
+  Running:  [
+    { label: "Triggered",       icon: "bolt",           kind: "done",   time: "—" },
+    { label: "Running step",    icon: "play_arrow",     kind: "active", time: "ongoing" },
+    { label: "Finalize",        icon: "check",          kind: "",       time: "pending" },
+  ],
+  Paused: [
+    { label: "Triggered",       icon: "bolt",           kind: "done",   time: "—" },
+    { label: "Paused",          icon: "pause",          kind: "paused", time: "—",      note: "Awaiting resume" },
+    { label: "Finalize",        icon: "check",          kind: "",       time: "pending" },
+  ],
+  Completed: [
+    { label: "Triggered",       icon: "bolt",           kind: "done",   time: "—" },
+    { label: "Completed",       icon: "check",          kind: "done",   time: "—" },
+  ],
+  Cancelled: [
+    { label: "Triggered",       icon: "bolt",           kind: "done",   time: "—" },
+    { label: "Cancelled",       icon: "close",          kind: "failed", time: "—" },
+  ],
+  Initiated: [
+    { label: "Triggered",       icon: "bolt",           kind: "active", time: "just now" },
+    { label: "Pending",         icon: "hourglass_empty",kind: "",       time: "pending" },
+  ],
+  "Data Deleted": [
+    { label: "Triggered",       icon: "bolt",           kind: "done",   time: "—" },
+    { label: "Data purged",     icon: "delete_forever", kind: "done",   time: "—" },
+  ],
+  default: [{ label: "Triggered", icon: "bolt", kind: "done", time: "—" }],
+};
+
+function Drawer({ record, onClose, onAction, tab, setTab, fetchObjectData }) {
+  const [objectData, setObjectData] = _cSt(null);
+  const [objectLoading, setObjectLoading] = _cSt(false);
+  const [objectError, setObjectError] = _cSt(null);
+
+  // Reset when record changes
+  _cEff(() => { setObjectData(null); setObjectError(null); }, [record && record.run_id]);
+
+  // Fetch object data when that tab is active
+  _cEff(() => {
+    if (tab !== "object" || !record || objectData !== null || objectLoading) return;
+    setObjectLoading(true);
+    fetchObjectData(record.run_id)
+      .then(data => setObjectData(data))
+      .catch(e => setObjectError(e.message))
+      .finally(() => setObjectLoading(false));
+  }, [tab, record && record.run_id, objectData]);
+
+  if (!record) return null;
+  const steps = STATE_TIMELINE[record.run_state] || STATE_TIMELINE.default;
+  const now = new Date();
+  const endTs = record.run_state === "Running" ? now : new Date(record.updated_at);
+  const duration = formatDuration(record.created_at, endTs);
+
+  return (
+    <>
+      <div className={`scrim ${record ? "open" : ""}`} onClick={onClose} />
+      <aside className={`drawer ${record ? "open" : ""}`}>
+        <div className="drawer-head">
+          <div className="top-row">
+            <div>
+              <h2>{record.workflow_name}</h2>
+              <div className="sub">
+                <span className="id-pill">{record.foreign_id}</span>
+                <span style={{ opacity: 0.5 }}>·</span>
+                <span>run {record.run_id.slice(0, 12)}…</span>
+                <span style={{ opacity: 0.5 }}>·</span>
+                <span>v{record.version}</span>
+              </div>
+            </div>
+            <button className="icon-btn" onClick={onClose}><Icon name="close" /></button>
+          </div>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <StatePill state={record.run_state} reason={record.run_state_reason} />
+            <span style={{ fontSize: 12, color: "var(--md-on-surface-variant)" }}>{relativeTime(record.updated_at)}</span>
+          </div>
+          <div className="drawer-metrics">
+            <div className="drawer-metric"><div className="label">Duration</div><div className="val">{duration}</div></div>
+            <div className="drawer-metric"><div className="label">Status</div><div className="val" style={{ fontSize: 13, fontFamily: "Plus Jakarta Sans", fontWeight: 600 }}>{record.status}</div></div>
+            <div className="drawer-metric"><div className="label">Version</div><div className="val">v{record.version}</div></div>
+          </div>
+        </div>
+
+        <div style={{ padding: "16px 0 0" }}>
+          <div className="drawer-tabs">
+            {["timeline", "object", "trace"].map(t => (
+              <button key={t} className={`drawer-tab ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>
+                {t === "timeline" ? "Timeline" : t === "object" ? "Object Data" : "Stack Trace"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="drawer-body">
+          {tab === "timeline" && (
+            <div className="drawer-section">
+              <div className="timeline">
+                {steps.map((s, i) => (
+                  <div className="timeline-item" key={i}>
+                    <div className={`timeline-dot ${s.kind}`}><Icon name={s.icon} style={{ fontSize: 16 }} /></div>
+                    <div className="timeline-content">
+                      <div className="label">{s.label}</div>
+                      <div className="meta">{s.time}</div>
+                      {s.note && <div className="note">{s.note}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {tab === "object" && (
+            <div className="drawer-section">
+              {objectLoading && <div style={{ color: "var(--md-on-surface-variant)", fontSize: 13 }}>Loading…</div>}
+              {objectError && <div style={{ color: "var(--md-error)", fontSize: 13 }}>{objectError}</div>}
+              {objectData && <JsonViewer data={objectData} />}
+            </div>
+          )}
+          {tab === "trace" && (
+            <div className="drawer-section">
+              {record.trace_origin
+                ? <div className="trace-viewer">{record.trace_origin}</div>
+                : <div style={{ color: "var(--md-on-surface-variant)", fontSize: 13 }}>No stack trace available.</div>}
+            </div>
+          )}
+        </div>
+
+        <div className="drawer-actions">
+          {record.run_state === "Running" && <>
+            <button className="btn btn-tonal" onClick={() => onAction("pause", record)}><Icon name="pause" style={{ fontSize: 18 }} />Pause</button>
+            <button className="btn btn-outlined" style={{ color: "var(--md-error)", borderColor: "var(--md-error)" }} onClick={() => onAction("cancel", record)}><Icon name="stop" style={{ fontSize: 18 }} />Cancel</button>
+          </>}
+          {record.run_state === "Paused" && <>
+            <button className="btn btn-filled" onClick={() => onAction("resume", record)}><Icon name="play_arrow" style={{ fontSize: 18 }} />Resume</button>
+            <button className="btn btn-outlined" style={{ color: "var(--md-error)", borderColor: "var(--md-error)" }} onClick={() => onAction("cancel", record)}><Icon name="stop" style={{ fontSize: 18 }} />Cancel</button>
+          </>}
+          {(record.run_state === "Cancelled" || record.run_state === "Completed") &&
+            <button className="btn btn-outlined" onClick={() => onAction("delete", record)}><Icon name="delete" style={{ fontSize: 18 }} />Delete</button>}
+        </div>
+      </aside>
+    </>
+  );
+}
+
+/* ---- Toast & Bulk ---- */
+function ToastRail({ toasts, onDismiss }) {
+  return (
+    <div className="toast-rail">
+      {toasts.map(t => (
+        <div className="toast" key={t.id}>
+          <Icon name={t.icon || "check_circle"} style={{ color: t.color || "var(--md-primary)" }} />
+          <span style={{ flex: 1 }}>{t.message}</span>
+          <button className="btn btn-text btn-sm" onClick={() => onDismiss(t.id)}>Dismiss</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function BulkBar({ count, onAction, onClear }) {
+  return (
+    <div className={`bulk-bar ${count > 0 ? "visible" : ""}`}>
+      <span className="count">{count} selected</span>
+      <div className="divider" />
+      <button className="btn btn-tonal btn-sm" onClick={() => onAction("pause")}><Icon name="pause" style={{ fontSize: 16 }} />Pause</button>
+      <button className="btn btn-tonal btn-sm" onClick={() => onAction("resume")}><Icon name="play_arrow" style={{ fontSize: 16 }} />Resume</button>
+      <button className="btn btn-tonal btn-sm" onClick={() => onAction("cancel")}><Icon name="stop" style={{ fontSize: 16 }} />Cancel</button>
+      <div className="divider" />
+      <button className="icon-btn" style={{ width: 32, height: 32, color: "inherit" }} onClick={onClear}><Icon name="close" /></button>
+    </div>
+  );
+}
+
+Object.assign(window, {
+  Icon, StatePill, Sidebar, Topbar, KPIHero, RingChart,
+  FilterBar, RecordsTable, Drawer, ToastRail, BulkBar,
+  STATE_TIMELINE, formatTriggerTimestamp, relativeTime, formatDuration, stateClass,
+});
+</script>
+
+<script type="text/babel">
+const { useState: _vSt, useMemo: _vMemo } = React;
+
+/* ---- Workflows View ---- */
+function WorkflowsView({ records, onOpenRuns }) {
+  const groups = _vMemo(() => {
+    const by = {};
+    records.forEach(r => {
+      if (!by[r.workflow_name]) by[r.workflow_name] = { name: r.workflow_name, total: 0, byState: {}, versions: new Set(), latest: null };
+      const g = by[r.workflow_name];
+      g.total++;
+      g.byState[r.run_state] = (g.byState[r.run_state] || 0) + 1;
+      g.versions.add(r.version);
+      const ts = new Date(r.updated_at);
+      if (!g.latest || ts > g.latest) g.latest = ts;
+    });
+    return Object.values(by).sort((a, b) => b.total - a.total);
+  }, [records]);
+
+  const [query, setQuery] = _vSt("");
+  const filtered = groups.filter(g => !query || g.name.toLowerCase().includes(query.toLowerCase()));
+
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Workflows</h1>
+          <div className="page-subtitle">Definitions grouped from current records</div>
+        </div>
+        <div className="text-field" style={{ minWidth: 220 }}>
+          <Icon name="search" />
+          <input placeholder="Filter workflows…" value={query} onChange={e => setQuery(e.target.value)} />
+        </div>
+      </div>
+      {records.length === 0 && (
+        <div className="card" style={{ padding: 60, textAlign: "center" }}>
+          <div className="empty-state" style={{ padding: 0 }}>
+            <Icon name="schema" />
+            <div style={{ fontWeight: 600, color: "var(--md-on-surface)", marginBottom: 4 }}>No workflows yet</div>
+            <div style={{ fontSize: 13 }}>Workflow definitions appear here once runs are fetched from the API.</div>
+          </div>
+        </div>
+      )}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 16 }}>
+        {filtered.map(g => {
+          const running = g.byState.Running || 0, paused = g.byState.Paused || 0;
+          const completed = g.byState.Completed || 0, cancelled = g.byState.Cancelled || 0;
+          const maxV = Math.max(...g.versions);
+          return (
+            <div key={g.name} className="card" style={{ padding: 20, display: "flex", flexDirection: "column", gap: 14, cursor: "pointer" }} onClick={() => onOpenRuns(g.name)}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "-0.01em", fontFamily: "Google Sans Code, monospace" }}>{g.name}</div>
+                  <div style={{ fontSize: 11, color: "var(--md-on-surface-variant)", marginTop: 3, fontFamily: "Google Sans Code, monospace" }}>
+                    v{maxV} · last update {g.latest ? relativeTime(g.latest) : "—"}
+                  </div>
+                </div>
+                {running > 0 && <span className="state-pill state-running" style={{ flexShrink: 0 }}><span className="dot" />{running} running</span>}
+              </div>
+              <div style={{ display: "flex", gap: 2, height: 6, borderRadius: 999, overflow: "hidden", background: "var(--md-surface-container-high)" }}>
+                {[ ["Running","var(--md-success)"],["Paused","var(--md-warning)"],["Initiated","var(--md-outline)"],["Completed","var(--md-primary)"],["Cancelled","var(--md-error)"]].map(([k,c]) => {
+                  const n = g.byState[k] || 0; if (!n) return null;
+                  return <div key={k} style={{ flex: n / g.total, background: c }} title={`${k}: ${n}`} />;
+                })}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+                {[ ["Run",running,"var(--md-success)"],["Pause",paused,"var(--md-warning)"],["Done",completed,"var(--md-primary)"],["Cancel",cancelled,"var(--md-error)"]].map(([l,n,c]) => (
+                  <div key={l} style={{ background: "var(--md-surface-container)", borderRadius: "var(--r-sm)", padding: "6px 8px" }}>
+                    <div style={{ fontSize: 10, color: "var(--md-on-surface-variant)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: 3, background: c }} />{l}
+                    </div>
+                    <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "Google Sans Code, monospace", marginTop: 2 }}>{n}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 6, alignItems: "center", borderTop: "1px solid var(--md-outline-variant)", paddingTop: 12, marginTop: "auto" }}>
+                <button className="btn btn-tonal btn-sm" onClick={(e) => { e.stopPropagation(); onOpenRuns(g.name); }}>
+                  <Icon name="list" style={{ fontSize: 16 }} />View runs
+                </button>
+                <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--md-on-surface-variant)", fontFamily: "Google Sans Code, monospace" }}>
+                  {g.total} total · v{Array.from(g.versions).sort().join(", v")}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ---- Saved Filters View ---- */
+function SavedFiltersView({ presets, onLoadPreset, onDeletePreset, records }) {
+  const describe = (f) => {
+    const parts = [];
+    if (f.state && f.state !== "all") parts.push(`state=${f.state}`);
+    if (f.workflow) parts.push(`workflow=${f.workflow}`);
+    if (f.foreignId) parts.push(`foreign_id~"${f.foreignId}"`);
+    if (f.status) parts.push(`status~"${f.status}"`);
+    return parts.length ? parts.join(" · ") : "all runs";
+  };
+  const countMatching = (f) => records.filter(r => {
+    if (f.state && f.state !== "all" && r.run_state !== f.state) return false;
+    if (f.workflow && r.workflow_name !== f.workflow) return false;
+    if (f.foreignId && !r.foreign_id.toLowerCase().includes(f.foreignId.toLowerCase())) return false;
+    if (f.status && !(r.status || "").toLowerCase().includes(f.status.toLowerCase())) return false;
+    return true;
+  }).length;
+
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Saved filters</h1>
+          <div className="page-subtitle">Quick access to filter combinations saved from the Runs view</div>
+        </div>
+      </div>
+      {presets.length === 0 ? (
+        <div className="card" style={{ padding: 60, textAlign: "center" }}>
+          <div className="empty-state" style={{ padding: 0 }}>
+            <Icon name="bookmark_border" />
+            <div style={{ fontWeight: 600, marginBottom: 4, color: "var(--md-on-surface)", fontSize: 15 }}>No saved filters yet</div>
+            <div style={{ fontSize: 13, maxWidth: 420, margin: "0 auto" }}>
+              On the <b>Runs</b> view, apply a filter combination then click <b>Presets → Save current</b>.
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16 }}>
+          {presets.map(p => (
+            <div key={p.name} className="card" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                  <div style={{ width: 36, height: 36, flexShrink: 0, borderRadius: "var(--r-md)", background: "var(--md-primary-container)", color: "var(--md-on-primary-container)", display: "grid", placeItems: "center" }}>
+                    <Icon name="bookmark" filled style={{ fontSize: 18 }} />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>{p.name}</div>
+                    <div style={{ fontSize: 11, color: "var(--md-on-surface-variant)", fontFamily: "Google Sans Code, monospace", marginTop: 2 }}>matches {countMatching(p.filters)} runs</div>
+                  </div>
+                </div>
+                <button className="row-action-btn danger" onClick={() => onDeletePreset(p.name)} title="Delete preset"><Icon name="delete" style={{ fontSize: 16 }} /></button>
+              </div>
+              <div style={{ background: "var(--md-surface-container)", borderRadius: "var(--r-sm)", padding: "10px 12px", fontFamily: "Google Sans Code, monospace", fontSize: 11, color: "var(--md-on-surface-variant)", lineHeight: 1.6, wordBreak: "break-word" }}>
+                {describe(p.filters)}
+              </div>
+              <button className="btn btn-filled btn-sm" onClick={() => onLoadPreset(p)}>
+                <Icon name="arrow_forward" style={{ fontSize: 16 }} />Open in Runs
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---- Docs View ---- */
+function DocsView() {
+  const [active, setActive] = _vSt("intro");
+  const sections = [
+    { id: "intro",        icon: "flag",      title: "About this UI",      group: "Getting started" },
+    { id: "run-states",   icon: "toggle_on", title: "Run states",         group: "Reference" },
+    { id: "actions",      icon: "bolt",      title: "Actions",            group: "Reference" },
+    { id: "api",          icon: "api",       title: "HTTP endpoints",     group: "Reference" },
+    { id: "shortcuts",    icon: "keyboard",  title: "Keyboard shortcuts", group: "Reference" },
+    { id: "troubleshoot", icon: "help",      title: "Troubleshooting",    group: "Help" },
+  ];
+  const grouped = sections.reduce((acc, s) => { (acc[s.group] = acc[s.group] || []).push(s); return acc; }, {});
+
+  const DocH1 = ({children}) => <h2 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em", margin: "0 0 8px" }}>{children}</h2>;
+  const DocLead = ({children}) => <p style={{ fontSize: 14, color: "var(--md-on-surface-variant)", margin: "0 0 24px", lineHeight: 1.55 }}>{children}</p>;
+  const DocH2 = ({children}) => <h3 style={{ fontSize: 15, fontWeight: 700, margin: "28px 0 10px" }}>{children}</h3>;
+  const DocP = ({children}) => <p style={{ fontSize: 14, lineHeight: 1.65, margin: "0 0 12px", color: "var(--md-on-surface)" }}>{children}</p>;
+  const Code = ({children}) => <code style={{ fontFamily: "Google Sans Code, monospace", fontSize: 12, padding: "1px 6px", background: "var(--md-surface-container)", borderRadius: 4, color: "var(--md-primary)" }}>{children}</code>;
+  const Pre = ({children}) => <pre style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 12, background: "var(--md-surface-container)", border: "1px solid var(--md-outline-variant)", borderRadius: "var(--r-md)", padding: 16, margin: "8px 0 16px", overflow: "auto", lineHeight: 1.6 }}>{children}</pre>;
+
+  const content = {
+    intro: () => <>
+      <DocH1>About this UI</DocH1>
+      <DocLead>A lightweight operator view for <Code>github.com/luno/workflow</Code> — list records, inspect object data, and control runs in flight.</DocLead>
+      <DocP>The UI is a thin shell over three endpoints exposed by the <Code>webui</Code> adapter: <Code>List</Code>, <Code>ObjectData</Code> and <Code>Update</Code>. It runs alongside your workflow engine and talks to whichever <Code>RecordStore</Code> you've wired in.</DocP>
+      <DocH2>What it gives you</DocH2>
+      <ul style={{ paddingLeft: 20, lineHeight: 1.8, fontSize: 14, margin: "0 0 16px" }}>
+        <li>Filter records by state, workflow name, foreign ID, or status text</li>
+        <li>Save and recall filter presets (stored in localStorage)</li>
+        <li>Pause, resume, cancel, or delete run data</li>
+        <li>Inspect the raw <Code>record.Object</Code> payload and trace origin</li>
+        <li>Live polling with configurable interval</li>
+      </ul>
+      <DocH2>What it doesn't do</DocH2>
+      <DocP>This UI is a record browser, not a metrics system. Pair it with your own observability stack for time-series dashboards and alerting.</DocP>
+    </>,
+    "run-states": () => {
+      const states = [
+        { name: "Initiated", value: 1, desc: "A record exists but the runner has not processed any steps yet." },
+        { name: "Running",   value: 2, desc: "Runner actively advancing steps. This is the hot path." },
+        { name: "Paused",    value: 3, desc: "Runner is not advancing steps. Set via Pause action or an in-workflow condition." },
+        { name: "Cancelled", value: 4, desc: "Terminal. Cancel action records a reason and halts the runner." },
+        { name: "Completed", value: 5, desc: "Terminal. All steps finished successfully." },
+        { name: "Data Deleted", value: 6, desc: "Terminal and hollowed. record.Object has been purged." },
+        { name: "Requested Data Deleted", value: 7, desc: "Deletion was requested; awaiting a runner pass to purge." },
+      ];
+      return <>
+        <DocH1>Run states</DocH1>
+        <DocLead>Every workflow record carries a <Code>RunState</Code> enum that drives what actions are available and how it renders.</DocLead>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {states.map(s => (
+            <div key={s.value} style={{ display: "grid", gridTemplateColumns: "160px 40px 1fr", gap: 16, alignItems: "center", padding: "12px 14px", background: "var(--md-surface-container)", borderRadius: "var(--r-md)", border: "1px solid var(--md-outline-variant)" }}>
+              <StatePill state={s.name} />
+              <code style={{ fontFamily: "Google Sans Code, monospace", fontSize: 12, color: "var(--md-on-surface-variant)" }}>{s.value}</code>
+              <span style={{ fontSize: 13, color: "var(--md-on-surface)" }}>{s.desc}</span>
+            </div>
+          ))}
+        </div>
+      </>;
+    },
+    actions: () => {
+      const actions = [
+        { name: "Pause",  when: "Running, Initiated", effect: "Stops the runner. Writes a RunStateReason.", code: "ctr.Pause(ctx, reason)" },
+        { name: "Resume", when: "Paused",             effect: "Signals the runner to pick the record up again.", code: "ctr.Resume(ctx)" },
+        { name: "Cancel", when: "Running, Paused",    effect: "Terminal. Halts the runner; records cannot be resumed.", code: "ctr.Cancel(ctx, reason)" },
+        { name: "Delete", when: "Terminal states",    effect: "Purges record.Object. Metadata remains.", code: "ctr.DeleteData(ctx, reason)" },
+      ];
+      return <>
+        <DocH1>Actions</DocH1>
+        <DocLead>Actions are issued through <Code>workflow.RunStateController</Code>. The UI forwards them via the <Code>/update</Code> endpoint.</DocLead>
+        {actions.map(a => (
+          <div key={a.name} style={{ padding: "16px 18px", background: "var(--md-surface-container)", borderRadius: "var(--r-md)", border: "1px solid var(--md-outline-variant)", marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+              <span style={{ fontSize: 15, fontWeight: 700 }}>{a.name}</span>
+              <span style={{ fontSize: 11, color: "var(--md-on-surface-variant)", fontFamily: "Google Sans Code, monospace" }}>available when: {a.when}</span>
+            </div>
+            <div style={{ fontSize: 13, color: "var(--md-on-surface)", marginBottom: 6 }}>{a.effect}</div>
+            <code style={{ fontFamily: "Google Sans Code, monospace", fontSize: 12, color: "var(--md-primary)" }}>{a.code}</code>
+          </div>
+        ))}
+      </>;
+    },
+    api: () => <>
+      <DocH1>HTTP endpoints</DocH1>
+      <DocLead>The <Code>webui</Code> package registers three POST handlers. Paths are configurable via the <Code>Paths</Code> struct.</DocLead>
+      <DocH2>POST /list</DocH2>
+      <DocP>Returns a paginated list of records.</DocP>
+      <Pre>{`{"workflow_name":"","offset":0,"limit":100,"order":"desc",\n "filter_by_foreign_id":"","filter_by_run_state":2,"filter_by_status":0}`}</Pre>
+      <DocH2>POST /object-data</DocH2>
+      <DocP>Returns the raw bytes of <Code>record.Object</Code> for a run.</DocP>
+      <Pre>{`{ "run_id": "7a3f1e..." }`}</Pre>
+      <DocH2>POST /update</DocH2>
+      <DocP>Issues an action against a run.</DocP>
+      <Pre>{`{ "run_id": "7a3f1e...", "action": "pause | resume | cancel | delete" }`}</Pre>
+    </>,
+    shortcuts: () => {
+      const shortcuts = [
+        { keys: ["/"],         desc: "Focus search" },
+        { keys: ["P"],         desc: "Toggle live polling" },
+        { keys: ["R"],         desc: "Refresh records now" },
+        { keys: ["Esc"],       desc: "Close drawer" },
+        { keys: ["Click row"], desc: "Open the record drawer" },
+      ];
+      return <>
+        <DocH1>Keyboard shortcuts</DocH1>
+        <DocLead>Available on the Runs view when not typing into an input.</DocLead>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {shortcuts.map((s, i) => (
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 16, alignItems: "center", padding: "12px 14px", background: "var(--md-surface-container)", borderRadius: "var(--r-md)", border: "1px solid var(--md-outline-variant)" }}>
+              <div style={{ display: "flex", gap: 6 }}>
+                {s.keys.map((k, j) => <kbd key={j} style={{ fontFamily: "Google Sans Code, monospace", fontSize: 12, padding: "3px 10px", border: "1px solid var(--md-outline-variant)", borderRadius: "var(--r-xs)", background: "var(--md-surface)", color: "var(--md-on-surface)" }}>{k}</kbd>)}
+              </div>
+              <span style={{ fontSize: 13 }}>{s.desc}</span>
+            </div>
+          ))}
+        </div>
+      </>;
+    },
+    troubleshoot: () => <>
+      <DocH1>Troubleshooting</DocH1>
+      <DocH2>Records don't appear</DocH2>
+      <DocP>Check that the <Code>RecordStore</Code> passed into <Code>ListHandlerFunc</Code> is the same one the workflow engine writes to.</DocP>
+      <DocH2>Actions return 500</DocH2>
+      <DocP>The <Code>/update</Code> handler fails when <Code>RunStateController</Code> can't reach the record (e.g. already deleted). Refresh the list and re-check the run state.</DocP>
+      <DocH2>Object data is empty</DocH2>
+      <DocP>Records in <b>Data Deleted</b> state have their <Code>record.Object</Code> bytes purged. Metadata remains.</DocP>
+      <DocH2>Polling feels slow</DocH2>
+      <DocP>Default interval is 5s. Change it from the Runs page header or in Settings.</DocP>
+    </>,
+  };
+
+  return (
+    <div>
+      <div className="page-header">
+        <div><h1 className="page-title">Docs</h1><div className="page-subtitle">Reference for the workflow engine UI</div></div>
+        <a className="btn btn-outlined btn-sm" href="https://github.com/luno/workflow" target="_blank" rel="noopener noreferrer">
+          <Icon name="open_in_new" style={{ fontSize: 16 }} />GitHub
+        </a>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: 20, alignItems: "flex-start" }}>
+        <aside className="card" style={{ padding: 14, position: "sticky", top: 20 }}>
+          {Object.entries(grouped).map(([group, items]) => (
+            <div key={group}>
+              <div className="nav-section" style={{ padding: "10px 12px 4px" }}>{group}</div>
+              {items.map(s => (
+                <div key={s.id} className={`nav-item ${active === s.id ? "active" : ""}`}
+                     onClick={() => setActive(s.id)} style={{ padding: "8px 12px" }}>
+                  <Icon name={s.icon} style={{ fontSize: 18 }} />
+                  <span style={{ fontSize: 13 }}>{s.title}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </aside>
+        <div className="card" style={{ padding: 32, minHeight: 600 }}>
+          {content[active] ? content[active]() : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---- Settings View ---- */
+function SettingsView({ theme, setTheme, seed, setSeed, density, setDensity, radiusScale, setRadiusScale, polling, setPolling, refreshMs, setRefreshMs, refreshIntervals, seedSwatches, onClearPresets, presetCount, onRefresh }) {
+  const SettingsGroup = ({ icon, title, subtitle, children }) => (
+    <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+      <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--md-outline-variant)", display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ width: 32, height: 32, borderRadius: "var(--r-md)", background: "var(--md-primary-container)", color: "var(--md-on-primary-container)", display: "grid", placeItems: "center" }}>
+          <Icon name={icon} style={{ fontSize: 18 }} />
+        </div>
+        <div><div style={{ fontSize: 15, fontWeight: 700 }}>{title}</div><div style={{ fontSize: 12, color: "var(--md-on-surface-variant)" }}>{subtitle}</div></div>
+      </div>
+      <div>{children}</div>
+    </div>
+  );
+  const SettingsRow = ({ label, hint, children }) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 22px", borderBottom: "1px solid var(--md-outline-variant)" }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>{label}</div>
+        {hint && <div style={{ fontSize: 12, color: "var(--md-on-surface-variant)", marginTop: 2 }}>{hint}</div>}
+      </div>
+      {children}
+    </div>
+  );
+
+  return (
+    <div>
+      <div className="page-header">
+        <div><h1 className="page-title">Settings</h1><div className="page-subtitle">Appearance and behavior preferences. Stored locally in your browser.</div></div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16, maxWidth: 820 }}>
+        <SettingsGroup icon="palette" title="Appearance" subtitle="Theme, color seed, density">
+          <SettingsRow label="Theme" hint="Light or dark surface tones">
+            <div className="chart-tabs" style={{ marginLeft: "auto" }}>
+              {["light", "dark"].map(v => (
+                <button key={v} className={`chart-tab ${theme === v ? "active" : ""}`} onClick={() => setTheme(v)}>
+                  <Icon name={v === "light" ? "light_mode" : "dark_mode"} style={{ fontSize: 14, marginRight: 4, verticalAlign: "middle" }} />
+                  {v[0].toUpperCase() + v.slice(1)}
+                </button>
+              ))}
+            </div>
+          </SettingsRow>
+          <SettingsRow label="Primary color" hint="Material 3 seed — regenerates the whole tonal palette">
+            <div className="seed-swatches" style={{ marginLeft: "auto" }}>
+              {seedSwatches.map(s => (
+                <div key={s.key} className={`seed-swatch ${seed === s.key ? "active" : ""}`} title={s.label}
+                     style={{ background: theme === "dark" ? s.dark : s.light, width: 28, height: 28 }}
+                     onClick={() => setSeed(s.key)} />
+              ))}
+            </div>
+          </SettingsRow>
+          <SettingsRow label="Density" hint="Affects row height and font size in tables">
+            <div className="chart-tabs" style={{ marginLeft: "auto" }}>
+              {["compact", "comfortable", "spacious"].map(v => (
+                <button key={v} className={`chart-tab ${density === v ? "active" : ""}`} onClick={() => setDensity(v)}>
+                  {v[0].toUpperCase() + v.slice(1)}
+                </button>
+              ))}
+            </div>
+          </SettingsRow>
+          <SettingsRow label="Corner radius" hint={`Multiplier for shape tokens — currently ${radiusScale.toFixed(1)}×`}>
+            <input type="range" min="0" max="2" step="0.1" value={radiusScale}
+                   onChange={e => setRadiusScale(Number(e.target.value))}
+                   style={{ width: 220, marginLeft: "auto" }} />
+          </SettingsRow>
+        </SettingsGroup>
+
+        <SettingsGroup icon="sync" title="Live data" subtitle="How often the Runs list refreshes">
+          <SettingsRow label="Polling" hint="Background refresh of the records list">
+            <button className="chip" style={{ marginLeft: "auto" }} onClick={() => setPolling(!polling)}>
+              <span className="dot" style={{ background: polling ? "var(--md-success)" : "var(--md-outline)" }} />
+              {polling ? "Enabled" : "Paused"}
+            </button>
+          </SettingsRow>
+          <SettingsRow label="Interval" hint="Time between polling requests">
+            <div className="chart-tabs" style={{ marginLeft: "auto" }}>
+              {refreshIntervals.map(r => (
+                <button key={r.key} className={`chart-tab ${refreshMs === r.key ? "active" : ""}`} onClick={() => setRefreshMs(r.key)}>{r.label}</button>
+              ))}
+            </div>
+          </SettingsRow>
+          <SettingsRow label="Refresh now" hint="Force an immediate fetch from the API">
+            <button className="btn btn-tonal btn-sm" style={{ marginLeft: "auto" }} onClick={onRefresh}>
+              <Icon name="refresh" style={{ fontSize: 16 }} />Refresh
+            </button>
+          </SettingsRow>
+        </SettingsGroup>
+
+        <SettingsGroup icon="storage" title="Local data" subtitle="Saved filters are kept in localStorage only">
+          <SettingsRow label="Saved filters" hint={`${presetCount} preset${presetCount === 1 ? "" : "s"} stored in this browser`}>
+            <button className="btn btn-outlined btn-sm" style={{ marginLeft: "auto", color: "var(--md-error)", borderColor: "var(--md-error)" }}
+                    onClick={onClearPresets} disabled={presetCount === 0}>
+              <Icon name="delete_sweep" style={{ fontSize: 16 }} />Clear all presets
+            </button>
+          </SettingsRow>
+        </SettingsGroup>
+
+        <SettingsGroup icon="info" title="About" subtitle="Build and source">
+          <SettingsRow label="Adapter">
+            <span style={{ marginLeft: "auto", fontFamily: "Google Sans Code, monospace", fontSize: 12, color: "var(--md-on-surface-variant)" }}>github.com/luno/workflow/adapters/webui</span>
+          </SettingsRow>
+          <SettingsRow label="License">
+            <span style={{ marginLeft: "auto", fontFamily: "Google Sans Code, monospace", fontSize: 12, color: "var(--md-on-surface-variant)" }}>MIT · open source</span>
+          </SettingsRow>
+        </SettingsGroup>
+      </div>
+    </div>
+  );
+}
+
+Object.assign(window, { WorkflowsView, SavedFiltersView, DocsView, SettingsView });
+</script>
+
+<script type="text/babel">
+const { useState, useEffect, useMemo, useCallback } = React;
+
+const API = window.__API_PATHS || { list: "", update: "", objectData: "" };
+
+const TWEAK_DEFAULTS = { theme: "dark", seed: "indigo", density: "comfortable", radiusScale: 1 };
+
+const SEED_SWATCHES = [
+  { key: "indigo", dark: "#BCC2FF", light: "#4255FF", label: "Indigo" },
+  { key: "violet", dark: "#D0BCFF", light: "#7C4DFF", label: "Violet" },
+  { key: "teal",   dark: "#4CD9DE", light: "#00696D", label: "Teal"   },
+  { key: "green",  dark: "#7EDC83", light: "#006E1C", label: "Green"  },
+  { key: "orange", dark: "#FFB597", light: "#B3430B", label: "Orange" },
+];
+
+const REFRESH_INTERVALS = [
+  { key: 2000,  label: "2s"  },
+  { key: 5000,  label: "5s"  },
+  { key: 10000, label: "10s" },
+  { key: 30000, label: "30s" },
+];
+
+async function apiFetchRuns() {
+  const resp = await fetch(API.list, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ offset: 0, limit: 500, order: "desc" }),
+  });
+  if (!resp.ok) throw new Error(`List failed: ${resp.status}`);
+  const data = await resp.json();
+  return data.items || [];
+}
+
+async function apiUpdate(runId, action) {
+  const resp = await fetch(API.update, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ run_id: runId, action }),
+  });
+  if (!resp.ok) throw new Error(`Update failed: ${resp.status}`);
+}
+
+async function apiFetchObjectData(runId) {
+  const resp = await fetch(API.objectData, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ run_id: runId }),
+  });
+  if (!resp.ok) throw new Error(`ObjectData failed: ${resp.status}`);
+  return resp.json();
+}
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const { theme, seed, density, radiusScale } = t;
+
+  useEffect(() => {
+    const b = document.body;
+    b.className = `theme-${theme} seed-${seed} density-${density}`;
+    b.style.setProperty("--radius-scale", radiusScale);
+  }, [theme, seed, density, radiusScale]);
+
+  const [records, setRecords]         = useState([]);
+  const [loading, setLoading]         = useState(false);
+  const [fetchError, setFetchError]   = useState(null);
+  const [filters, setFilters]         = useState({ state: "all", workflow: "", foreignId: "", status: "" });
+  const [presets, setPresets]         = useState(() => { try { return JSON.parse(localStorage.getItem("wf.presets") || "[]"); } catch { return []; } });
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [activeRecord, setActiveRecord] = useState(null);
+  const [drawerTab, setDrawerTab]     = useState("timeline");
+  const [polling, setPolling]         = useState(true);
+  const [refreshMs, setRefreshMs]     = useState(5000);
+  const [toasts, setToasts]           = useState([]);
+  const [activeNav, setActiveNav]     = useState("runs");
+
+  useEffect(() => { localStorage.setItem("wf.presets", JSON.stringify(presets)); }, [presets]);
+
+  const doFetch = useCallback(async () => {
+    setLoading(true);
+    setFetchError(null);
+    try { setRecords(await apiFetchRuns()); }
+    catch (e) { setFetchError(e.message); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    if (activeNav !== "runs") return;
+    doFetch();
+    if (!polling) return;
+    const id = setInterval(doFetch, refreshMs);
+    return () => clearInterval(id);
+  }, [polling, refreshMs, activeNav, doFetch]);
+
+  const stateCounts  = useMemo(() => { const c = rollupByState(records); c.total = records.length; return c; }, [records]);
+  const workflowNames = useMemo(() => [...new Set(records.map(r => r.workflow_name))].sort(), [records]);
+  const workflowCount = workflowNames.length;
+
+  const addToast = useCallback((message, opts = {}) => {
+    const id = Math.random().toString(36).slice(2);
+    setToasts(ts => [...ts, { id, message, ...opts }]);
+    setTimeout(() => setToasts(ts => ts.filter(x => x.id !== id)), 3500);
+  }, []);
+
+  const handleAction = useCallback(async (action, record) => {
+    if (action === "trace") { setActiveRecord(record); setDrawerTab("trace"); return; }
+    if (action === "copied") { addToast(`Copied ${record._copied}`, { icon: "content_copy" }); return; }
+    const confirmMsgs = { cancel: "Cancel this workflow run?", delete: "Delete run data? This cannot be undone." };
+    if (confirmMsgs[action] && !confirm(confirmMsgs[action])) return;
+    try {
+      await apiUpdate(record.run_id, action);
+      const labels = { pause: "Paused", resume: "Resumed", cancel: "Cancelled", delete: "Deleted data for" };
+      const icons  = { pause: "pause_circle", resume: "play_circle", cancel: "stop_circle", delete: "delete" };
+      addToast(`${labels[action] || action} ${record.foreign_id}`, { icon: icons[action] || "check_circle" });
+      if (action === "delete") { setActiveRecord(null); setSelectedIds(p => { const n = new Set(p); n.delete(record.run_id); return n; }); }
+      await doFetch();
+    } catch (e) { addToast(`Failed: ${e.message}`, { icon: "error", color: "var(--md-error)" }); }
+  }, [addToast, doFetch]);
+
+  const handleBulkAction = useCallback(async (action) => {
+    const ids = Array.from(selectedIds);
+    for (const id of ids) {
+      const rec = records.find(r => r.run_id === id);
+      if (rec) try { await apiUpdate(rec.run_id, action); } catch (_) {}
+    }
+    setSelectedIds(new Set());
+    addToast(`${action} applied to ${ids.length} run(s)`, { icon: "check_circle" });
+    await doFetch();
+  }, [selectedIds, records, addToast, doFetch]);
+
+  const savePreset   = name => { setPresets(p => [...p.filter(x => x.name !== name), { name, filters: { ...filters } }]); addToast(`Saved "${name}"`, { icon: "bookmark_added" }); };
+  const loadPreset   = p  => { setFilters(p.filters); setActiveNav("runs"); addToast(`Loaded "${p.name}"`, { icon: "bookmark" }); };
+  const deletePreset = name => setPresets(p => p.filter(x => x.name !== name));
+  const clearAllPresets = () => { setPresets([]); addToast("All presets cleared", { icon: "delete_sweep" }); };
+  const openRunsForWorkflow = wf => { setFilters({ state: "all", workflow: wf, foreignId: "", status: "" }); setActiveNav("runs"); };
+
+  useEffect(() => {
+    const onKey = e => {
+      const tag = (e.target.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select") return;
+      if (e.key === "Escape" && activeRecord) { setActiveRecord(null); return; }
+      if (activeNav !== "runs") return;
+      if (e.key === "/") { e.preventDefault(); document.querySelector(".topbar-search input")?.focus(); return; }
+      if (e.key.toLowerCase() === "p") { setPolling(p => !p); return; }
+      if (e.key.toLowerCase() === "r") { doFetch(); addToast("Refreshed", { icon: "refresh" }); return; }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [activeRecord, addToast, activeNav, doFetch]);
+
+  const kbdStyle = { fontFamily: "Google Sans Code, monospace", fontSize: 11, padding: "1px 6px",
+    border: "1px solid var(--md-outline-variant)", borderRadius: "var(--r-xs)",
+    background: "var(--md-surface-container)", color: "var(--md-on-surface-variant)", marginRight: 4 };
+
+  return (
+    <div className="app">
+      <Sidebar stateCounts={stateCounts} activeNav={activeNav} onNav={setActiveNav} presetCount={presets.length} workflowCount={workflowCount} />
+      <Topbar theme={theme} setTheme={v => setTweak("theme", v)} polling={polling} onTogglePolling={() => setPolling(p => !p)} activeNav={activeNav} />
+
+      <main className="main">
+        {activeNav === "runs" && (
+          <>
+            <div className="page-header">
+              <div>
+                <h1 className="page-title">Runs</h1>
+                <div className="page-subtitle">Browse and manage workflow records in real time</div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                {fetchError && <span style={{ fontSize: 12, color: "var(--md-error)", fontFamily: "Google Sans Code, monospace" }}>{fetchError}</span>}
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span className="pulse-dot" style={{ background: polling ? "var(--md-success)" : "var(--md-outline)" }} />
+                  <span style={{ fontSize: 12, color: "var(--md-on-surface-variant)", fontFamily: "Google Sans Code, monospace" }}>
+                    {polling ? `LIVE · ${REFRESH_INTERVALS.find(r => r.key === refreshMs)?.label}` : "PAUSED"}
+                  </span>
+                </div>
+                <div className="text-field" style={{ padding: "4px 4px 4px 12px" }}>
+                  <Icon name="sync" style={{ fontSize: 14 }} />
+                  <select value={refreshMs} onChange={e => setRefreshMs(Number(e.target.value))}>
+                    {REFRESH_INTERVALS.map(r => <option key={r.key} value={r.key}>Every {r.label}</option>)}
+                  </select>
+                </div>
+                <button className="btn btn-tonal btn-sm" onClick={() => setPolling(p => !p)}>
+                  <Icon name={polling ? "pause" : "play_arrow"} style={{ fontSize: 16 }} />
+                  {polling ? "Pause" : "Resume"}
+                </button>
+                <button className="btn btn-tonal btn-sm" onClick={doFetch}>
+                  <Icon name="refresh" style={{ fontSize: 16, ...(loading ? { animation: "spin 1s linear infinite" } : {}) }} />
+                </button>
+              </div>
+            </div>
+
+            <div className="kpi-grid">
+              <KPIHero total={records.length} stateCounts={stateCounts} />
+              <RingChart stateCounts={stateCounts} />
+            </div>
+
+            <FilterBar filters={filters} setFilters={setFilters} stateCounts={stateCounts}
+                       workflowNames={workflowNames} presets={presets}
+                       onSavePreset={savePreset} onLoadPreset={loadPreset} onDeletePreset={deletePreset} />
+
+            <RecordsTable records={records} filters={filters} selectedIds={selectedIds}
+                          setSelectedIds={setSelectedIds} onRowClick={r => { setActiveRecord(r); setDrawerTab("timeline"); }}
+                          onAction={handleAction} />
+
+            <div style={{ marginTop: 16, padding: "12px 20px", display: "flex", gap: 24, flexWrap: "wrap", fontSize: 11, color: "var(--md-on-surface-variant)", fontFamily: "Google Sans Code, monospace" }}>
+              <span><kbd style={kbdStyle}>/</kbd> search</span>
+              <span><kbd style={kbdStyle}>P</kbd> toggle polling</span>
+              <span><kbd style={kbdStyle}>R</kbd> refresh now</span>
+              <span><kbd style={kbdStyle}>Esc</kbd> close drawer</span>
+            </div>
+          </>
+        )}
+        {activeNav === "workflows" && <WorkflowsView records={records} onOpenRuns={openRunsForWorkflow} />}
+        {activeNav === "saved"     && <SavedFiltersView presets={presets} records={records} onLoadPreset={loadPreset} onDeletePreset={deletePreset} />}
+        {activeNav === "docs"      && <DocsView />}
+        {activeNav === "settings"  && (
+          <SettingsView theme={theme} setTheme={v => setTweak("theme", v)}
+                        seed={seed} setSeed={v => setTweak("seed", v)}
+                        density={density} setDensity={v => setTweak("density", v)}
+                        radiusScale={radiusScale} setRadiusScale={v => setTweak("radiusScale", v)}
+                        polling={polling} setPolling={setPolling}
+                        refreshMs={refreshMs} setRefreshMs={setRefreshMs}
+                        refreshIntervals={REFRESH_INTERVALS} seedSwatches={SEED_SWATCHES}
+                        onClearPresets={clearAllPresets} presetCount={presets.length}
+                        onRefresh={doFetch} />
+        )}
+      </main>
+
+      <Drawer record={activeRecord} onClose={() => setActiveRecord(null)} onAction={handleAction}
+              tab={drawerTab} setTab={setDrawerTab} fetchObjectData={apiFetchObjectData} />
+      <BulkBar count={selectedIds.size} onAction={handleBulkAction} onClear={() => setSelectedIds(new Set())} />
+      <ToastRail toasts={toasts} onDismiss={id => setToasts(ts => ts.filter(x => x.id !== id))} />
+
+      <TweaksPanel title="Appearance & Settings">
+        <TweakSection label="Appearance" />
+        <TweakRadio label="Theme" value={theme} options={["light", "dark"]} onChange={v => setTweak("theme", v)} />
+        <div className="twk-row">
+          <div className="twk-lbl"><span>Seed color</span><span className="twk-val">{seed}</span></div>
+          <div className="seed-swatches">
+            {SEED_SWATCHES.map(s => (
+              <div key={s.key} className={`seed-swatch ${seed === s.key ? "active" : ""}`} title={s.label}
+                   style={{ background: theme === "dark" ? s.dark : s.light }} onClick={() => setTweak("seed", s.key)} />
+            ))}
+          </div>
+        </div>
+        <TweakSection label="Layout" />
+        <TweakRadio label="Density" value={density} options={["compact", "comfortable", "spacious"]} onChange={v => setTweak("density", v)} />
+        <TweakSlider label="Corner radius" value={radiusScale} min={0} max={2} step={0.1} onChange={v => setTweak("radiusScale", v)} />
+        <TweakSection label="Live data" />
+        <TweakToggle label="Live polling" value={polling} onChange={setPolling} />
+        <TweakRadio label="Interval" value={refreshMs} options={REFRESH_INTERVALS.map(r => ({ value: r.key, label: r.label }))} onChange={setRefreshMs} />
+      </TweaksPanel>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+
 </body>
 </html>
