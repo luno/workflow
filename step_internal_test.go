@@ -208,7 +208,7 @@ func Test_stepConsumer(t *testing.T) {
 	})
 
 	t.Run("Pause record after exceeding allowed error count", func(t *testing.T) {
-		counter.Clear(testErr, processName, current.RunID)
+		counter.Clear(processName, current.RunID)
 
 		calls := map[string]int{
 			"consumerFunc": 0,

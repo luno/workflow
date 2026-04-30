@@ -16,31 +16,34 @@ type Counter struct {
 	store map[string]int
 }
 
-func (c *Counter) Add(err error, labels ...string) int {
+func (c *Counter) Add(label string, extras ...string) int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	errMsg := err.Error()
-	errMsg += strings.Join(labels, "-")
-	c.store[errMsg] += 1
-	return c.store[errMsg]
+	key := makeKey(label, extras)
+	c.store[key] += 1
+	return c.store[key]
 }
 
-func (c *Counter) Count(err error, labels ...string) int {
+func (c *Counter) Count(label string, extras ...string) int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	errMsg := err.Error()
-	errMsg += strings.Join(labels, "-")
-	return c.store[errMsg]
+	key := makeKey(label, extras)
+	return c.store[key]
 }
 
-func (c *Counter) Clear(err error, labels ...string) {
+func (c *Counter) Clear(label string, extras ...string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	errMsg := err.Error()
-	errMsg += strings.Join(labels, "-")
-	c.store[errMsg] = 0
-	return
+	key := makeKey(label, extras)
+	delete(c.store, key)
+}
+
+func makeKey(label string, extras []string) string {
+	if len(extras) == 0 {
+		return label
+	}
+	return label + "-" + strings.Join(extras, "-")
 }
