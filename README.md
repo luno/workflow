@@ -1,5 +1,8 @@
 <div align="center">
-    <img src="./logo/logo.png" style="width: 220px; margin: 30px" alt="Workflow Logo">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="./logo/logo_dark.svg">
+      <img src="./logo/logo.svg" style="width: 220px; margin: 30px" alt="Workflow Logo">
+    </picture>
     <div  align="center" style="max-width: 750px">
         <a style="padding: 0 5px" href="https://goreportcard.com/report/github.com/luno/workflow"><img src="https://goreportcard.com/badge/github.com/luno/workflow"/></a>
         <a style="padding: 0 5px" href="https://sonarcloud.io/summary/new_code?id=luno_workflow"><img src="https://sonarcloud.io/api/project_badges/measure?project=luno_workflow&metric=coverage"/></a>
