@@ -66,3 +66,18 @@ func TestErrorCounter_DifferentLabelsSeparateCounters(t *testing.T) {
 	require.Equal(t, 2, c.Count("process-a", "run-1"))
 	require.Equal(t, 1, c.Count("process-b", "run-2"))
 }
+
+func TestErrorCounter_NoKeyCollision(t *testing.T) {
+	c := errorcounter.New()
+
+	// ("a-b", "c") and ("a", "b-c") must map to distinct keys.
+	c.Add("a-b", "c")
+	c.Add("a", "b-c")
+
+	require.Equal(t, 1, c.Count("a-b", "c"))
+	require.Equal(t, 1, c.Count("a", "b-c"))
+
+	c.Clear("a-b", "c")
+	require.Equal(t, 0, c.Count("a-b", "c"))
+	require.Equal(t, 1, c.Count("a", "b-c"))
+}

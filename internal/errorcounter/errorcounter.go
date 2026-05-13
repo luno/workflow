@@ -45,5 +45,5 @@ func makeKey(label string, extras []string) string {
 	if len(extras) == 0 {
 		return label
 	}
-	return label + "-" + strings.Join(extras, "-")
+	return label + "\x00" + strings.Join(extras, "\x00")
 }
