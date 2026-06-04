@@ -76,18 +76,20 @@ func testReleasing(t *testing.T, factory func(t *testing.T, instances int) []wor
 		ctx, cancel := context.WithCancel(context.Background())
 		t.Cleanup(cancel)
 
-		passed := make(chan bool)
+		outerErr := make(chan error, 1)
+		innerErr := make(chan error, 1)
+
 		go func() {
 			_, _, err := rs[0].Await(ctx, "leader-releasing")
-			require.NoError(t, err)
+			outerErr <- err
+			if err != nil {
+				return
+			}
 
 			ctx2, cancel2 := context.WithCancel(context.Background())
 			go func() {
 				_, _, err := rs[1].Await(ctx2, "leader-releasing")
-				require.ErrorIs(t, err, context.Canceled)
-
-				// Record that the execution got here.
-				passed <- true
+				innerErr <- err
 			}()
 
 			// Cancel the other caller to test that it unlocks on context cancellation
@@ -99,9 +101,10 @@ func testReleasing(t *testing.T, factory func(t *testing.T, instances int) []wor
 			select {
 			case <-timeout:
 				require.FailNow(t, "not all instances obtained the lock")
-				return
-			case <-passed:
-				// Expected call stack executed
+			case err := <-outerErr:
+				require.NoError(t, err)
+			case err := <-innerErr:
+				require.ErrorIs(t, err, context.Canceled)
 				return
 			}
 		}
