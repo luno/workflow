@@ -1808,7 +1808,7 @@ Object.assign(window, { WorkflowsView, SavedFiltersView, DocsView, SettingsView 
 </script>
 
 <script type="text/babel">
-const { useState, useEffect, useMemo, useCallback } = React;
+const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
 const API = window.__API_PATHS || { list: "", update: "", objectData: "" };
 
@@ -1903,12 +1903,23 @@ function App() {
     return () => clearTimeout(id);
   }, [filters.foreignId]);
 
+  // Concurrent fetches can resolve out of order (debounced search vs polling);
+  // only the latest request may write state, or stale results overwrite fresh ones.
+  const fetchId = useRef(0);
   const doFetch = useCallback(async () => {
+    const currentFetch = ++fetchId.current;
     setLoading(true);
     setFetchError(null);
-    try { setRecords(await apiFetchRuns(debouncedForeignId)); }
-    catch (e) { setFetchError(e.message); }
-    finally { setLoading(false); }
+    try {
+      const records = await apiFetchRuns(debouncedForeignId);
+      if (currentFetch === fetchId.current) setRecords(records);
+    }
+    catch (e) {
+      if (currentFetch === fetchId.current) setFetchError(e.message);
+    }
+    finally {
+      if (currentFetch === fetchId.current) setLoading(false);
+    }
   }, [debouncedForeignId]);
 
   useEffect(() => {
