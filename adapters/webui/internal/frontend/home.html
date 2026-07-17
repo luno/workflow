@@ -832,7 +832,7 @@ function Sidebar({ stateCounts, activeNav, onNav, presetCount = 0, workflowCount
 }
 
 /* ---- Topbar ---- */
-function Topbar({ theme, setTheme, polling, onTogglePolling, activeNav = "runs" }) {
+function Topbar({ theme, setTheme, polling, onTogglePolling, activeNav = "runs", search = "", onSearch }) {
   const crumbMap = { runs: "Runs", workflows: "Workflows", saved: "Saved filters", docs: "Docs", settings: "Settings" };
   return (
     <header className="topbar">
@@ -843,8 +843,9 @@ function Topbar({ theme, setTheme, polling, onTogglePolling, activeNav = "runs" 
       </div>
       <div className="topbar-search">
         <Icon name="search" />
-        <input placeholder="Search runs, workflows, foreign IDs…" />
-        <span className="kbd">⌘K</span>
+        <input placeholder="Search by foreign ID…" value={search}
+               onChange={e => onSearch && onSearch(e.target.value)} />
+        <span className="kbd">/</span>
       </div>
       <div className="topbar-actions">
         <button className="icon-btn" title="Live polling" onClick={onTogglePolling}>
@@ -1828,15 +1829,27 @@ const REFRESH_INTERVALS = [
   { key: 30000, label: "30s" },
 ];
 
-async function apiFetchRuns() {
+async function apiFetchList(overrides) {
   const resp = await fetch(API.list, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ offset: 0, limit: 500, order: "desc" }),
+    body: JSON.stringify({ offset: 0, limit: 500, order: "desc", ...overrides }),
   });
   if (!resp.ok) throw new Error(`List failed: ${resp.status}`);
   const data = await resp.json();
   return data.items || [];
+}
+
+// The base list only covers the newest 500 runs, so a foreign ID search would
+// silently miss older runs. When a foreign ID is set, also fetch exact matches
+// server-side and merge them in.
+async function apiFetchRuns(foreignId) {
+  const requests = [apiFetchList({})];
+  if (foreignId) requests.push(apiFetchList({ filter_by_foreign_id: foreignId }));
+  const results = await Promise.all(requests);
+  const byRunId = new Map();
+  for (const r of results.flat()) byRunId.set(r.run_id, r);
+  return [...byRunId.values()];
 }
 
 async function apiUpdate(runId, action) {
@@ -1883,13 +1896,20 @@ function App() {
 
   useEffect(() => { localStorage.setItem("wf.presets", JSON.stringify(presets)); }, [presets]);
 
+  // Debounced so typing a foreign ID doesn't fire a server request per keystroke.
+  const [debouncedForeignId, setDebouncedForeignId] = useState(filters.foreignId);
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedForeignId(filters.foreignId), 300);
+    return () => clearTimeout(id);
+  }, [filters.foreignId]);
+
   const doFetch = useCallback(async () => {
     setLoading(true);
     setFetchError(null);
-    try { setRecords(await apiFetchRuns()); }
+    try { setRecords(await apiFetchRuns(debouncedForeignId)); }
     catch (e) { setFetchError(e.message); }
     finally { setLoading(false); }
-  }, []);
+  }, [debouncedForeignId]);
 
   useEffect(() => {
     if (activeNav !== "runs") return;
@@ -1962,7 +1982,8 @@ function App() {
   return (
     <div className="app">
       <Sidebar stateCounts={stateCounts} activeNav={activeNav} onNav={setActiveNav} presetCount={presets.length} workflowCount={workflowCount} />
-      <Topbar theme={theme} setTheme={v => setTweak("theme", v)} polling={polling} onTogglePolling={() => setPolling(p => !p)} activeNav={activeNav} />
+      <Topbar theme={theme} setTheme={v => setTweak("theme", v)} polling={polling} onTogglePolling={() => setPolling(p => !p)} activeNav={activeNav}
+              search={filters.foreignId} onSearch={foreignId => setFilters(f => ({ ...f, foreignId }))} />
 
       <main className="main">
         {activeNav === "runs" && (
