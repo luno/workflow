@@ -10,9 +10,10 @@ var (
 	ErrInvalidTransition    = errors.New("invalid transition")
 )
 
-// ErrorCounter defines an interface for counting occurrences of errors with optional labels.
+// ErrorCounter defines an interface for counting errors keyed by stable labels.
+// At least one label is required — labels should identify the process and run (e.g. processName, runID).
 type ErrorCounter interface {
-	Add(err error, labels ...string) int
-	Count(err error, labels ...string) int
-	Clear(err error, labels ...string)
+	Add(label string, extras ...string) int
+	Count(label string, extras ...string) int
+	Clear(label string, extras ...string)
 }

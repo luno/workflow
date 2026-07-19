@@ -128,7 +128,7 @@ func processTimeout[Type any, Status StatusType](
 
 	next, err := config.TimeoutFunc(ctx, run, w.clock.Now())
 	if err != nil {
-		_, err := maybePause(ctx, pauseAfterErrCount, w.errorCounter, err, processName, run, w.logger)
+		_, err := maybePause(ctx, pauseAfterErrCount, w.errorCounter, processName, run, w.logger)
 		if err != nil {
 			return fmt.Errorf("pause error: %v, meta: %v", err, map[string]string{
 				"run_id":     record.RunID,
