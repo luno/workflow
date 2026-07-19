@@ -15,7 +15,6 @@ import (
 func Test_maybeAutoPause(t *testing.T) {
 	ctx := t.Context()
 	counter := errorcounter.New()
-	testErr := errors.New("test error")
 	pauseErr := errors.New("pause error")
 	processName := "process"
 
@@ -78,7 +77,6 @@ func Test_maybeAutoPause(t *testing.T) {
 				ctx,
 				tc.pauseAfterErrCount,
 				counter,
-				testErr,
 				processName,
 				r,
 				&logger{},

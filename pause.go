@@ -14,7 +14,6 @@ func maybePause[Type any, Status StatusType](
 	ctx context.Context,
 	pauseAfterErrCount int,
 	counter ErrorCounter,
-	originalErr error,
 	processName string,
 	run *Run[Type, Status],
 	logger Logger,

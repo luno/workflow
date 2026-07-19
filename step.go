@@ -175,7 +175,7 @@ func stepConsumer[Type any, Status StatusType](
 		next, err := stepLogic(ctx, run)
 		if err != nil {
 			originalErr := err
-			paused, err := maybePause(ctx, pauseAfterErrCount, errorCounter, originalErr, processName, run, logger)
+			paused, err := maybePause(ctx, pauseAfterErrCount, errorCounter, processName, run, logger)
 			if err != nil {
 				return fmt.Errorf("pause error: %v, meta: %v", err, map[string]string{
 					"run_id":     record.RunID,
