@@ -22,11 +22,13 @@ func New(opts ...Option) *StreamConstructor {
 		option(&opt)
 	}
 
+	mu := &sync.Mutex{}
 	return &StreamConstructor{
 		opts: &opt,
 		stream: &Stream{
-			mu:  &sync.Mutex{},
-			log: &log,
+			mu:   mu,
+			cond: sync.NewCond(mu),
+			log:  &log,
 		},
 		cursorStore: newCursorStore(),
 	}
@@ -56,6 +58,7 @@ func (s StreamConstructor) NewSender(ctx context.Context, topic string) (workflo
 
 	return &Stream{
 		mu:    s.stream.mu,
+		cond:  s.stream.cond,
 		log:   s.stream.log,
 		topic: topic,
 		clock: s.opts.clock,
@@ -85,6 +88,7 @@ func (s StreamConstructor) NewReceiver(
 
 	return &Stream{
 		mu:          s.stream.mu,
+		cond:        s.stream.cond,
 		log:         s.stream.log,
 		cursorStore: s.cursorStore,
 		topic:       topic,
@@ -98,6 +102,7 @@ var _ workflow.EventStreamer = (*StreamConstructor)(nil)
 
 type Stream struct {
 	mu          *sync.Mutex
+	cond        *sync.Cond
 	log         *[]*workflow.Event
 	cursorStore *cursorStore
 	topic       string
@@ -119,35 +124,65 @@ func (s *Stream) Send(ctx context.Context, foreignID string, statusType int, hea
 		CreatedAt: s.clock.Now(),
 	})
 
+	// Wake any receivers parked on cond.Wait so they can pick up the new event.
+	s.cond.Broadcast()
+
 	return nil
 }
 
 func (s *Stream) Recv(ctx context.Context) (*workflow.Event, workflow.Ack, error) {
-	for ctx.Err() == nil {
-		s.mu.Lock()
-		log := *s.log
-		s.mu.Unlock()
+	// sync.Cond doesn't natively respect ctx. Spawn a watcher that
+	// broadcasts when the ctx is done so Recv can wake up and return
+	// ctx.Err() instead of leaking the goroutine forever. The stop channel
+	// is closed on return so the watcher exits when Recv exits (no leak per
+	// call).
+	stop := make(chan struct{})
+	defer close(stop)
+	go func() {
+		select {
+		case <-ctx.Done():
+			s.mu.Lock()
+			s.cond.Broadcast()
+			s.mu.Unlock()
+		case <-stop:
+		}
+	}()
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for {
+		if err := ctx.Err(); err != nil {
+			return nil, nil, err
+		}
+
+		log := *s.log
 		cursorOffset := s.cursorStore.Get(s.name)
+
 		if len(log)-1 < cursorOffset {
+			// Nothing to deliver — park until Send or ctx cancel signals us.
+			s.cond.Wait()
 			continue
 		}
 
 		e := log[cursorOffset]
 
-		// Skip events that are not related to this topic
+		// Skip events that are not related to this topic. Advance the cursor
+		// past the skipped event so we don't see it again.
 		if s.topic != e.Headers[workflow.HeaderTopic] {
 			s.cursorStore.Set(s.name, cursorOffset+1)
 			continue
 		}
 
+		// The ack closure captures cursorOffset so a double-call is a no-op
+		// (it would set the cursor to the same value). The cursorStore's
+		// own mutex protects the cursor map; that's separate from s.mu so
+		// we don't need to hold s.mu here.
 		return e, func() error {
 			s.cursorStore.Set(s.name, cursorOffset+1)
 			return nil
 		}, nil
 	}
-
-	return nil, nil, ctx.Err()
 }
 
 func (s *Stream) Close() error {
