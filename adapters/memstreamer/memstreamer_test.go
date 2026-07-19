@@ -4,6 +4,7 @@ import (
 	"context"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -35,7 +36,11 @@ func TestConnector(t *testing.T) {
 func TestRecv_DoesNotBusySpin(t *testing.T) {
 	s := memstreamer.New()
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	var wg sync.WaitGroup
+	t.Cleanup(func() {
+		cancel()
+		wg.Wait()
+	})
 
 	const consumers = 8
 	for i := 0; i < consumers; i++ {
@@ -44,7 +49,9 @@ func TestRecv_DoesNotBusySpin(t *testing.T) {
 		if err != nil {
 			t.Fatalf("NewReceiver: %v", err)
 		}
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			for {
 				_, _, err := rec.Recv(ctx)
 				if err != nil {
@@ -155,6 +162,8 @@ func TestRecv_WakesOnCtxCancel(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = rec.Close() })
 
+	before := runtime.NumGoroutine()
+
 	done := make(chan error, 1)
 	go func() {
 		_, _, err := rec.Recv(ctx)
@@ -164,7 +173,6 @@ func TestRecv_WakesOnCtxCancel(t *testing.T) {
 	// Let it park.
 	time.Sleep(20 * time.Millisecond)
 
-	before := runtime.NumGoroutine()
 	cancelAt := time.Now()
 	cancel()
 

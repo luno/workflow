@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -179,9 +180,9 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	wf.Run(ctx)
 	t.Cleanup(wf.Stop)
 
-	shouldSkip := false
+	var shouldSkip atomic.Bool
 	filter := func(ctx context.Context) (bool, error) {
-		return !shouldSkip, nil
+		return !shouldSkip.Load(), nil
 	}
 	opt := workflow.WithScheduleFilter[MyType, status](filter)
 
@@ -218,7 +219,7 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test 2: Filter blocks scheduling (shouldSkip = true)
-	shouldSkip = true
+	shouldSkip.Store(true)
 
 	// Move to June 1st - second scheduled time, but filter should block it
 	expectedTimestamp = time.Date(2023, time.June, 1, 0, 0, 0, 0, time.UTC)
@@ -233,7 +234,7 @@ func TestWorkflow_ScheduleFilter(t *testing.T) {
 	require.Equal(t, firstRun.RunID, latest.RunID, "No new run should be created when filter returns false")
 
 	// Test 3: Filter allows scheduling again (shouldSkip = false)
-	shouldSkip = false
+	shouldSkip.Store(false)
 
 	// Move to July 1st - third scheduled time, filter should allow it
 	expectedTimestamp = time.Date(2023, time.July, 1, 0, 0, 0, 0, time.UTC)
