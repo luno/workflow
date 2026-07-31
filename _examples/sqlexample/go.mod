@@ -5,13 +5,13 @@ go 1.26.0
 replace github.com/luno/workflow => ../..
 
 require (
-	github.com/go-sql-driver/mysql v1.9.0
+	github.com/go-sql-driver/mysql v1.10.0
 	github.com/luno/workflow v0.3.0
 	github.com/luno/workflow/adapters/sqlstore v0.0.0-20260731135442-bcc24e59a7e6
 )
 
 require (
-	filippo.io/edwards25519 v1.1.0 // indirect
+	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
