@@ -8,7 +8,7 @@ require (
 	github.com/corverroos/truss v0.0.0-20210514115035-9e5e1b0851a9
 	github.com/go-sql-driver/mysql v1.10.0
 	github.com/luno/jettison v0.0.0-20260604094545-6727dacc9313
-	github.com/luno/workflow v0.3.0
+	github.com/luno/workflow v0.5.0
 )
 
 require (

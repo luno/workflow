@@ -8,7 +8,7 @@ require (
 	github.com/corverroos/truss v0.0.0-20210514115035-9e5e1b0851a9
 	github.com/luno/jettison v0.0.0-20260604094545-6727dacc9313
 	github.com/luno/reflex v0.0.0-20260609123455-93b6bf2beb34
-	github.com/luno/workflow v0.3.0
+	github.com/luno/workflow v0.5.0
 	github.com/stretchr/testify v1.11.1
 )
 

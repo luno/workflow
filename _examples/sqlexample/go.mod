@@ -6,7 +6,7 @@ replace github.com/luno/workflow => ../..
 
 require (
 	github.com/go-sql-driver/mysql v1.10.0
-	github.com/luno/workflow v0.3.0
+	github.com/luno/workflow v0.5.0
 	github.com/luno/workflow/adapters/sqlstore v0.0.0-20260731135442-bcc24e59a7e6
 )
 

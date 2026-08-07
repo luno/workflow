@@ -5,7 +5,7 @@ go 1.26.0
 replace github.com/luno/workflow => ../..
 
 require (
-	github.com/luno/workflow v0.3.7
+	github.com/luno/workflow v0.5.0
 	github.com/redis/go-redis/v9 v9.21.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.43.0
